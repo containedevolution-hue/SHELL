@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LocalHub",
+  "version": "0.1.0",
+  "identifier": "com.containedevolution.localhub",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Contained Evolution — LocalHub",
+        "url": "https://app.containedevolution.com/",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": ["msi"],
+    "category": "Utility",
+    "shortDescription": "Contained Evolution local sync host",
+    "longDescription": "LocalHub is the desktop host for Contained Evolution's Cyclone sync system. It runs a CouchDB-compatible engine on your LAN so your devices sync to your own machine."
+  }
+}

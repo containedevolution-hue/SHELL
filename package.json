@@ -1,0 +1,11 @@
+{
+  "name": "localhub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contained Evolution — LocalHub (Cyclone C2 desktop host)",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  }
+}
