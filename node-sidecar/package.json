@@ -1,0 +1,14 @@
+{
+  "name": "localhub-sidecar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LocalHub Node sidecar — express-pouchdb host on http://localhost:5984/ (Cyclone C2b)",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-pouchdb": "^4.2.0",
+    "pouchdb-node": "^9.0.0"
+  }
+}
