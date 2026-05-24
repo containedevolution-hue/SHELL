@@ -14,15 +14,19 @@ Tauri (Rust shell) desktop app that:
 
 ## C2 slicing
 
-- ✅ **C2a — Tauri shell.** *(This commit.)* Opens a desktop window pointing at
-  `https://app.containedevolution.com/`. No sidecar. Verifies the desktop
-  wrapper works end-to-end. Bundling is OFF (`bundle.active: false`) so dev
-  mode works without icons; C2c adds icons + the Windows installer config.
-- ❌ **C2b — Node sidecar + express-pouchdb.** Embed a Node sidecar that runs
-  `express-pouchdb` as a CouchDB-protocol host on `http://localhost:5984` so
-  PouchDB clients can replicate to it (LAN sync in C3 will point them here).
+- ✅ **C2a — Tauri shell.** Opens a desktop window pointing at
+  `https://app.containedevolution.com/`. Bundling is OFF (`bundle.active: false`)
+  so dev mode works without icons; C2c adds icons + the Windows installer config.
+- ✅ **C2b — Node sidecar + express-pouchdb.** See [`node-sidecar/`](./node-sidecar).
+  Tauri's `src-tauri/src/main.rs` spawns it at startup and kills it on
+  `ExitRequested`. Bind defaults to `127.0.0.1`; set `LOCALHUB_HOST=0.0.0.0`
+  for headless appliance deployments (Pi).
+- ✅ **C3a — Same-machine sync inside the Tauri webview.** PWA loaded in the
+  Tauri window auto-starts `PouchDB.sync(local ⇄ http://localhost:5984/ce-memories-{id})`.
 - ❌ **C2c — Windows installer + icons + marketing download stub.** Tauri MSI
   bundling, real icons (32/128/256/256@2x + Windows ICO), `app/download` page.
+- ❌ **C3b — LAN sync (phone ⇄ desktop over Wi-Fi).** Needs HTTPS-on-sidecar +
+  cert trust via QR pairing + mDNS — mixed-content rules block HTTPS-PWA → HTTP-sidecar.
 
 ## Dev (requires the prerequisites below)
 

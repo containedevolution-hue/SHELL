@@ -28,6 +28,11 @@ const PouchDB = require('pouchdb-node');
 const expressPouchDB = require('express-pouchdb');
 
 const PORT = parseInt(process.env.LOCALHUB_PORT, 10) || 5984;
+// Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
+// only legitimate client is the in-process Tauri webview). The Pi appliance
+// deployment sets LOCALHUB_HOST=0.0.0.0 so phones/laptops on the LAN can hit
+// it directly — only safe on a single-tenant device on a trusted network.
+const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = path.join(__dirname, 'data');
 
 // Ensure data dir exists before PouchDB tries to open / write into it.
@@ -61,8 +66,8 @@ app.use('/', expressPouchDB(StoreCtor, {
   configPath: path.join(DATA_DIR, 'config.json'),
 }));
 
-const server = app.listen(PORT, '127.0.0.1', () => {
-  console.log(`[localhub-sidecar] listening on http://localhost:${PORT}/`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
 });
 
