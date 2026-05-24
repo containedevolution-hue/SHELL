@@ -26,6 +26,13 @@
       "csp": null
     }
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["localhub"]
+      }
+    }
+  },
   "bundle": {
     "active": false,
     "targets": ["msi"],

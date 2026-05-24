@@ -13,3 +13,11 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Cyclone C2.1a — custom-protocol deep-link plumbing for the Google-OAuth-via-
+# system-browser flow (C2.1b). deep-link registers the `localhub://` scheme
+# and surfaces incoming URLs to Rust; single-instance keeps OAuth callbacks
+# from spawning a second Tauri process (without it, `start localhub://...`
+# would launch a fresh instance instead of completing the in-flight login).
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
