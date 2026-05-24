@@ -1,0 +1,88 @@
+'use strict';
+
+// Minimal MCP server — JSON-RPC 2.0 over HTTP POST, single endpoint.
+// Spec: https://modelcontextprotocol.io. We implement the subset A2 needs:
+//   - initialize  → handshake + capability negotiation
+//   - tools/list  → list of available tools
+//   - tools/call  → invoke one tool, return content blocks
+//   - ping        → liveness probe
+//
+// No sessions, no SSE, no notifications — those are optional in the spec
+// and unnecessary for short read-only calls. If a future tool needs
+// streaming we'll layer it then, not for hypothetical futures now.
+
+const express = require('express');
+const { listTools, executeTool } = require('./registry');
+
+const PROTOCOL_VERSION = '2025-03-26';
+const SERVER_INFO = { name: 'ce-hub-appliance', version: '0.1.0' };
+
+function jsonrpcError(id, code, message, data) {
+  const err = { code, message };
+  if (data !== undefined) err.data = data;
+  return { jsonrpc: '2.0', id: id ?? null, error: err };
+}
+
+function jsonrpcResult(id, result) {
+  return { jsonrpc: '2.0', id, result };
+}
+
+async function dispatch(message) {
+  if (!message || message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
+    return jsonrpcError(message?.id, -32600, 'Invalid Request');
+  }
+  const { id, method, params } = message;
+  switch (method) {
+    case 'initialize':
+      return jsonrpcResult(id, {
+        protocolVersion: PROTOCOL_VERSION,
+        capabilities: { tools: {} },
+        serverInfo: SERVER_INFO,
+      });
+    case 'ping':
+      return jsonrpcResult(id, {});
+    case 'tools/list':
+      return jsonrpcResult(id, { tools: listTools() });
+    case 'tools/call': {
+      const name = params?.name;
+      if (typeof name !== 'string') {
+        return jsonrpcError(id, -32602, 'Invalid params: name required');
+      }
+      const result = await executeTool(name, params?.arguments);
+      const isError = !!(result && typeof result === 'object' && 'error' in result);
+      return jsonrpcResult(id, {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        isError,
+      });
+    }
+    case 'notifications/initialized':
+      // Spec: notifications have no id and no response.
+      return null;
+    default:
+      return jsonrpcError(id, -32601, `Method not found: ${method}`);
+  }
+}
+
+function mount() {
+  const router = express.Router();
+  router.use(express.json({ limit: '1mb' }));
+
+  router.post('/', async (req, res) => {
+    try {
+      const body = req.body;
+      if (Array.isArray(body)) {
+        const responses = (await Promise.all(body.map(dispatch))).filter((r) => r !== null);
+        return responses.length === 0 ? res.status(204).end() : res.json(responses);
+      }
+      const response = await dispatch(body);
+      if (response === null) return res.status(204).end();
+      return res.json(response);
+    } catch (err) {
+      return res.status(500).json(jsonrpcError(null, -32603, `Internal error: ${err.message}`));
+    }
+  });
+
+  return router;
+}
+
+module.exports = { mount };

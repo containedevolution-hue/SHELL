@@ -1,22 +1,27 @@
-// LocalHub Node sidecar — Cyclone C2b (memory/apps/Cyclone-LocalHub-Conceptual.md).
+// LocalHub Node sidecar — Cyclone C2b (memory/apps/Cyclone-LocalHub-Conceptual.md)
+// + Hub Appliance A2 MCP foundation (memory/apps/CE-Hub-Appliance-Conceptual.md).
 //
-// Spawned by Tauri's main.rs at app startup; runs a CouchDB-protocol-compatible
-// HTTP host on http://localhost:5984/ via express-pouchdb + PouchDB's Node
-// adapter (LevelDB-backed persistence). This is what the PWA's PouchDB clients
-// will replicate to in C3. The sidecar itself doesn't initiate sync — it just
-// stands there as the host endpoint.
+// Hosts two things on the same Express app:
+//   /         — CouchDB-protocol-compatible PouchDB endpoint (Cyclone replication target)
+//   /mcp      — Model Context Protocol JSON-RPC endpoint (read-only tool host for the PA)
+//
+// On a laptop/Tauri install both mount on 127.0.0.1; on the Pi appliance the
+// sidecar binds 0.0.0.0 (LOCALHUB_HOST=0.0.0.0) so LAN clients and the cloud
+// PA (via tunnel, A3) can reach it.
 //
 // Storage: a `data/` folder next to this script. Each PouchDB database becomes
 // a subfolder; everything's local to this user's machine.
 //
-// Lifecycle: started by Tauri's spawn_sidecar() in main.rs, killed on app exit
-// via RunEvent::ExitRequested. Can also be run standalone for development:
+// Lifecycle: started by Tauri's spawn_sidecar() in main.rs (laptop) or by the
+// `cehub.service` systemd unit on the Pi. Killed by SIGTERM on shutdown.
+// Standalone dev:
 //   cd localhub/node-sidecar
 //   node index.js
 //
-// Verify (with the sidecar running):
-//   curl http://localhost:5984/
-//   -> {"couchdb":"Welcome","version":"...","vendor":{"name":"PouchDB-Server"}}
+// Verify (sidecar running):
+//   curl http://localhost:5984/                                # PouchDB welcome
+//   curl -X POST http://localhost:5984/mcp -H 'content-type: application/json' \
+//        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # MCP tool list
 
 'use strict';
 
@@ -26,6 +31,7 @@ const express = require('express');
 const cors = require('cors');
 const PouchDB = require('pouchdb-node');
 const expressPouchDB = require('express-pouchdb');
+const mcp = require('./mcp/server');
 
 const PORT = parseInt(process.env.LOCALHUB_PORT, 10) || 5984;
 // Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
@@ -57,6 +63,9 @@ app.use(cors({
   credentials: false,
 }));
 
+// MCP must mount before the PouchDB catch-all on '/'.
+app.use('/mcp', mcp.mount());
+
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than
 // 'fullCouchDB'; enough for Cyclone (the only client is PouchDB itself).
@@ -69,6 +78,7 @@ app.use('/', expressPouchDB(StoreCtor, {
 const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
+  console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (root: ${require('./mcp/jail').ROOT})`);
 });
 
 // Tauri's main.rs sends a kill signal on ExitRequested. Graceful close + a

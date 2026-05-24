@@ -1,0 +1,23 @@
+# Reference copy of the systemd unit setup.sh writes to
+# /etc/systemd/system/cehub.service. The real unit is generated at install
+# time so User= and WorkingDirectory= match the actual Pi user — do NOT
+# install this file directly. This copy is here for review and version
+# control.
+
+[Unit]
+Description=CE Hub Appliance — LocalHub Node sidecar (PouchDB + MCP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__PI_USER__
+WorkingDirectory=__SIDECAR_DIR__
+ExecStart=/usr/bin/node index.js
+Environment=LOCALHUB_HOST=0.0.0.0
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

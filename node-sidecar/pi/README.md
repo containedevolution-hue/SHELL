@@ -1,0 +1,96 @@
+# CE Hub Appliance — Pi bring-up
+
+Plug-and-play setup for the Tier 0 Pi 5 Hub Nano. Takes ~5 min from sealed
+box to live appliance (excluding the OS flash itself).
+
+## 1 — Flash Pi OS Lite (64-bit)
+
+Use **Raspberry Pi Imager** on your laptop. Click the gear icon and set:
+
+- **Hostname:** `cehub`
+- **SSH:** enabled (use public-key auth if you have a key; otherwise password)
+- **Wi-Fi:** your network (or skip if using Ethernet)
+- **Locale / timezone:** your zone
+- **Username:** whatever you want (script picks it up from `whoami`)
+
+Image to the SD card. Insert into Pi. Plug in power + Ethernet (Ethernet
+recommended on Tier 0 — Wi-Fi works but mDNS is flakier on some routers).
+
+## 2 — SSH in
+
+From your laptop on the same LAN:
+
+```
+ssh <user>@cehub.local
+```
+
+If `cehub.local` doesn't resolve, find the Pi's IP from your router and use
+that instead — the setup script makes `cehub.local` work for next time.
+
+## 3 — Clone + run setup
+
+```
+git clone <ce-team repo url> ~/ce-team
+cd ~/ce-team/localhub/node-sidecar/pi
+./setup.sh
+```
+
+The script is idempotent. Re-run it after a `git pull` to pick up sidecar
+updates.
+
+What it does:
+
+1. apt update + install curl/git/avahi
+2. Install Node 20 LTS via NodeSource
+3. Set hostname to `cehub` (already set by Imager, this re-asserts it)
+4. Enable avahi-daemon so `cehub.local` works on the LAN
+5. `npm install --omit=dev` in the sidecar
+6. Drop `/etc/systemd/system/cehub.service` with `LOCALHUB_HOST=0.0.0.0`
+7. Enable + start the service
+
+## 4 — Verify
+
+```
+sudo reboot
+```
+
+Wait ~30s, then from your laptop:
+
+```
+# A1 — PouchDB welcome
+curl http://cehub.local:5984/
+
+# A2 — MCP tools list
+curl -X POST http://cehub.local:5984/mcp \
+     -H 'content-type: application/json' \
+     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# A2 — A live tool call
+curl -X POST http://cehub.local:5984/mcp \
+     -H 'content-type: application/json' \
+     -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_system_status","arguments":{}}}'
+```
+
+Both A1 and A2 should respond. The system-status call is the end-to-end
+round-trip that proves the appliance is reachable + the MCP host is alive.
+
+## Troubleshooting
+
+- **`cehub.local` doesn't resolve** — use the Pi's IP instead. Some routers
+  block mDNS broadcast. On macOS/Linux clients `.local` works out of the box;
+  on Windows it works with Bonjour (installed with iTunes) or with the
+  modern Windows 11 mDNS responder.
+- **Service won't start** — `sudo journalctl -u cehub.service -e` shows the
+  last error. Usually a Node version mismatch or a path the unit can't see.
+- **Port 5984 already in use** — another CouchDB-style server is running.
+  `sudo lsof -i :5984` to find it.
+
+## What's intentionally NOT here yet
+
+- HTTPS / cert (mixed-content blocks the phone PWA → A5 brings QR pairing
+  + cert trust)
+- Cloud PA reaching the appliance from outside the LAN (A3 tunnel)
+- Voice, camera, anything physical (Phase B+)
+
+Phase A is connectivity parity. The Pi answers from the LAN; everything else
+ladders up from here.
