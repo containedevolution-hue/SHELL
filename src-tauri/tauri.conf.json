@@ -29,7 +29,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["localhub"]
+        "schemes": ["com.containedevolution.localhub", "localhub"]
       }
     }
   },
