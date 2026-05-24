@@ -27,6 +27,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const PouchDB = require('pouchdb-node');
@@ -130,9 +131,10 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (root: ${require('./mcp/jail').ROOT})`);
   console.log(`[localhub-pairing] token: ${pairing.getToken().slice(0, 8)}… paired: ${pairing.isPaired()}`);
-  // Auto-register with Railway on every boot if this device has been paired.
-  // Polls for the cloudflared tunnel URL (takes ~10s to appear after boot).
+  // Auto-register (paired) or beacon (unpaired) on every boot.
+  // Both poll for the cloudflared tunnel URL before acting.
   if (pairing.isPaired()) autoRegister();
+  else autoBeacon();
 });
 
 // Auto-register: poll for the cloudflared tunnel URL then POST to Railway so
@@ -170,6 +172,50 @@ async function autoRegister() {
   } catch (err) {
     console.log(`[localhub-pairing] auto-register error: ${err.message}`);
   }
+}
+
+// Auto-beacon: when unpaired, broadcast presence to Railway so the user's
+// Settings page can detect the device and prompt for the verify code.
+// Generates a random 6-char code each boot — only way to claim the device.
+const BEACON_INTERVAL_MS = 60000;
+
+async function autoBeacon() {
+  let tunnelUrl = null;
+  for (let i = 0; i < REGISTER_MAX_POLLS; i++) {
+    await new Promise(r => setTimeout(r, REGISTER_POLL_MS));
+    tunnelUrl = getTunnelUrl();
+    if (tunnelUrl) break;
+  }
+  if (!tunnelUrl) {
+    console.log('[localhub-pairing] beacon skipped — no tunnel URL after 90s');
+    return;
+  }
+
+  const verifyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+  console.log(`[localhub-pairing] Hub not paired — open Settings → Integrations → Hub Appliance`);
+  console.log(`[localhub-pairing] Pair code: ${verifyCode}`);
+
+  async function sendBeacon() {
+    if (pairing.isPaired()) return; // stop beaconing once claimed
+    try {
+      await fetch(`${RAILWAY_BASE}/api/hub/beacon`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          pairing_token: pairing.getToken(),
+          hub_url: getTunnelUrl() || tunnelUrl,
+          verify_code: verifyCode,
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch (_) {}
+  }
+
+  await sendBeacon();
+  const iv = setInterval(async () => {
+    if (pairing.isPaired()) { clearInterval(iv); return; }
+    await sendBeacon();
+  }, BEACON_INTERVAL_MS);
 }
 
 // Tauri's main.rs sends a kill signal on ExitRequested. Graceful close + a
