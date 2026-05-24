@@ -3,9 +3,19 @@
 Plug-and-play setup for the Tier 0 Pi 5 Hub Nano. Takes ~5 min from sealed
 box to live appliance (excluding the OS flash itself).
 
-## 1 — Flash Pi OS Lite (64-bit)
+## 1 — Flash Pi OS (64-bit)
 
-Use **Raspberry Pi Imager** on your laptop. Click the gear icon and set:
+Use **Raspberry Pi Imager** on your laptop. Two OS variants are both valid:
+
+- **Raspberry Pi OS Lite (64-bit)** — no desktop environment. ~550 MB. The
+  default for a shelf-sitting headless appliance. Phone PWA is the only UI.
+- **Raspberry Pi OS Full (64-bit)** — full desktop + Chromium pre-installed.
+  ~1.9 GB. Pick this if you want to attach an HDMI screen and use the deployed
+  PWA from the Pi itself (the "Full Desktop" persona in
+  `memory/apps/CE-Hub-Appliance-Conceptual.md`). Slower boot, ~1 GB more RAM in
+  use — still fine on Pi 5 4GB. Same `setup.sh` works on both.
+
+Click the gear icon (or NEXT → EDIT SETTINGS in Imager 2.x) and set:
 
 - **Hostname:** `cehub`
 - **SSH:** enabled (use public-key auth if you have a key; otherwise password)
