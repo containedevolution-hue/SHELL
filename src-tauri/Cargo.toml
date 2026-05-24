@@ -21,3 +21,8 @@ serde_json = "1"
 # would launch a fresh instance instead of completing the in-flight login).
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Cyclone C2.1b — opens the Google OAuth authorize URL in the user's system
+# browser (WebView2 is blocked by Google for OAuth). The webview calls
+# window.__TAURI__.opener.openUrl(...) to launch the user's default browser.
+tauri-plugin-opener = "2"
