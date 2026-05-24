@@ -23,6 +23,7 @@
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
+const cors = require('cors');
 const PouchDB = require('pouchdb-node');
 const expressPouchDB = require('express-pouchdb');
 
@@ -37,6 +38,19 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const StoreCtor = PouchDB.defaults({ prefix: DATA_DIR + path.sep });
 
 const app = express();
+
+// Cyclone C3a — allow the deployed PWA origin (the one loaded inside the
+// Tauri webview) to replicate to us. Browsers preflight cross-origin XHR
+// (https://app.containedevolution.com → http://localhost:5984), so we have to
+// explicitly opt in. v1 list is the prod PWA origins; C3b will swap to a
+// token-keyed allowlist when LAN sync ships and we have an actual auth model.
+app.use(cors({
+  origin: [
+    'https://app.containedevolution.com',
+    'https://www.containedevolution.com',
+  ],
+  credentials: false,
+}));
 
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than
