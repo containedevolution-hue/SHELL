@@ -27,10 +27,27 @@ ssh <user>@cehub.local
 If `cehub.local` doesn't resolve, find the Pi's IP from your router and use
 that instead — the setup script makes `cehub.local` work for next time.
 
-## 3 — Clone + run setup
+## 3 — Auth GitHub on the Pi
+
+The repo is private, so a fresh Pi can't clone until it has credentials.
+Fastest path is the GitHub CLI device flow:
 
 ```
-git clone <ce-team repo url> ~/ce-team
+sudo apt update && sudo apt install -y gh
+gh auth login
+```
+
+When prompted: **GitHub.com → HTTPS → "Login with a web browser"**. It prints
+an 8-character code. On your laptop open `https://github.com/login/device`,
+paste the code, approve. The Pi terminal continues automatically.
+
+(Alternative: SSH key on the Pi added to your GitHub account. `gh` is faster
+because no key juggling.)
+
+## 4 — Clone + run setup
+
+```
+gh repo clone containedevolution-hue/ce-team ~/ce-team
 cd ~/ce-team/localhub/node-sidecar/pi
 ./setup.sh
 ```
@@ -48,7 +65,7 @@ What it does:
 6. Drop `/etc/systemd/system/cehub.service` with `LOCALHUB_HOST=0.0.0.0`
 7. Enable + start the service
 
-## 4 — Verify
+## 5 — Verify
 
 ```
 sudo reboot
