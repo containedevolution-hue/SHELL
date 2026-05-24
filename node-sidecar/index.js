@@ -32,6 +32,8 @@ const cors = require('cors');
 const PouchDB = require('pouchdb-node');
 const expressPouchDB = require('express-pouchdb');
 const mcp = require('./mcp/server');
+const pairing = require('./lib/pairing');
+const { getTunnelUrl } = require('./lib/tunnel-detect');
 
 const PORT = parseInt(process.env.LOCALHUB_PORT, 10) || 5984;
 // Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
@@ -50,11 +52,10 @@ const StoreCtor = PouchDB.defaults({ prefix: DATA_DIR + path.sep });
 
 const app = express();
 
-// Cyclone C3a — allow the deployed PWA origin (the one loaded inside the
-// Tauri webview) to replicate to us. Browsers preflight cross-origin XHR
-// (https://app.containedevolution.com → http://localhost:5984), so we have to
-// explicitly opt in. v1 list is the prod PWA origins; C3b will swap to a
-// token-keyed allowlist when LAN sync ships and we have an actual auth model.
+// Allow the deployed PWA origin + future LAN origins. C3b-2 (true LAN sync)
+// will extend this to token-keyed per-device allowlist. Private Network
+// Access header added so Chrome on Android can reach us over HTTP while
+// the phone is on the same LAN (PNA draft spec — Chrome 98+).
 app.use(cors({
   origin: [
     'https://app.containedevolution.com',
@@ -62,9 +63,58 @@ app.use(cors({
   ],
   credentials: false,
 }));
+app.use((req, res, next) => {
+  // PNA preflight — lets Chrome on Android bypass the mixed-content block
+  // for private-network (LAN) addresses when the PWA is HTTPS.
+  if (req.method === 'OPTIONS' && req.headers['access-control-request-private-network']) {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
+  next();
+});
+
+// ── Pairing routes (no token auth — bootstrap surface) ───────────────────────
+
+const pairingRouter = express.Router();
+pairingRouter.use(express.json({ limit: '64kb' }));
+
+// GET /pair — returns pairing_token + current tunnel URL.
+// The phone reads this once to bootstrap; no auth required because the token
+// alone is useless without the user's Railway session to bind it to.
+pairingRouter.get('/', (req, res) => {
+  res.json({
+    pairing_token: pairing.getToken(),
+    url: getTunnelUrl(),
+    paired: pairing.isPaired(),
+  });
+});
+
+// POST /pair/confirm — called by Railway (proxied through the phone) after
+// a successful /api/hub/pair to bind the sidecar to an employee.
+// Validated by the pairing token in the body.
+pairingRouter.post('/confirm', (req, res) => {
+  const { pairing_token, employee_id } = req.body || {};
+  if (pairing_token !== pairing.getToken()) return res.status(403).json({ error: 'bad_token' });
+  if (!employee_id) return res.status(400).json({ error: 'employee_id required' });
+  pairing.setEmployeeId(employee_id);
+  console.log(`[localhub-pairing] bound to employee ${employee_id}`);
+  res.json({ ok: true });
+});
+
+app.use('/pair', pairingRouter);
+
+// ── MCP — requires Bearer pairing token once device is paired ────────────────
+
+function requirePairingToken(req, res, next) {
+  // Skip auth if the device hasn't been paired yet — lets the initial
+  // A4 verify step work before the user completes the pairing flow.
+  if (!pairing.isPaired()) return next();
+  const auth = req.headers.authorization || '';
+  if (auth === `Bearer ${pairing.getToken()}`) return next();
+  return res.status(401).json({ error: 'invalid_token' });
+}
 
 // MCP must mount before the PouchDB catch-all on '/'.
-app.use('/mcp', mcp.mount());
+app.use('/mcp', requirePairingToken, mcp.mount());
 
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than
@@ -79,7 +129,48 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (root: ${require('./mcp/jail').ROOT})`);
+  console.log(`[localhub-pairing] token: ${pairing.getToken().slice(0, 8)}… paired: ${pairing.isPaired()}`);
+  // Auto-register with Railway on every boot if this device has been paired.
+  // Polls for the cloudflared tunnel URL (takes ~10s to appear after boot).
+  if (pairing.isPaired()) autoRegister();
 });
+
+// Auto-register: poll for the cloudflared tunnel URL then POST to Railway so
+// the phone's preferences always have the latest URL without any manual step.
+const RAILWAY_BASE = 'https://app.containedevolution.com';
+const REGISTER_POLL_MS = 5000;
+const REGISTER_MAX_POLLS = 18; // 90s total — tunnel can be slow on cold boot
+
+async function autoRegister() {
+  let tunnelUrl = null;
+  for (let i = 0; i < REGISTER_MAX_POLLS; i++) {
+    await new Promise(r => setTimeout(r, REGISTER_POLL_MS));
+    tunnelUrl = getTunnelUrl();
+    if (tunnelUrl) break;
+  }
+  if (!tunnelUrl) {
+    console.log('[localhub-pairing] auto-register skipped — no tunnel URL after 90s');
+    return;
+  }
+  try {
+    const res = await fetch(`${RAILWAY_BASE}/api/hub/register`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${pairing.getToken()}`,
+      },
+      body: JSON.stringify({ hub_mcp_url: tunnelUrl }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) {
+      console.log(`[localhub-pairing] auto-registered: ${tunnelUrl}`);
+    } else {
+      console.log(`[localhub-pairing] auto-register failed: ${res.status}`);
+    }
+  } catch (err) {
+    console.log(`[localhub-pairing] auto-register error: ${err.message}`);
+  }
+}
 
 // Tauri's main.rs sends a kill signal on ExitRequested. Graceful close + a
 // short force-exit fallback so we never leave a zombie holding port 5984.
