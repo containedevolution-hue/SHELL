@@ -52,7 +52,7 @@ echo
 # ── [1/5] Install Chromium + minimal X11 ─────────────────────────────────────
 echo "==> [1/5] Install Chromium + x11"
 sudo apt-get update -y
-sudo apt-get install -y chromium-browser xorg x11-xserver-utils unclutter
+sudo apt-get install -y chromium xorg x11-xserver-utils unclutter
 
 # ── [2/5] Fetch display JWT from Railway ──────────────────────────────────────
 echo "==> [2/5] Fetching display JWT from Railway…"
@@ -104,7 +104,7 @@ unclutter -idle 1 -root &
 
 URL="\${RAILWAY_BASE}/hub-display/?dt=\${TOKEN}"
 
-exec chromium-browser \\
+exec chromium \\
   --kiosk \\
   --noerrdialogs \\
   --disable-infobars \\
