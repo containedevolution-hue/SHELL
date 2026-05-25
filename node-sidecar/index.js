@@ -73,6 +73,39 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Cyclone C2.1b — Google OAuth loopback callback ───────────────────────────
+//
+// Google's installed-app OAuth policy: Desktop clients can use a loopback IP
+// redirect (http://127.0.0.1:PORT/...) WITHOUT registering the URI on the
+// client config (which custom URI schemes now require, and the Cloud Console
+// Desktop-client UI provides no field for anyway). We accept the redirect
+// here, then bounce to the Tauri custom-scheme `com.containedevolution.localhub:/...`
+// so the existing in-Tauri deep-link → PWA event listener pipeline still
+// carries the `code` + `state` into the webview. Loopback satisfies Google;
+// custom scheme handles the Tauri hop. No auth on this route — Google sends
+// the request unauthenticated by design; the `code` is PKCE-protected and
+// `state` is checked PWA-side before any exchange.
+app.get('/oauth/callback', (req, res) => {
+  const qs = req.originalUrl.split('?')[1] || '';
+  const customUrl = 'com.containedevolution.localhub:/oauth/callback' + (qs ? '?' + qs : '');
+  res.set('Content-Type', 'text/html').send(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Signing in to Contained Evolution…</title></head>
+<body style="background:#0a0e1a;color:#d9e1f2;font-family:system-ui,sans-serif;text-align:center;padding:48px;">
+  <h2>Returning to LocalHub…</h2>
+  <p>You can close this tab.</p>
+  <script>
+    location.replace(${JSON.stringify(customUrl)});
+    setTimeout(function(){
+      var a=document.createElement('a');
+      a.href=${JSON.stringify(customUrl)};
+      a.textContent='Click here if LocalHub didn\\'t open automatically';
+      a.style.color='#5bc0eb';
+      document.body.appendChild(a);
+    },1500);
+  </script>
+</body></html>`);
+});
+
 // ── Pairing routes (no token auth — bootstrap surface) ───────────────────────
 
 const pairingRouter = express.Router();
