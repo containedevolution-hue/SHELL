@@ -28,6 +28,8 @@
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const os = require('os');
+const https = require('https');
 const express = require('express');
 const cors = require('cors');
 const PouchDB = require('pouchdb-node');
@@ -36,7 +38,9 @@ const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
 
-const PORT = parseInt(process.env.LOCALHUB_PORT, 10) || 5984;
+const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
+const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
+const CERT_FILE  = path.join(__dirname, 'data', 'hub-cert.json');
 // Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
 // only legitimate client is the in-process Tauri webview). The Pi appliance
 // deployment sets LOCALHUB_HOST=0.0.0.0 so phones/laptops on the LAN can hit
@@ -132,6 +136,8 @@ pairingRouter.post('/confirm', (req, res) => {
   pairing.setEmployeeId(employee_id);
   console.log(`[localhub-pairing] bound to employee ${employee_id}`);
   res.json({ ok: true });
+  // Kick off cert provision in the background — first-time pairing.
+  certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
 });
 
 app.use('/pair', pairingRouter);
@@ -166,13 +172,118 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-pairing] token: ${pairing.getToken().slice(0, 8)}… paired: ${pairing.isPaired()}`);
   // Auto-register (paired) or beacon (unpaired) on every boot.
   // Both poll for the cloudflared tunnel URL before acting.
-  if (pairing.isPaired()) autoRegister();
+  if (pairing.isPaired()) autoRegister().then(() => certify());
   else autoBeacon();
 });
 
-// Auto-register: poll for the cloudflared tunnel URL then POST to Railway so
-// the phone's preferences always have the latest URL without any manual step.
+// ── LAN HTTPS cert provisioning (C3b-2 / A5c) ────────────────────────────────
+// On every boot (if paired), the sidecar asks Railway to provision/renew a
+// 90-day Let's Encrypt cert for its UUID subdomain (*.hub.containedevolution.com),
+// then starts an HTTPS listener on port 8443 with that cert.  This makes the
+// sidecar reachable over HTTPS on the LAN so both iOS and Android PWAs can run
+// PouchDB sync without the mixed-content block.
+//
+// Skipped on loopback-only installs (laptop/Tauri default) — the localhost
+// exception already covers those; only the Pi (HOST=0.0.0.0) needs this.
+
 const RAILWAY_BASE = 'https://app.containedevolution.com';
+
+function getLanIp() {
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+    }
+  }
+  return null;
+}
+
+function loadCachedCert() {
+  try {
+    if (!fs.existsSync(CERT_FILE)) return null;
+    const data = JSON.parse(fs.readFileSync(CERT_FILE, 'utf8'));
+    // Consider stale within 30 days of expiry so we re-provision proactively.
+    if (new Date(data.expires_at) < new Date(Date.now() + 30 * 86400_000)) return null;
+    return data;
+  } catch { return null; }
+}
+
+async function provisionCert() {
+  const lanIp = getLanIp();
+  if (!lanIp) {
+    console.warn('[hub-cert] no LAN IP detected — skipping provision');
+    return null;
+  }
+  try {
+    console.log(`[hub-cert] provisioning cert for LAN IP ${lanIp} …`);
+    const res = await fetch(`${RAILWAY_BASE}/api/hub/provision`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${pairing.getToken()}`,
+      },
+      body: JSON.stringify({ lan_ip: lanIp }),
+      signal: AbortSignal.timeout(120_000), // ACME DNS-01 round-trip takes ~45s
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error(`[hub-cert] provision failed ${res.status}:`, err.error || '');
+      return null;
+    }
+    const data = await res.json();
+    fs.writeFileSync(CERT_FILE, JSON.stringify({ ...data, lan_ip: lanIp }));
+    console.log(`[hub-cert] cert provisioned: ${data.subdomain} (expires ${data.expires_at})`);
+    return data;
+  } catch (err) {
+    console.error('[hub-cert] provision error:', err.message);
+    return null;
+  }
+}
+
+let httpsServer = null;
+function startHttpsServer(certData) {
+  if (httpsServer) { httpsServer.close(); httpsServer = null; }
+  try {
+    httpsServer = https.createServer({ cert: certData.cert_pem, key: certData.key_pem }, app);
+    httpsServer.listen(HTTPS_PORT, HOST, () => {
+      console.log(`[hub-cert] HTTPS listening on ${HOST}:${HTTPS_PORT}`);
+      console.log(`[hub-cert] LAN HTTPS URL: https://${certData.subdomain}:${HTTPS_PORT}`);
+    });
+  } catch (err) {
+    console.error('[hub-cert] failed to start HTTPS server:', err.message);
+  }
+}
+
+// After getting a cert, tell Railway the LAN HTTPS URL so the phone can use it.
+async function registerLanUrl(subdomain) {
+  try {
+    const lanUrl = `https://${subdomain}:${HTTPS_PORT}`;
+    const res = await fetch(`${RAILWAY_BASE}/api/hub/register`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${pairing.getToken()}`,
+      },
+      body: JSON.stringify({ hub_lan_url: lanUrl }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.ok) console.log(`[hub-cert] hub_lan_url registered: ${lanUrl}`);
+    else console.warn('[hub-cert] hub_lan_url register failed:', res.status);
+  } catch (err) {
+    console.warn('[hub-cert] hub_lan_url register error:', err.message);
+  }
+}
+
+// Full cert lifecycle: provision (or use cached), start HTTPS, register URL.
+// Only runs on LAN-bound installs (HOST !== loopback).
+async function certify() {
+  if (HOST === '127.0.0.1') return; // laptop/Tauri — localhost exception covers it
+  let certData = loadCachedCert();
+  if (!certData) certData = await provisionCert();
+  if (!certData) return;
+  startHttpsServer(certData);
+  await registerLanUrl(certData.subdomain);
+}
 const REGISTER_POLL_MS = 5000;
 const REGISTER_MAX_POLLS = 18; // 90s total — tunnel can be slow on cold boot
 
