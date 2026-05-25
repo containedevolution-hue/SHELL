@@ -224,7 +224,7 @@ async function autoBeacon() {
     return;
   }
 
-  const verifyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+  const verifyCode = pairing.getVerifyCode();
   console.log(`[localhub-pairing] Hub not paired — open Settings → Integrations → Hub Appliance`);
   console.log(`[localhub-pairing] Pair code: ${verifyCode}`);
 

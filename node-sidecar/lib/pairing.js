@@ -24,7 +24,11 @@ function _load() {
       return _cache;
     }
   } catch (_) {}
-  _cache = { pairing_token: crypto.randomBytes(32).toString('hex'), employee_id: null };
+  _cache = {
+    pairing_token: crypto.randomBytes(32).toString('hex'),
+    verify_code: crypto.randomBytes(3).toString('hex').toUpperCase(),
+    employee_id: null,
+  };
   _persist(_cache);
   return _cache;
 }
@@ -37,6 +41,16 @@ function getToken()      { return _load().pairing_token; }
 function getEmployeeId() { return _load().employee_id || null; }
 function isPaired()      { return !!_load().employee_id; }
 
+function getVerifyCode() {
+  const state = _load();
+  if (!state.verify_code) {
+    state.verify_code = crypto.randomBytes(3).toString('hex').toUpperCase();
+    _persist(state);
+    _cache = state;
+  }
+  return state.verify_code;
+}
+
 function setEmployeeId(employeeId) {
   const state = _load();
   state.employee_id = employeeId;
@@ -44,4 +58,4 @@ function setEmployeeId(employeeId) {
   _cache = state;
 }
 
-module.exports = { getToken, getEmployeeId, isPaired, setEmployeeId };
+module.exports = { getToken, getEmployeeId, isPaired, setEmployeeId, getVerifyCode };
