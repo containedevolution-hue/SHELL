@@ -70,6 +70,9 @@ Environment=NODE_ENV=production
 # Optional — written by ./setup-audio.sh. ALSA_DEVICE pins aplay's -D so
 # lib/speaker.js reaches the same HDMI sink the kiosk does.
 EnvironmentFile=-/etc/cehub/audio.env
+# Optional — written by ./setup-cyclone6-tunnel.sh. CEHUB_TUNNEL_URL pins the
+# stable named-tunnel hostname so lib/tunnel-detect.js stops parsing journalctl.
+EnvironmentFile=-/etc/cehub/tunnel.env
 Restart=always
 RestartSec=5
 
@@ -90,24 +93,34 @@ fi
 cloudflared --version
 
 echo "==> [8/9] systemd unit → /etc/systemd/system/cehub-tunnel.service"
-sudo tee /etc/systemd/system/cehub-tunnel.service >/dev/null <<EOF
+# If the user has already upgraded to Cyclone 6 (named tunnel via
+# ~/.cloudflared/config.yml), preserve their setup-cyclone6-tunnel.sh-written
+# unit instead of clobbering it with the quick-tunnel one. setup.sh is the
+# first-install path; setup-cyclone6-tunnel.sh is the upgrade path on top.
+if [[ -f "$HOME/.cloudflared/config.yml" ]] && grep -q '^tunnel:' "$HOME/.cloudflared/config.yml" 2>/dev/null; then
+  echo "    Detected Cyclone 6 named-tunnel config — keeping existing systemd unit."
+else
+  sudo tee /etc/systemd/system/cehub-tunnel.service >/dev/null <<EOF
 [Unit]
-Description=CE Hub Appliance — cloudflared quick tunnel (A3 MCP over HTTPS)
+Description=CE Hub Appliance — cloudflared quick tunnel (rotates URL on restart; upgrade via setup-cyclone6-tunnel.sh)
 After=cehub.service
 Requires=cehub.service
 
 [Service]
 Type=simple
 User=$USER_NAME
-ExecStart=/usr/local/bin/cloudflared tunnel --url http://127.0.0.1:5984 --no-autoupdate
+# --protocol http2 keeps tunnels stable on the Pi (UDP receive buffer is
+# capped well below what QUIC wants → packet loss → cycling).
+ExecStart=/usr/local/bin/cloudflared tunnel --protocol http2 --url http://127.0.0.1:5984 --no-autoupdate
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo systemctl daemon-reload
-sudo systemctl enable --now cehub-tunnel.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now cehub-tunnel.service
+fi
 
 echo "==> [9/9] show-mcp-url helper → /usr/local/bin"
 sudo install "$SCRIPT_DIR/show-mcp-url.sh" /usr/local/bin/show-mcp-url
@@ -139,4 +152,9 @@ echo
 echo "==> Optional: Hub Display kiosk on the 52Pi screen:"
 echo "    ./setup-display.sh"
 echo
-echo "==> sudo reboot recommended to confirm both units come up clean."
+echo "==> Recommended: upgrade quick tunnel (URL rotates on reboot) → persistent"
+echo "    named tunnel (stable forever). One-time Cloudflare login required:"
+echo "    cloudflared tunnel login    # opens a URL — visit it in any browser"
+echo "    ./setup-cyclone6-tunnel.sh  # creates named tunnel + DNS + swaps systemd"
+echo
+echo "==> sudo reboot recommended to confirm all units come up clean."

@@ -18,6 +18,7 @@ ExecStart=/usr/bin/node index.js
 Environment=LOCALHUB_HOST=0.0.0.0
 Environment=NODE_ENV=production
 EnvironmentFile=-/etc/cehub/audio.env
+EnvironmentFile=-/etc/cehub/tunnel.env
 Restart=always
 RestartSec=5
 
