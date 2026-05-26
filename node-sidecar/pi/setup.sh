@@ -62,10 +62,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=$USER_NAME
+SupplementaryGroups=audio
 WorkingDirectory=$SIDECAR_DIR
 ExecStart=/usr/bin/node index.js
 Environment=LOCALHUB_HOST=0.0.0.0
 Environment=NODE_ENV=production
+# Optional — written by ./setup-audio.sh. ALSA_DEVICE pins aplay's -D so
+# lib/speaker.js reaches the same HDMI sink the kiosk does.
+EnvironmentFile=-/etc/cehub/audio.env
 Restart=always
 RestartSec=5
 

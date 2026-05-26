@@ -12,10 +12,12 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=__PI_USER__
+SupplementaryGroups=audio
 WorkingDirectory=__SIDECAR_DIR__
 ExecStart=/usr/bin/node index.js
 Environment=LOCALHUB_HOST=0.0.0.0
 Environment=NODE_ENV=production
+EnvironmentFile=-/etc/cehub/audio.env
 Restart=always
 RestartSec=5
 

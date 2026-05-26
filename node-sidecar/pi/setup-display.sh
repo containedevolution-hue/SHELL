@@ -113,6 +113,8 @@ exec chromium \\
   --disable-pinch \\
   --overscroll-history-navigation=0 \\
   --check-for-update-interval=31536000 \\
+  --autoplay-policy=no-user-gesture-required \\
+  --use-fake-ui-for-media-stream \\
   --app="\$URL"
 LAUNCH
 sudo chmod +x /usr/local/bin/ce-hub-display-start

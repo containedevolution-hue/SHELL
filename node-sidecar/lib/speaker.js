@@ -19,6 +19,11 @@ const { spawn } = require('child_process');
 const PIPER_BIN   = process.env.PIPER_BIN   || '/opt/piper/piper';
 const PIPER_MODEL = process.env.PIPER_MODEL || '/opt/piper/voices/en_US-lessac-medium.onnx';
 const APLAY_BIN   = process.env.APLAY_BIN   || 'aplay';
+// ALSA_DEVICE pins -D for aplay (e.g. "plughw:0,0"). Set by setup-audio.sh
+// in /etc/cehub/audio.env after it probes the HDMI card. Without this, the
+// sidecar (a systemd service with no user shell context) falls through to
+// whatever ALSA picks as "default" — often the wrong card.
+const ALSA_DEVICE = process.env.ALSA_DEVICE || '';
 const PIPER_RATE  = 22050;   // lessac-medium voice native sample rate
 
 let _current = null;   // { piper, aplay } currently-playing pair
@@ -47,7 +52,10 @@ function speak(text) {
     } catch (err) { reject({ error: 'piper_spawn_failed', detail: err.message }); return; }
 
     try {
-      aplay = spawn(APLAY_BIN, ['-r', String(PIPER_RATE), '-f', 'S16_LE', '-t', 'raw', '-'], { stdio: ['pipe', 'ignore', 'pipe'] });
+      const aplayArgs = ['-r', String(PIPER_RATE), '-f', 'S16_LE', '-t', 'raw'];
+      if (ALSA_DEVICE) aplayArgs.push('-D', ALSA_DEVICE);
+      aplayArgs.push('-');
+      aplay = spawn(APLAY_BIN, aplayArgs, { stdio: ['pipe', 'ignore', 'pipe'] });
     } catch (err) {
       try { piper.kill('SIGTERM'); } catch (_) {}
       reject({ error: 'aplay_spawn_failed', detail: err.message }); return;
