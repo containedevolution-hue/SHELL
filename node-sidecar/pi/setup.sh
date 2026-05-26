@@ -129,4 +129,10 @@ echo
 echo "==> From another LAN device (after reboot):"
 echo "    curl http://cehub.local:5984/"
 echo
+echo "==> Optional: Hub speaker output (Piper TTS via Pi audio out):"
+echo "    ./setup-audio.sh"
+echo
+echo "==> Optional: Hub Display kiosk on the 52Pi screen:"
+echo "    ./setup-display.sh"
+echo
 echo "==> sudo reboot recommended to confirm both units come up clean."

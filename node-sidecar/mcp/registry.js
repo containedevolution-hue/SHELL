@@ -14,6 +14,7 @@ const tools = [
   require('./tools/read-file'),
   require('./tools/list-directory'),
   require('./tools/get-system-status'),
+  require('./tools/speak'),
 ];
 
 const BY_NAME = Object.fromEntries(tools.map((t) => [t.name, t]));
