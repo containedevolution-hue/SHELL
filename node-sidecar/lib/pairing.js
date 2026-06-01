@@ -5,7 +5,7 @@
 //
 // pairing_token — random 32-byte hex string generated on first startup,
 //   never changes. Acts as the appliance's identity credential with Railway.
-// employee_id   — set via POST /pair/confirm once the user has scanned the
+// user_id   — set via POST /pair/confirm once the user has scanned the
 //   QR on their phone and Railway has confirmed the pairing. Null until paired.
 
 const crypto = require('crypto');
@@ -27,7 +27,7 @@ function _load() {
   _cache = {
     pairing_token: crypto.randomBytes(32).toString('hex'),
     verify_code: crypto.randomBytes(3).toString('hex').toUpperCase(),
-    employee_id: null,
+    user_id: null,
   };
   _persist(_cache);
   return _cache;
@@ -38,8 +38,8 @@ function _persist(state) {
 }
 
 function getToken()      { return _load().pairing_token; }
-function getEmployeeId() { return _load().employee_id || null; }
-function isPaired()      { return !!_load().employee_id; }
+function getUserId() { return _load().user_id || null; }
+function isPaired()      { return !!_load().user_id; }
 
 function getVerifyCode() {
   const state = _load();
@@ -51,11 +51,11 @@ function getVerifyCode() {
   return state.verify_code;
 }
 
-function setEmployeeId(employeeId) {
+function setUserId(userId) {
   const state = _load();
-  state.employee_id = employeeId;
+  state.user_id = userId;
   _persist(state);
   _cache = state;
 }
 
-module.exports = { getToken, getEmployeeId, isPaired, setEmployeeId, getVerifyCode };
+module.exports = { getToken, getUserId, isPaired, setUserId, getVerifyCode };

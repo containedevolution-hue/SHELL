@@ -127,14 +127,14 @@ pairingRouter.get('/', (req, res) => {
 });
 
 // POST /pair/confirm — called by Railway (proxied through the phone) after
-// a successful /api/hub/pair to bind the sidecar to an employee.
+// a successful /api/hub/pair to bind the sidecar to an user.
 // Validated by the pairing token in the body.
 pairingRouter.post('/confirm', (req, res) => {
-  const { pairing_token, employee_id } = req.body || {};
+  const { pairing_token, user_id } = req.body || {};
   if (pairing_token !== pairing.getToken()) return res.status(403).json({ error: 'bad_token' });
-  if (!employee_id) return res.status(400).json({ error: 'employee_id required' });
-  pairing.setEmployeeId(employee_id);
-  console.log(`[localhub-pairing] bound to employee ${employee_id}`);
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+  pairing.setUserId(user_id);
+  console.log(`[localhub-pairing] bound to user ${user_id}`);
   res.json({ ok: true });
   // Kick off cert provision in the background — first-time pairing.
   certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
