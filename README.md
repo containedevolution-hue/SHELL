@@ -25,8 +25,12 @@ Tauri (Rust shell) desktop app that:
   Tauri window auto-starts `PouchDB.sync(local ⇄ http://localhost:5984/ce-memories-{id})`.
 - ❌ **C2c — Windows installer + icons + marketing download stub.** Tauri MSI
   bundling, real icons (32/128/256/256@2x + Windows ICO), `app/download` page.
-- ❌ **C3b — LAN sync (phone ⇄ desktop over Wi-Fi).** Needs HTTPS-on-sidecar +
-  cert trust via QR pairing + mDNS — mixed-content rules block HTTPS-PWA → HTTP-sidecar.
+- ✅ **C3b — LAN sync (phone ⇄ desktop over Wi-Fi).** BUILT + verified live
+  2026-05-25. HTTPS-on-sidecar (port 8443) with a real Let's Encrypt cert per
+  `{slug}.hub.containedevolution.com` (provisioned via `routes/hub-cert.js` +
+  `lib/hub-acme.js`); pairing/beacon/claim in `routes/hub-pair.js`; the PWA
+  switches PouchDB sync to the HTTPS LAN url from prefs (`hub_lan_url`). Details:
+  `memory/apps/live/Cyclone-LocalHub.md` (Cyclone 3.3/3.4).
 
 ## Dev (requires the prerequisites below)
 
