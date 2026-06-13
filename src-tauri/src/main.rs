@@ -37,13 +37,19 @@ use tauri_plugin_deep_link::DeepLinkExt;
 /// string. NOTE: the in-app UI wiring + remote-origin IPC allowance are the
 /// deferred integration step — this is the engine's reachable entry point.
 #[tauri::command]
-fn scan_duplicates(
+async fn scan_duplicates(
     path: String,
     threshold: Option<u32>,
 ) -> Result<ce_dedup::ScanReport, String> {
-    let root = std::path::PathBuf::from(&path);
-    ce_dedup::scan(&root, threshold.unwrap_or(ce_dedup::DEFAULT_THRESHOLD))
-        .map_err(|e| e.to_string())
+    // CPU-bound (decode + hash). Run off the UI thread via spawn_blocking so the
+    // window stays responsive instead of going "Not Responding" during a scan.
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = std::path::PathBuf::from(&path);
+        ce_dedup::scan(&root, threshold.unwrap_or(ce_dedup::DEFAULT_THRESHOLD))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("scan task failed: {e}"))?
 }
 
 /// Result of a mass-delete: how many made it to the Recycle Bin, and a
@@ -59,16 +65,41 @@ struct DeleteResult {
 /// abort the batch — each failure is collected and reported back so the UI can
 /// show what survived.
 #[tauri::command]
-fn delete_to_trash(paths: Vec<String>) -> DeleteResult {
-    let mut deleted = 0usize;
-    let mut failed = Vec::new();
-    for p in &paths {
-        match trash::delete(p) {
-            Ok(()) => deleted += 1,
-            Err(e) => failed.push(format!("{p}: {e}")),
+async fn delete_to_trash(paths: Vec<String>) -> DeleteResult {
+    // Off the UI thread too — a large selection shouldn't freeze the window.
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut deleted = 0usize;
+        let mut failed = Vec::new();
+        for p in &paths {
+            // Windows shell delete wants backslashes; a typed "C:/.../x.jpg" path
+            // makes it mis-report. Normalize before trashing.
+            let normalized = p.replace('/', "\\");
+            let path = std::path::Path::new(&normalized);
+            if !path.exists() {
+                // Already gone (e.g. selected twice) — nothing to fail on.
+                deleted += 1;
+                continue;
+            }
+            let res = trash::delete(path);
+            // Trust the disk, not the return code: the Windows shell can return a
+            // spurious "not found" even when the move to the Recycle Bin worked.
+            if !path.exists() {
+                deleted += 1;
+            } else {
+                let why = match res {
+                    Ok(()) => "file still present after delete".to_string(),
+                    Err(e) => e.to_string(),
+                };
+                failed.push(format!("{p}: {why}"));
+            }
         }
-    }
-    DeleteResult { deleted, failed }
+        DeleteResult { deleted, failed }
+    })
+    .await
+    .unwrap_or(DeleteResult {
+        deleted: 0,
+        failed: vec!["delete task failed to run".into()],
+    })
 }
 
 fn spawn_sidecar() -> std::io::Result<Child> {
@@ -113,6 +144,7 @@ fn main() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![scan_duplicates, delete_to_trash])
         .setup(|app| {
             // Tools → "Photo Duplicates" opens the local dedup tool window — a

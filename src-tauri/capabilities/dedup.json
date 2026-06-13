@@ -4,6 +4,9 @@
   "description": "Local Photo-Duplicates tool window. Loads the bundled local page (dedup.html) — not the remote PWA — so it can call the app's own scan_duplicates / delete_to_trash commands plus core window/event APIs. No remote origin: this surface never talks to the cloud.",
   "windows": ["dedup"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:event:default",
+    "dialog:default",
+    "dialog:allow-open"
   ]
 }

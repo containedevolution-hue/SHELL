@@ -51,6 +51,29 @@ impl ImageHash {
     }
 }
 
+/// GPS position pulled from EXIF (decimal degrees; negative = S / W).
+#[derive(Clone, Serialize, Default)]
+pub struct Gps {
+    pub lat: f64,
+    pub lon: f64,
+}
+
+/// Per-image metadata for the ⓘ panel and the categorize-by-metadata views.
+/// `has_exif` distinguishes real camera photos from stripped copies/screenshots.
+#[derive(Clone, Serialize, Default)]
+pub struct Metadata {
+    pub has_exif: bool,
+    /// DateTimeOriginal as "YYYY-MM-DD HH:MM:SS" when present.
+    pub taken: Option<String>,
+    pub year: Option<i32>,
+    pub month: Option<u32>,
+    /// "Make Model" (trimmed) when present.
+    pub camera: Option<String>,
+    pub gps: Option<Gps>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+}
+
 /// One image after decode+hash. `hash` is internal (not serialized to the UI).
 #[derive(Clone, Serialize)]
 pub struct ScannedImage {
@@ -58,6 +81,7 @@ pub struct ScannedImage {
     pub size_bytes: u64,
     #[serde(skip)]
     pub hash: ImageHash,
+    pub meta: Metadata,
 }
 
 /// A duplicate member: keep the keeper, this one is recommended for removal.
@@ -90,6 +114,9 @@ pub struct ScanReport {
     pub groups: Vec<DuplicateGroup>,
     /// Bytes you'd reclaim by deleting every duplicate (keeping each keeper).
     pub reclaimable_bytes: u64,
+    /// Every successfully scanned image with its metadata — powers the ⓘ panel
+    /// and the categorize-by-metadata (date / camera / location / EXIF) views.
+    pub images: Vec<ScannedImage>,
 }
 
 /// Compute the dHash of an already-decoded image.
@@ -120,6 +147,32 @@ fn is_image(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// Heuristic "does this name look like a generated copy rather than the
+/// original?" — 0 = original-looking, higher = more copy-like. Used ONLY to
+/// break keeper ties when fidelity (file size) is equal, so we don't keep
+/// "IMG_0001 (1).jpg" over the original "IMG_0001.jpg".
+fn copy_rank(path: &Path) -> u8 {
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    // Trailing parenthesised number — Windows' duplicate tag: "name (1)".
+    if stem.ends_with(')') {
+        if let Some(open) = stem.rfind('(') {
+            let inner = &stem[open + 1..stem.len() - 1];
+            if !inner.is_empty() && inner.bytes().all(|b| b.is_ascii_digit()) {
+                return 2;
+            }
+        }
+    }
+    // "name - copy", "copy of name", "name_copy", …
+    if stem.contains("copy") {
+        return 1;
+    }
+    0
+}
+
 /// Recursively collect image-file paths under `root`. Per-directory IO errors
 /// are skipped (a permission-denied subfolder shouldn't abort the whole scan);
 /// symlinked dirs are NOT descended (file_type() doesn't follow symlinks) so
@@ -139,13 +192,89 @@ pub fn collect_images(root: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// "Metadata richness" — used to pick the keeper: a stripped copy scores lower
+/// than the EXIF-bearing original, so the original survives even on a size tie.
+fn meta_score(m: &Metadata) -> u8 {
+    m.has_exif as u8
+        + m.taken.is_some() as u8
+        + m.camera.is_some() as u8
+        + m.gps.is_some() as u8
+}
+
+fn gps_coord(exif: &exif::Exif, tag: exif::Tag) -> Option<f64> {
+    let f = exif.get_field(tag, exif::In::PRIMARY)?;
+    if let exif::Value::Rational(ref r) = f.value {
+        if r.len() >= 3 {
+            return Some(r[0].to_f64() + r[1].to_f64() / 60.0 + r[2].to_f64() / 3600.0);
+        }
+    }
+    None
+}
+
+fn gps_ref(exif: &exif::Exif, tag: exif::Tag) -> Option<char> {
+    let f = exif.get_field(tag, exif::In::PRIMARY)?;
+    if let exif::Value::Ascii(ref v) = f.value {
+        return v.first().and_then(|s| s.first()).map(|&b| b as char);
+    }
+    None
+}
+
+fn read_gps(exif: &exif::Exif) -> Option<Gps> {
+    let lat = gps_coord(exif, exif::Tag::GPSLatitude)?;
+    let lon = gps_coord(exif, exif::Tag::GPSLongitude)?;
+    let lat = if gps_ref(exif, exif::Tag::GPSLatitudeRef) == Some('S') { -lat } else { lat };
+    let lon = if gps_ref(exif, exif::Tag::GPSLongitudeRef) == Some('W') { -lon } else { lon };
+    Some(Gps { lat, lon })
+}
+
+/// Read EXIF (capture date, camera, GPS) for a file. Absent/unreadable EXIF —
+/// the common case for screenshots, Facebook downloads and re-saves — yields
+/// `has_exif: false`, which is itself a category.
+fn read_metadata(path: &Path, width: u32, height: u32) -> Metadata {
+    let mut meta = Metadata {
+        width: Some(width),
+        height: Some(height),
+        ..Metadata::default()
+    };
+    let Ok(file) = std::fs::File::open(path) else { return meta };
+    let mut buf = std::io::BufReader::new(file);
+    let Ok(exif) = exif::Reader::new().read_from_container(&mut buf) else { return meta };
+    meta.has_exif = true;
+
+    if let Some(f) = exif.get_field(exif::Tag::DateTimeOriginal, exif::In::PRIMARY) {
+        // display_value renders DateTime as "YYYY-MM-DD HH:MM:SS".
+        let s = f.display_value().to_string();
+        meta.year = s.get(0..4).and_then(|y| y.parse().ok());
+        meta.month = s.get(5..7).and_then(|m| m.parse().ok());
+        meta.taken = Some(s);
+    }
+    let make = exif
+        .get_field(exif::Tag::Make, exif::In::PRIMARY)
+        .map(|f| f.display_value().to_string().trim().trim_matches('"').to_string());
+    let model = exif
+        .get_field(exif::Tag::Model, exif::In::PRIMARY)
+        .map(|f| f.display_value().to_string().trim().trim_matches('"').to_string());
+    meta.camera = match (make, model) {
+        (Some(mk), Some(md)) if !md.is_empty() && md.starts_with(&mk) => Some(md),
+        (Some(mk), Some(md)) if !md.is_empty() => Some(format!("{mk} {md}")),
+        (Some(mk), _) if !mk.is_empty() => Some(mk),
+        (_, Some(md)) if !md.is_empty() => Some(md),
+        _ => None,
+    };
+    meta.gps = read_gps(&exif);
+    meta
+}
+
 fn process_one(path: &Path) -> Option<ScannedImage> {
     let size_bytes = std::fs::metadata(path).ok()?.len();
     let img = image::open(path).ok()?;
+    let (w, h) = (img.width(), img.height());
+    let hash = dhash(&img);
     Some(ScannedImage {
         path: path.to_path_buf(),
         size_bytes,
-        hash: dhash(&img),
+        hash,
+        meta: read_metadata(path, w, h),
     })
 }
 
@@ -309,14 +438,19 @@ pub fn group(images: &[ScannedImage], threshold: u32) -> Vec<DuplicateGroup> {
         if members.len() < 2 {
             continue; // singletons aren't duplicates
         }
-        // Keeper = largest file (then path for stable ordering).
+        // Keeper priority: richer EXIF (the real original, not a stripped copy)
+        // → larger file (fidelity) → most original-looking name (beats "(1)") →
+        // shorter → stable path order.
         let keeper_idx = *members
             .iter()
             .max_by(|&&a, &&b| {
-                images[a]
-                    .size_bytes
-                    .cmp(&images[b].size_bytes)
-                    .then_with(|| images[b].path.cmp(&images[a].path))
+                let (ia, ib) = (&images[a], &images[b]);
+                meta_score(&ia.meta)
+                    .cmp(&meta_score(&ib.meta))
+                    .then_with(|| ia.size_bytes.cmp(&ib.size_bytes))
+                    .then_with(|| copy_rank(&ib.path).cmp(&copy_rank(&ia.path)))
+                    .then_with(|| ib.path.as_os_str().len().cmp(&ia.path.as_os_str().len()))
+                    .then_with(|| ib.path.cmp(&ia.path))
             })
             .unwrap();
         let keeper = &images[keeper_idx];
@@ -370,6 +504,7 @@ pub fn scan(root: &Path, threshold: u32) -> std::io::Result<ScanReport> {
         decode_errors,
         groups,
         reclaimable_bytes,
+        images,
     })
 }
 
@@ -389,6 +524,11 @@ mod tests {
             }
         }
         img
+    }
+
+    /// ScannedImage with default (empty) metadata — for grouping tests.
+    fn si(path: &str, size: u64, hash: u64) -> ScannedImage {
+        ScannedImage { path: path.into(), size_bytes: size, hash: ImageHash(hash), meta: Metadata::default() }
     }
 
     #[test]
@@ -420,10 +560,10 @@ mod tests {
         // Three "copies" of one photo with slightly perturbed hashes (<=2 bits
         // apart pairwise), plus one unrelated image far away.
         let imgs = vec![
-            ScannedImage { path: "small.jpg".into(), size_bytes: 100, hash: ImageHash(0b0000) },
-            ScannedImage { path: "mid.jpg".into(),   size_bytes: 500, hash: ImageHash(0b0001) },
-            ScannedImage { path: "big.png".into(),   size_bytes: 900, hash: ImageHash(0b0011) },
-            ScannedImage { path: "other.jpg".into(), size_bytes: 700, hash: ImageHash(u64::MAX) },
+            si("small.jpg", 100, 0b0000),
+            si("mid.jpg", 500, 0b0001),
+            si("big.png", 900, 0b0011),
+            si("other.jpg", 700, u64::MAX),
         ];
         let groups = group(&imgs, 2);
         assert_eq!(groups.len(), 1, "the three near copies form exactly one group");
@@ -435,11 +575,41 @@ mod tests {
     }
 
     #[test]
+    fn keeper_prefers_original_over_windows_copy_on_tie() {
+        // Identical-size copies; the "(1)" one is the generated copy.
+        let imgs = vec![si("IMG_0001 (1).jpg", 500, 0), si("IMG_0001.jpg", 500, 0)];
+        let groups = group(&imgs, 0);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(
+            groups[0].keeper.to_str().unwrap(),
+            "IMG_0001.jpg",
+            "the original (no '(1)') should be the keeper"
+        );
+    }
+
+    #[test]
+    fn keeper_prefers_exif_rich_over_stripped() {
+        // Same size + same name shape, but one still has camera EXIF — keep it,
+        // even though the stripped one would win on the name/order tiebreak.
+        let mut rich = si("a.jpg", 500, 0);
+        rich.meta.has_exif = true;
+        rich.meta.taken = Some("2015-09-02 22:19:53".into());
+        let stripped = si("b.jpg", 500, 0); // earlier in path order, no EXIF
+        let groups = group(&[stripped, rich], 0);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(
+            groups[0].keeper.to_str().unwrap(),
+            "a.jpg",
+            "the EXIF-bearing original should be kept over the stripped copy"
+        );
+    }
+
+    #[test]
     fn no_false_groups_for_unique_images() {
         let imgs = vec![
-            ScannedImage { path: "a".into(), size_bytes: 1, hash: ImageHash(0x0000_0000_0000_0000) },
-            ScannedImage { path: "b".into(), size_bytes: 1, hash: ImageHash(0xFFFF_FFFF_FFFF_FFFF) },
-            ScannedImage { path: "c".into(), size_bytes: 1, hash: ImageHash(0x0F0F_0F0F_0F0F_0F0F) },
+            si("a", 1, 0x0000_0000_0000_0000),
+            si("b", 1, 0xFFFF_FFFF_FFFF_FFFF),
+            si("c", 1, 0x0F0F_0F0F_0F0F_0F0F),
         ];
         assert!(group(&imgs, DEFAULT_THRESHOLD).is_empty());
     }

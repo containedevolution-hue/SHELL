@@ -25,5 +25,9 @@ path = "src/main.rs"
 # enabled set covers everything in Google Takeout / Facebook / typical drives.
 # (HEIC is intentionally absent — pure-Rust `image` doesn't ship it; see lib.rs.)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
+# EXIF reader (MIT/BSD lib, not a product) — capture date / camera / GPS, used
+# both to pick the keeper (richer metadata = the real original) and to drive the
+# categorize-by-metadata views.
+kamadak-exif = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
