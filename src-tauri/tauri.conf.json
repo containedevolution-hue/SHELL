@@ -50,7 +50,7 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
     "targets": ["msi"],
     "category": "Utility",
     "shortDescription": "Contained Evolution local sync host",
