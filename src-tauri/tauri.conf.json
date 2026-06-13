@@ -20,10 +20,26 @@
         "resizable": true,
         "fullscreen": false,
         "center": true
+      },
+      {
+        "label": "dedup",
+        "title": "LocalHub — Photo Duplicates",
+        "url": "dedup.html",
+        "width": 1100,
+        "height": 820,
+        "minWidth": 720,
+        "minHeight": 560,
+        "resizable": true,
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "plugins": {

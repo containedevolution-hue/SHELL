@@ -10,9 +10,19 @@ rust-version = "1.77"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# protocol-asset: lets the local dedup window load on-disk photo thumbnails via
+# the asset protocol (convertFileSrc); scoped in tauri.conf.json security.assetProtocol.
+tauri = { version = "2", features = ["protocol-asset"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# CE-owned perceptual image-dedup engine (MIT-only deps; no third-party product).
+# Exposed to the webview via the `scan_duplicates` command in main.rs.
+ce-dedup-engine = { path = "../dedup-engine" }
+
+# Recycle-Bin deletion for the photo-dedup tool's mass-delete (MIT/Apache lib,
+# not a third-party product/login/fee). Sends files to the OS trash = recoverable.
+trash = "5"
 
 # Cyclone C2.1a — custom-protocol deep-link plumbing for the Google-OAuth-via-
 # system-browser flow (C2.1b). deep-link registers the `localhub://` scheme

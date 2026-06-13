@@ -26,8 +26,50 @@
 
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
+
+/// Tauri command — perceptual image-dedup over a local folder, run by the
+/// CE-owned `ce_dedup` engine (no third-party product). `threshold` is the
+/// hamming cutoff for "same photo"; defaults to ce_dedup::DEFAULT_THRESHOLD.
+/// Returns a ScanReport (duplicate groups + reclaimable bytes) or an error
+/// string. NOTE: the in-app UI wiring + remote-origin IPC allowance are the
+/// deferred integration step — this is the engine's reachable entry point.
+#[tauri::command]
+fn scan_duplicates(
+    path: String,
+    threshold: Option<u32>,
+) -> Result<ce_dedup::ScanReport, String> {
+    let root = std::path::PathBuf::from(&path);
+    ce_dedup::scan(&root, threshold.unwrap_or(ce_dedup::DEFAULT_THRESHOLD))
+        .map_err(|e| e.to_string())
+}
+
+/// Result of a mass-delete: how many made it to the Recycle Bin, and a
+/// per-file reason for any that didn't.
+#[derive(serde::Serialize)]
+struct DeleteResult {
+    deleted: usize,
+    failed: Vec<String>,
+}
+
+/// Tauri command — send a selection of files to the OS Recycle Bin (recoverable;
+/// the user picked Recycle Bin over permanent delete). One bad path doesn't
+/// abort the batch — each failure is collected and reported back so the UI can
+/// show what survived.
+#[tauri::command]
+fn delete_to_trash(paths: Vec<String>) -> DeleteResult {
+    let mut deleted = 0usize;
+    let mut failed = Vec::new();
+    for p in &paths {
+        match trash::delete(p) {
+            Ok(()) => deleted += 1,
+            Err(e) => failed.push(format!("{p}: {e}")),
+        }
+    }
+    DeleteResult { deleted, failed }
+}
 
 fn spawn_sidecar() -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -71,7 +113,26 @@ fn main() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![scan_duplicates, delete_to_trash])
         .setup(|app| {
+            // Tools → "Photo Duplicates" opens the local dedup tool window — a
+            // bundled local page (dedup.html), created hidden at launch in
+            // tauri.conf.json and shown on demand. Local origin = it can call
+            // scan_duplicates / delete_to_trash directly (capabilities/dedup.json).
+            let open_dedup =
+                MenuItem::with_id(app, "open_dedup", "Photo Duplicates", true, None::<&str>)?;
+            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup])?;
+            let menu = Menu::with_items(app, &[&tools])?;
+            app.set_menu(menu)?;
+            app.on_menu_event(|app_handle, event| {
+                if event.id().0.as_str() == "open_dedup" {
+                    if let Some(w) = app_handle.get_webview_window("dedup") {
+                        let _ = w.show();
+                        let _ = w.set_focus();
+                    }
+                }
+            });
+
             // On Linux + Windows-dev, the deep-link plugin can register the
             // `localhub://` scheme in the OS at runtime. macOS reads it from
             // Info.plist (bundled). Production Windows registration is the
@@ -116,4 +177,19 @@ fn main() {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    /// Verifies the Recycle-Bin path actually removes a file from its original
+    /// location (the destructive half of the dedup tool). Trashing a throwaway
+    /// temp file is harmless — it lands in the Recycle Bin.
+    #[test]
+    fn trash_removes_file_from_original_location() {
+        let f = std::env::temp_dir().join(format!("ce-dedup-trash-test-{}.tmp", std::process::id()));
+        std::fs::write(&f, b"throwaway").unwrap();
+        assert!(f.exists());
+        trash::delete(&f).expect("trash::delete should succeed");
+        assert!(!f.exists(), "file must be gone from its original path after trashing");
+    }
 }

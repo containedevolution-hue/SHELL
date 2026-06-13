@@ -1,0 +1,29 @@
+# ce-dedup-engine — Contained Evolution's OWNED perceptual image-dedup engine.
+# No third-party product, no login, no fees: the only dependency that touches
+# foreign code is `image` (MIT) for decoding pixels — the dedup algorithm
+# itself (dHash + BK-tree near-neighbour grouping) is CE code. lib = embeddable
+# in the LocalHub Tauri shell; bin = `ce-dedup`, a standalone CLI so the engine
+# is runnable/verifiable without the desktop app.
+[package]
+name = "ce-dedup-engine"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+description = "Contained Evolution — owned perceptual image-dedup engine (MIT-only deps)"
+authors = ["Contained Evolution"]
+
+[lib]
+name = "ce_dedup"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ce-dedup"
+path = "src/main.rs"
+
+[dependencies]
+# Decode-only foreign code. default-features off = no codecs we don't use; the
+# enabled set covers everything in Google Takeout / Facebook / typical drives.
+# (HEIC is intentionally absent — pure-Rust `image` doesn't ship it; see lib.rs.)
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "tiff", "webp"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
