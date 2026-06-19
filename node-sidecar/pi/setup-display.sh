@@ -79,20 +79,14 @@ echo "==> Display token saved to $DISPLAY_TOKEN_JSON"
 echo "==> [3/5] Installing kiosk launch script"
 sudo tee /usr/local/bin/ce-hub-display-start >/dev/null <<LAUNCH
 #!/usr/bin/env bash
-# Launched by cehub-display.service via xinit. Reads the display token,
-# disables screen blanking, and starts Chromium in kiosk mode.
+# Launched by cehub-display.service via xinit. Disables screen blanking and
+# starts Chromium in kiosk mode on the LocalHub Offload Center (/localhub).
+# Auth = the normal app login (sign in once on the touchscreen); the saved
+# display token is reserved for the planned silent auto-login
+# (see memory/apps/live/CE-Hub-Appliance.md → kiosk rebuild).
 set -euo pipefail
 
-TOKEN_FILE="$DISPLAY_TOKEN_JSON"
 RAILWAY_BASE="$RAILWAY_BASE"
-
-TOKEN="\$(python3 -c "import json; print(json.load(open('\$TOKEN_FILE'))['display_token'])" 2>/dev/null || true)"
-
-if [[ -z "\$TOKEN" ]]; then
-  echo "[hub-display] No display token — run setup-display.sh again after pairing."
-  sleep 30
-  exit 1
-fi
 
 # Disable DPMS + screen blanking for always-on ambient display.
 xset -dpms
@@ -102,7 +96,7 @@ xset s noblank
 # Hide the mouse cursor after 1s idle.
 unclutter -idle 1 -root &
 
-URL="\${RAILWAY_BASE}/hub-display/?dt=\${TOKEN}"
+URL="\${RAILWAY_BASE}/localhub/"
 
 exec chromium \\
   --kiosk \\
@@ -123,7 +117,7 @@ sudo chmod +x /usr/local/bin/ce-hub-display-start
 echo "==> [4/5] Installing cehub-display.service"
 sudo tee /etc/systemd/system/cehub-display.service >/dev/null <<EOF
 [Unit]
-Description=CE Hub Display — Chromium kiosk (ambient orb + bulletins)
+Description=CE Hub Display — Chromium kiosk (LocalHub Offload Center)
 After=network-online.target cehub.service graphical.target
 Wants=network-online.target
 
@@ -146,8 +140,8 @@ sudo systemctl enable cehub-display.service
 # ── [5/5] Verify ──────────────────────────────────────────────────────────────
 echo "==> [5/5] Done."
 echo
-echo "Kiosk URL (contains your display token — keep private):"
-echo "  ${RAILWAY_BASE}/hub-display/?dt=${DISPLAY_TOKEN:0:16}…"
+echo "Kiosk URL:"
+echo "  ${RAILWAY_BASE}/localhub/  (sign in once on the touchscreen)"
 echo
 echo "Services enabled:"
 echo "  cehub-display.service  (Chromium kiosk — starts on reboot)"
