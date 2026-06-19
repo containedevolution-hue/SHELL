@@ -64,6 +64,15 @@ Unit=cehub-update.service
 WantedBy=timers.target
 EOF
 
+# ── passwordless restart (so the timer can apply updates unattended) ──────────
+# The update script runs as $USER_NAME with no TTY, so its `systemctl restart`
+# can't prompt for a password. Grant NOPASSWD for that one exact command only.
+sudo tee /etc/sudoers.d/cehub-update >/dev/null <<SUDOERS
+$USER_NAME ALL=(root) NOPASSWD: /usr/bin/systemctl restart cehub.service
+SUDOERS
+sudo chmod 0440 /etc/sudoers.d/cehub-update
+sudo visudo -cf /etc/sudoers.d/cehub-update
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now cehub-update.timer
 
