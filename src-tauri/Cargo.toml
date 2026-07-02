@@ -40,3 +40,16 @@ tauri-plugin-opener = "2"
 # Native folder picker for the photo-dedup window's "Browse…" button. Official
 # Tauri plugin (same ecosystem as deep-link/opener above), not a third-party product.
 tauri-plugin-dialog = "2"
+
+# Flow (Wispr-clone) desktop agent — system-wide dictation:
+#   global-shortcut: OS-level push-to-talk + command-mode hotkeys that fire even
+#     when CE isn't focused (the whole point — dictate into any app).
+#   enigo: synthetic keyboard — sends Ctrl+V to paste the cleaned text into the
+#     focused app, and Ctrl+C to grab the selection for Command Mode.
+#   arboard: clipboard get/set in Rust — inject_text sets the clipboard, pastes,
+#     then restores the user's prior clipboard (paste is faster + unicode-safe
+#     than typing char-by-char, the same approach Wispr uses).
+# All MIT/Apache, no third-party product/login/fee.
+tauri-plugin-global-shortcut = "2"
+enigo = "0.3"
+arboard = "3"

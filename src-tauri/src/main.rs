@@ -26,9 +26,11 @@
 
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 /// Tauri command — perceptual image-dedup over a local folder, run by the
 /// CE-owned `ce_dedup` engine (no third-party product). `threshold` is the
@@ -102,6 +104,72 @@ async fn delete_to_trash(paths: Vec<String>) -> DeleteResult {
     })
 }
 
+// ── Flow (Wispr-clone) desktop agent — native text I/O ──────────────────────
+//
+// inject_text / flow_copy_selection are the system-wide half of Flow: they let
+// the HUD paste cleaned dictation into whatever app has focus, and grab the
+// user's current selection for Command Mode — via synthetic Ctrl+V / Ctrl+C, the
+// same clipboard-paste approach Wispr uses (faster + unicode-safe vs. typing
+// char-by-char). Both are called ONLY by the local-origin flow-hud window
+// (capabilities/flow-hud.json); the remote PWA never touches native input.
+
+// Send a keyboard shortcut (Ctrl + <ch>) into the focused app. Built fresh each
+// call — Enigo isn't Send, so it can't be held across the async boundary.
+fn send_ctrl(ch: char) -> Result<(), String> {
+    use enigo::{Direction::{Click, Press, Release}, Enigo, Key, Keyboard, Settings};
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+    enigo.key(Key::Control, Press).map_err(|e| e.to_string())?;
+    enigo.key(Key::Unicode(ch), Click).map_err(|e| e.to_string())?;
+    enigo.key(Key::Control, Release).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Tauri command — paste `text` into the focused app: stash the current
+/// clipboard, write `text`, Ctrl+V, then restore the prior clipboard so the
+/// user's copy buffer is left as we found it.
+#[tauri::command]
+async fn inject_text(text: String) -> Result<(), String> {
+    if text.is_empty() {
+        return Ok(());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+        let prev = cb.get_text().ok();
+        cb.set_text(text).map_err(|e| e.to_string())?;
+        std::thread::sleep(Duration::from_millis(60)); // let the write settle before paste
+        send_ctrl('v')?;
+        std::thread::sleep(Duration::from_millis(140)); // let the app read it before restore
+        if let Some(p) = prev {
+            let _ = cb.set_text(p);
+        }
+        Ok::<(), String>(())
+    })
+    .await
+    .map_err(|e| format!("inject task failed: {e}"))?
+}
+
+/// Tauri command — return the app's current text selection for Command Mode:
+/// stash the clipboard, Ctrl+C, read what landed, then restore the clipboard.
+/// Empty string = nothing was selected.
+#[tauri::command]
+async fn flow_copy_selection() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+        let prev = cb.get_text().ok();
+        let _ = cb.set_text(String::new()); // clear so a no-op copy reads back empty
+        std::thread::sleep(Duration::from_millis(40));
+        send_ctrl('c')?;
+        std::thread::sleep(Duration::from_millis(140));
+        let sel = cb.get_text().unwrap_or_default();
+        if let Some(p) = prev {
+            let _ = cb.set_text(p);
+        }
+        Ok::<String, String>(sel)
+    })
+    .await
+    .map_err(|e| format!("copy task failed: {e}"))?
+}
+
 fn spawn_sidecar() -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let script = std::path::PathBuf::from(manifest_dir)
@@ -132,6 +200,13 @@ fn main() {
     };
     let sidecar_state: Mutex<Option<Child>> = Mutex::new(sidecar);
 
+    // Flow global hotkeys (system-wide): Ctrl+Alt+Space = dictate, Ctrl+Alt+.
+    // = Command Mode. Cloned into the plugin handler; the originals are
+    // registered in setup(). (User-configurable chords are a later step.)
+    let dictate_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
+    let command_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Period);
+    let (hd, hc) = (dictate_sc.clone(), command_sc.clone());
+
     let app = tauri::Builder::default()
         // single-instance MUST be registered before deep-link so a second
         // `start localhub://...` invocation forwards its args to the running
@@ -145,8 +220,49 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![scan_duplicates, delete_to_trash])
-        .setup(|app| {
+        // Flow: OS-level push-to-talk. On press we reveal the HUD overlay and
+        // emit `flow-hotkey` (mode) — the flow-hud window records/injects; the
+        // remote PWA never sees native input. Fires regardless of focus, so it
+        // works while the user is in Gmail/VS Code/anywhere.
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, shortcut, event| {
+                    if event.state() != ShortcutState::Pressed {
+                        return;
+                    }
+                    let mode = if *shortcut == hd {
+                        "dictate"
+                    } else if *shortcut == hc {
+                        "command"
+                    } else {
+                        return;
+                    };
+                    if let Some(hud) = app.get_webview_window("flow-hud") {
+                        let _ = hud.show();
+                    }
+                    let _ = app.emit("flow-hotkey", mode);
+                })
+                .build(),
+        )
+        .invoke_handler(tauri::generate_handler![
+            scan_duplicates,
+            delete_to_trash,
+            inject_text,
+            flow_copy_selection
+        ])
+        .setup(move |app| {
+            // Flow: register the global hotkeys + make the HUD click-through
+            // (an always-on-top pill that never steals focus/clicks from the app
+            // the user is actually typing into).
+            if let Err(e) = app.global_shortcut().register(dictate_sc.clone()) {
+                eprintln!("[localhub] WARN: could not register dictate hotkey: {e}");
+            }
+            if let Err(e) = app.global_shortcut().register(command_sc.clone()) {
+                eprintln!("[localhub] WARN: could not register command hotkey: {e}");
+            }
+            if let Some(hud) = app.get_webview_window("flow-hud") {
+                let _ = hud.set_ignore_cursor_events(true);
+            }
             // Tools → "Photo Duplicates" opens the local dedup tool window — a
             // bundled local page (dedup.html), created hidden at launch in
             // tauri.conf.json and shown on demand. Local origin = it can call

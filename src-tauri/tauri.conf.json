@@ -32,6 +32,21 @@
         "resizable": true,
         "center": true,
         "visible": false
+      },
+      {
+        "label": "flow-hud",
+        "title": "Flow",
+        "url": "flow-hud.html",
+        "width": 240,
+        "height": 60,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "focus": false,
+        "visible": false
       }
     ],
     "security": {

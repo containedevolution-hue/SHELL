@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "flow-hud",
+  "description": "Flow dictation HUD overlay (a local page, not the remote PWA). Listens for the global-hotkey + session events, records the push-to-talk clip, calls the Flow API, and invokes the app's own inject_text / flow_copy_selection commands to paste into the focused app. Local origin = it may call those commands directly (same trust boundary as the dedup window); it never exposes native input to the cloud.",
+  "windows": ["flow-hud"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-ignore-cursor-events"
+  ]
+}

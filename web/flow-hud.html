@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Flow</title>
+<!-- Flow HUD — the LocalHub desktop agent's on-screen pill + brains.
+     A transparent, always-on-top, click-through window (see tauri.conf.json
+     window "flow-hud" + main.rs set_ignore_cursor_events). It is a LOCAL page,
+     so it may invoke the app's own inject_text / flow_copy_selection commands
+     (capabilities/flow-hud.json) — the remote PWA never touches native input.
+
+     Flow of control:
+       - Rust global-shortcut fires -> shows this window + emits `flow-hotkey`(mode).
+       - The main PWA window emits `flow-session` {token, groqKey, apiBase, model}
+         (js/flow-desktop-bridge.js) — we can't read its localStorage from here.
+       - We record a push-to-talk clip, POST it to the Flow relay, and paste the
+         result into whatever app the user is actually typing in.
+     Dictate: hotkey -> record -> stop (hotkey again) -> /api/flow/dictate -> paste.
+     Command: hotkey -> copy selection -> record instruction -> stop -> transcribe
+              -> /api/flow/command -> paste over the selection. -->
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden;
+               font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; user-select: none; }
+  .pill { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+          display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px;
+          border-radius: 999px; background: rgba(14, 18, 30, 0.92);
+          border: 1px solid rgba(255, 255, 255, 0.12); color: #eaf2ff;
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 22px rgba(110, 231, 247, 0.18);
+          font-size: 13.5px; font-weight: 600; white-space: nowrap; opacity: 0;
+          transition: opacity 0.15s ease; }
+  .pill.show { opacity: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #7b8794; flex: none; }
+  .pill.listening { border-color: rgba(255, 90, 90, 0.55); }
+  .pill.listening .dot { background: #ff5a5a; animation: pulse 1s ease-in-out infinite; }
+  .pill.thinking { border-color: rgba(110, 231, 247, 0.55); }
+  .pill.thinking .dot { background: #6ee7f7; animation: pulse 0.7s ease-in-out infinite; }
+  .pill.error { border-color: rgba(255, 139, 139, 0.6); }
+  .pill.error .dot { background: #ff8b8b; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.5); } }
+</style>
+</head>
+<body>
+  <div id="pill" class="pill"><span class="dot"></span><span id="label">Flow</span></div>
+<script>
+(function () {
+  'use strict';
+  const T = window.__TAURI__ || {};
+  const listen = T.event && T.event.listen;
+  const emit = T.event && T.event.emit;
+  const invoke = T.core && T.core.invoke;
+  const getWin = T.window && (T.window.getCurrentWindow || T.window.getCurrent);
+  const hudWin = getWin ? getWin() : null;
+
+  const pill = document.getElementById('pill');
+  const label = document.getElementById('label');
+
+  let session = { token: '', groqKey: '', model: '', apiBase: 'https://app.containedevolution.com' };
+  let state = 'idle';        // idle | listening | thinking
+  let mode = null;           // dictate | command
+  let selection = '';
+  let handle = null;
+  let hideTimer = null;
+
+  function setPill(kind, text) {
+    pill.className = 'pill show' + (kind ? ' ' + kind : '');
+    label.textContent = text;
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  }
+  function flash(text) { setPill('error', text); }
+  function hideSoon(ms) {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      pill.className = 'pill';
+      if (hudWin && hudWin.hide) { try { hudWin.hide(); } catch (_) {} }
+    }, ms == null ? 1100 : ms);
+  }
+
+  // ---- capture (local origin: mic works once the OS grants access) ----
+  function pickMime() {
+    const c = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+    for (const t of c) { try { if (window.MediaRecorder.isTypeSupported(t)) return t; } catch (_) {} }
+    return '';
+  }
+  async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = pickMime();
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    const done = new Promise((res) => {
+      rec.onstop = () => { stream.getTracks().forEach((t) => t.stop()); res(new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' })); };
+    });
+    rec.start();
+    return { stop: () => { try { rec.stop(); } catch (_) {} }, done };
+  }
+
+  // ---- relay calls ----
+  function hdrs(extra) {
+    const h = Object.assign({ 'Authorization': 'Bearer ' + session.token, 'X-Provider-Key': session.groqKey }, extra || {});
+    if (session.model) h['X-Flow-Model'] = session.model;
+    return h;
+  }
+  async function apiDictate(blob) {
+    const r = await fetch(session.apiBase + '/api/flow/dictate', {
+      method: 'POST', headers: hdrs({ 'Content-Type': blob.type || 'audio/webm' }), body: blob,
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.message || 'Dictation failed');
+    return d;
+  }
+  async function apiCommand(sel, instruction) {
+    const r = await fetch(session.apiBase + '/api/flow/command', {
+      method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ selection: sel, instruction }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.message || 'Command failed');
+    return String(d.text || '');
+  }
+
+  // ---- state machine ----
+  async function onHotkey(m) {
+    if (state === 'thinking') return;
+    if (state === 'listening') { await stopAndProcess(); return; }
+
+    // idle → begin
+    if (!session.token) { flash('Sign in on the desktop app'); hideSoon(); return; }
+    if (!session.groqKey) { flash('Add your Groq key in Flow'); hideSoon(); return; }
+
+    mode = m;
+    if (m === 'command') {
+      setPill('thinking', 'Grabbing selection…');
+      try { selection = invoke ? await invoke('flow_copy_selection') : ''; } catch (_) { selection = ''; }
+      if (!selection || !selection.trim()) { flash('Select text first'); hideSoon(); state = 'idle'; mode = null; return; }
+    }
+    try {
+      handle = await startRecording();
+      state = 'listening';
+      setPill('listening', m === 'command' ? 'Command — speak the edit' : 'Listening…');
+    } catch (_) {
+      flash('Microphone blocked'); hideSoon(); state = 'idle'; mode = null;
+    }
+  }
+
+  async function stopAndProcess() {
+    const h = handle; handle = null; state = 'thinking';
+    setPill('thinking', 'Thinking…');
+    h.stop();
+    try {
+      const blob = await h.done;
+      const d = await apiDictate(blob);
+      if (mode === 'command') {
+        const instruction = (d.raw || '').trim();
+        if (!instruction) throw new Error('No instruction heard');
+        const text = await apiCommand(selection, instruction);
+        if (text && invoke) { await invoke('inject_text', { text }); }
+      } else {
+        if (d.text && invoke) { await invoke('inject_text', { text: d.text }); }
+      }
+      setPill('', 'Done'); hideSoon(700);
+    } catch (err) {
+      flash((err && err.message) || 'Flow failed'); hideSoon(1600);
+    } finally { state = 'idle'; mode = null; selection = ''; }
+  }
+
+  // ---- wire up ----
+  if (listen) {
+    listen('flow-session', (e) => { if (e && e.payload) session = Object.assign(session, e.payload); });
+    listen('flow-hotkey', (e) => { onHotkey(String((e && e.payload) || 'dictate')); });
+  }
+  if (emit) { try { emit('flow-hud-ready', {}); } catch (_) {} }   // ask the PWA for a session
+})();
+</script>
+</body>
+</html>
