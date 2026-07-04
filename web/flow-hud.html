@@ -11,9 +11,12 @@
 
      Flow of control:
        - Rust global-shortcut fires -> shows this window + emits `flow-hotkey`(mode).
-       - The main PWA window emits `flow-session` {token, groqKey, apiBase, model}
-         (js/flow-desktop-bridge.js) — we can't read its localStorage from here.
-       - We record a push-to-talk clip, POST it to the Flow relay, and paste the
+       - The main PWA window emits `flow-session` {token, groqKey, apiBase, model,
+         engine, ollamaModel, hubBase} (js/flow-desktop-bridge.js) — we can't read
+         its localStorage from here.
+       - We record a push-to-talk clip and POST it to the chosen engine: the cloud
+         Groq relay (apiBase), or — when engine='local' — the loopback LocalHub
+         sidecar (hubBase/flow: whisper.cpp + Ollama, no key). Then we paste the
          result into whatever app the user is actually typing in.
      Dictate: hotkey -> record -> stop (hotkey again) -> /api/flow/dictate -> paste.
      Command: hotkey -> copy selection -> record instruction -> stop -> transcribe
@@ -54,7 +57,8 @@
   const pill = document.getElementById('pill');
   const label = document.getElementById('label');
 
-  let session = { token: '', groqKey: '', model: '', apiBase: 'https://app.containedevolution.com' };
+  let session = { token: '', groqKey: '', model: '', engine: 'cloud', ollamaModel: '',
+                  apiBase: 'https://app.containedevolution.com', hubBase: 'http://localhost:5984' };
   let state = 'idle';        // idle | listening | thinking
   let mode = null;           // dictate | command
   let selection = '';
@@ -94,22 +98,82 @@
     return { stop: () => { try { rec.stop(); } catch (_) {} }, done };
   }
 
+  // Local engine wants 16kHz mono WAV (whisper.cpp) — capture raw PCM via Web
+  // Audio (mirrors public/js/flow.js). No ffmpeg on the hub.
+  async function startRecordingWav() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    const source = ctx.createMediaStreamSource(stream);
+    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    const chunks = [];
+    proc.onaudioprocess = (e) => { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    source.connect(proc); proc.connect(ctx.destination);
+    const inRate = ctx.sampleRate;
+    let resolveDone; const done = new Promise((r) => { resolveDone = r; });
+    function stop() {
+      try { proc.disconnect(); source.disconnect(); } catch (_) {}
+      stream.getTracks().forEach((t) => t.stop());
+      const wav = encodeWav(downsample(mergeF32(chunks), inRate, 16000), 16000);
+      ctx.close().catch(() => {});
+      resolveDone(new Blob([wav], { type: 'audio/wav' }));
+    }
+    return { stop, done };
+  }
+  function startCapture() { return session.engine === 'local' ? startRecordingWav() : startRecording(); }
+  function mergeF32(chunks) {
+    let len = 0; for (const c of chunks) len += c.length;
+    const out = new Float32Array(len); let o = 0;
+    for (const c of chunks) { out.set(c, o); o += c.length; }
+    return out;
+  }
+  function downsample(buf, inRate, outRate) {
+    if (!buf.length || outRate >= inRate) return buf;
+    const ratio = inRate / outRate, outLen = Math.round(buf.length / ratio), out = new Float32Array(outLen);
+    let ii = 0;
+    for (let oi = 0; oi < outLen; oi++) {
+      const next = Math.round((oi + 1) * ratio); let sum = 0, cnt = 0;
+      for (; ii < next && ii < buf.length; ii++) { sum += buf[ii]; cnt++; }
+      out[oi] = cnt ? sum / cnt : 0;
+    }
+    return out;
+  }
+  function encodeWav(samples, rate) {
+    const buffer = new ArrayBuffer(44 + samples.length * 2), view = new DataView(buffer);
+    const wr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+    wr(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); wr(8, 'WAVE');
+    wr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    wr(36, 'data'); view.setUint32(40, samples.length * 2, true);
+    let off = 44;
+    for (let i = 0; i < samples.length; i++) { const s = Math.max(-1, Math.min(1, samples[i])); view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true); off += 2; }
+    return buffer;
+  }
+
   // ---- relay calls ----
+  // Local engine → the loopback LocalHub sidecar (/flow, no key/token). Cloud →
+  // the Groq relay at apiBase with the auth token + device key.
+  function isLocal() { return session.engine === 'local'; }
   function hdrs(extra) {
-    const h = Object.assign({ 'Authorization': 'Bearer ' + session.token, 'X-Provider-Key': session.groqKey }, extra || {});
+    const h = Object.assign({}, extra || {});
+    if (isLocal()) { if (session.ollamaModel) h['X-Flow-Model'] = session.ollamaModel; return h; }
+    h['Authorization'] = 'Bearer ' + session.token;
+    h['X-Provider-Key'] = session.groqKey;
     if (session.model) h['X-Flow-Model'] = session.model;
     return h;
   }
+  function dictateUrl() { return isLocal() ? session.hubBase + '/flow/dictate' : session.apiBase + '/api/flow/dictate'; }
+  function commandUrl() { return isLocal() ? session.hubBase + '/flow/command' : session.apiBase + '/api/flow/command'; }
   async function apiDictate(blob) {
-    const r = await fetch(session.apiBase + '/api/flow/dictate', {
-      method: 'POST', headers: hdrs({ 'Content-Type': blob.type || 'audio/webm' }), body: blob,
+    const r = await fetch(dictateUrl(), {
+      method: 'POST', headers: hdrs({ 'Content-Type': blob.type || (isLocal() ? 'audio/wav' : 'audio/webm') }), body: blob,
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.message || 'Dictation failed');
     return d;
   }
   async function apiCommand(sel, instruction) {
-    const r = await fetch(session.apiBase + '/api/flow/command', {
+    const r = await fetch(commandUrl(), {
       method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ selection: sel, instruction }),
     });
@@ -123,9 +187,11 @@
     if (state === 'thinking') return;
     if (state === 'listening') { await stopAndProcess(); return; }
 
-    // idle → begin
-    if (!session.token) { flash('Sign in on the desktop app'); hideSoon(); return; }
-    if (!session.groqKey) { flash('Add your Groq key in Flow'); hideSoon(); return; }
+    // idle → begin. Local needs neither a token nor a Groq key (loopback sidecar).
+    if (!isLocal()) {
+      if (!session.token) { flash('Sign in on the desktop app'); hideSoon(); return; }
+      if (!session.groqKey) { flash('Add your Groq key in Flow'); hideSoon(); return; }
+    }
 
     mode = m;
     if (m === 'command') {
@@ -134,7 +200,7 @@
       if (!selection || !selection.trim()) { flash('Select text first'); hideSoon(); state = 'idle'; mode = null; return; }
     }
     try {
-      handle = await startRecording();
+      handle = await startCapture();
       state = 'listening';
       setPill('listening', m === 'command' ? 'Command — speak the edit' : 'Listening…');
     } catch (_) {

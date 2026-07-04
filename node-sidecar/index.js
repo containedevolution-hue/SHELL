@@ -37,6 +37,7 @@ const expressPouchDB = require('express-pouchdb');
 const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
+const flowLocal = require('./lib/flow-local');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -65,6 +66,12 @@ app.use(cors({
   origin: [
     'https://app.containedevolution.com',
     'https://www.containedevolution.com',
+    // Flow HUD: the Tauri desktop HUD is a local page that POSTs the local
+    // engine (/flow) cross-origin to this loopback sidecar. Its webview origin
+    // is tauri://localhost (macOS/Linux) / http(s)://tauri.localhost (Windows).
+    'tauri://localhost',
+    'http://tauri.localhost',
+    'https://tauri.localhost',
   ],
   credentials: false,
 }));
@@ -155,6 +162,11 @@ function requirePairingToken(req, res, next) {
 
 // MCP must mount before the PouchDB catch-all on '/'.
 app.use('/mcp', requirePairingToken, mcp.mount());
+
+// Flow's NO-API engine — whisper.cpp STT + local Ollama cleanup. Mounts before
+// the PouchDB catch-all (like /mcp). No pairing token: loopback-only on a
+// laptop/Tauri, single-tenant on the Pi — same trust as the store itself.
+app.use('/flow', flowLocal.router());
 
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than

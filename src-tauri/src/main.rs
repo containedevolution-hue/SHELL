@@ -172,13 +172,24 @@ async fn flow_copy_selection() -> Result<String, String> {
 
 fn spawn_sidecar() -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let script = std::path::PathBuf::from(manifest_dir)
+    let localhub = std::path::PathBuf::from(manifest_dir)
         .parent()
         .expect("src-tauri must have a parent dir (localhub/)")
-        .join("node-sidecar")
-        .join("index.js");
+        .to_path_buf();
+    let script = localhub.join("node-sidecar").join("index.js");
     println!("[localhub] spawning sidecar: node {}", script.display());
-    Command::new("node").arg(&script).spawn()
+
+    // Flow NO-API engine — tell the sidecar where whisper.cpp + its model live.
+    // The CLI is bundled under localhub/whisper/ (whisper-cli[.exe]); the ggml
+    // model downloads once into the sidecar data dir. Only set defaults when the
+    // launching env hasn't already (dev override / future externalBin packaging).
+    let whisper_bin = localhub.join("whisper").join(if cfg!(windows) { "whisper-cli.exe" } else { "whisper-cli" });
+    let mut cmd = Command::new("node");
+    cmd.arg(&script);
+    if std::env::var_os("WHISPER_BIN").is_none() && whisper_bin.exists() {
+        cmd.env("WHISPER_BIN", &whisper_bin);
+    }
+    cmd.spawn()
 }
 
 fn main() {
