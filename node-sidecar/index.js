@@ -171,7 +171,13 @@ app.use('/flow', flowLocal.router());
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than
 // 'fullCouchDB'; enough for Cyclone (the only client is PouchDB itself).
-app.use('/', expressPouchDB(StoreCtor, {
+//
+// Ledger #6: gate the store behind the pairing token (same as /mcp) so a paired
+// hub — which binds 0.0.0.0 and can front a public tunnel — no longer exposes
+// every ce-memories-{userId} DB by name. An UNPAIRED hub stays open (bootstrap /
+// loopback-only), so this changes nothing until the hub is paired. Clients send
+// `Authorization: Bearer <pairing_token>` via the cyclone-sync.js fetch hook.
+app.use('/', requirePairingToken, expressPouchDB(StoreCtor, {
   mode: 'minimumForPouchDB',
   logPath: path.join(DATA_DIR, 'log.txt'),
   configPath: path.join(DATA_DIR, 'config.json'),
