@@ -1,23 +1,29 @@
 #!/usr/bin/env bash
-# CE Hub Appliance — Hub Display setup (A6a).
+# CE Hub Appliance — Hub Display setup (Wayland / labwc / Pi OS Desktop).
 #
-# Run AFTER setup.sh and AFTER the hub is paired (Settings → Integrations →
-# Hub paired ✓). This script installs Chromium + a minimal display stack and
-# sets up a systemd unit that launches the ambient kiosk on boot.
+# The FREENOVE Pi 5 Hub Display runs Pi OS Desktop: lightdm auto-logs the user
+# into a labwc (Wayland) session that already owns the screen. The kiosk is
+# launched INTO that session from ~/.config/labwc/autostart — it does NOT start
+# its own X server. (The earlier xinit approach fought labwc for display :0 and
+# crash-looped; it's removed here, and any leftover unit is disabled below.)
 #
-#   cd ~/ce-team/localhub/node-sidecar/pi
-#   ./setup-display.sh
-#   sudo reboot
+# Run AFTER setup.sh and AFTER pairing (Settings → Hub → Paired ✓):
+#   cd ~/ce-team/localhub/node-sidecar/pi && ./setup-display.sh && sudo reboot
 #
 # What it does:
-#   1. Install Chromium + minimal X11 (xorg, x11-xserver-utils)
+#   1. Install Chromium + wlrctl
 #   2. Fetch a display JWT from Railway using the stored pairing token
-#   3. Save token to data/display-token.json
-#   4. Install the kiosk launch script → /usr/local/bin/ce-hub-display-start
-#   5. Install + enable cehub-display.service (starts Chromium kiosk on boot)
+#   3. Save it to data/display-token.json
+#   4. Install the kiosk launcher → /usr/local/bin/ce-hub-display-start
+#   5. Hook it into the labwc session (~/.config/labwc/autostart), map the
+#      touchscreen to the kiosk output, and disable the legacy xinit unit.
 #
-# Requirements: hub must be paired first (data/pairing.json must contain
-# pairing_token) and the Pi must have internet access.
+# On boot: lightdm autologin → labwc → autostart → launcher reads the token →
+# /hub/ signs in with it → resumes the user's own PA thread → hands off to
+# /chat.html: the Starling GLB + chat, fullscreen on the touchscreen, no login.
+#
+# Requirements: hub paired first (data/pairing.json has pairing_token) and the
+# Pi has internet. Endpoints: routes/hub-display.js + routes/chat-sessions.js.
 
 set -euo pipefail
 
@@ -27,16 +33,21 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 USER_NAME="$(whoami)"
+USER_HOME="$HOME"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SIDECAR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_DIR="$SIDECAR_DIR/data"
 PAIRING_JSON="$DATA_DIR/pairing.json"
 DISPLAY_TOKEN_JSON="$DATA_DIR/display-token.json"
 RAILWAY_BASE="${RAILWAY_BASE:-https://app.containedevolution.com}"
+LABWC_DIR="$USER_HOME/.config/labwc"
+# The FREENOVE 4.3" touch panel is output DSI-2. Override if your kiosk screen
+# is a different output (see `wlr-randr` for names).
+KIOSK_OUTPUT="${KIOSK_OUTPUT:-DSI-2}"
 
 # ── Pre-flight ────────────────────────────────────────────────────────────────
 if [[ ! -f "$PAIRING_JSON" ]]; then
-  echo "ERROR: $PAIRING_JSON not found. Pair the hub first (Settings → Integrations)."
+  echo "ERROR: $PAIRING_JSON not found. Pair the hub first (Settings → Hub)."
   exit 1
 fi
 
@@ -49,10 +60,10 @@ fi
 echo "==> Pairing token found (${PAIRING_TOKEN:0:8}…)"
 echo
 
-# ── [1/5] Install Chromium + minimal X11 ─────────────────────────────────────
-echo "==> [1/5] Install Chromium + x11"
+# ── [1/5] Install Chromium + Wayland tooling ─────────────────────────────────
+echo "==> [1/5] Install Chromium + wlrctl"
 sudo apt-get update -y
-sudo apt-get install -y chromium xorg x11-xserver-utils unclutter
+sudo apt-get install -y chromium wlrctl
 
 # ── [2/5] Fetch display JWT from Railway ──────────────────────────────────────
 echo "==> [2/5] Fetching display JWT from Railway…"
@@ -75,30 +86,24 @@ mkdir -p "$DATA_DIR"
 echo "{\"display_token\":\"$DISPLAY_TOKEN\"}" > "$DISPLAY_TOKEN_JSON"
 echo "==> Display token saved to $DISPLAY_TOKEN_JSON"
 
-# ── [3/5] Kiosk launch script ─────────────────────────────────────────────────
-echo "==> [3/5] Installing kiosk launch script"
+# ── [3/5] Kiosk launcher (Wayland) ────────────────────────────────────────────
+echo "==> [3/5] Installing kiosk launcher"
 sudo tee /usr/local/bin/ce-hub-display-start >/dev/null <<LAUNCH
 #!/usr/bin/env bash
-# Launched by cehub-display.service via xinit. Disables screen blanking and
-# starts Chromium in kiosk mode on the Hub front door (/hub/), which signs
-# itself in with the saved display token, resumes the user's own PA thread and
-# hands off to /chat.html — the Starling GLB + chat, same code as the phone.
-#
-# The token is read HERE, at launch, not baked in at setup time: the recovery
-# runbook re-mints data/display-token.json then reboots, and a launch-time read
-# means that reboot is all it takes. Baking it in would need a full setup re-run.
+# CE Hub kiosk launcher (Wayland/labwc). Launched from ~/.config/labwc/autostart
+# inside the auto-login session. Reads the display token at LAUNCH (so the
+# recovery re-mint + reboot is enough), signs in at /hub/, and hands off to
+# /chat.html — the Starling GLB + chat, fullscreen on the touchscreen.
 set -euo pipefail
-
 RAILWAY_BASE="$RAILWAY_BASE"
 DISPLAY_TOKEN_JSON="$DISPLAY_TOKEN_JSON"
 
-# Disable DPMS + screen blanking for always-on ambient display.
-xset -dpms
-xset s off
-xset s noblank
-
-# Hide the mouse cursor after 1s idle.
-unclutter -idle 1 -root &
+# Find this session's Wayland socket (skip the .lock files).
+export XDG_RUNTIME_DIR="\${XDG_RUNTIME_DIR:-/run/user/\$(id -u)}"
+for s in "\$XDG_RUNTIME_DIR"/wayland-*; do
+  case "\$s" in *.lock) continue;; esac
+  [ -S "\$s" ] && export WAYLAND_DISPLAY="\$(basename "\$s")" && break
+done
 
 # Silent sign-in: /hub/ trades this display token for a user JWT. Without a
 # readable token the page says so on screen rather than failing blank.
@@ -106,7 +111,8 @@ DT="\$(python3 -c "import json;print(json.load(open('\$DISPLAY_TOKEN_JSON'))['di
 URL="\${RAILWAY_BASE}/hub/?dt=\${DT}"
 
 exec chromium \\
-  --kiosk \\
+  --ozone-platform=wayland \\
+  --kiosk --start-fullscreen \\
   --noerrdialogs \\
   --disable-infobars \\
   --disable-session-crashed-bubble \\
@@ -120,29 +126,41 @@ exec chromium \\
 LAUNCH
 sudo chmod +x /usr/local/bin/ce-hub-display-start
 
-# ── [4/5] systemd unit ────────────────────────────────────────────────────────
-echo "==> [4/5] Installing cehub-display.service"
-sudo tee /etc/systemd/system/cehub-display.service >/dev/null <<EOF
-[Unit]
-Description=CE Hub Display — Chromium kiosk (LocalHub Offload Center)
-After=network-online.target cehub.service graphical.target
-Wants=network-online.target
+# ── [4/5] Hook into the labwc session ─────────────────────────────────────────
+echo "==> [4/5] Wiring the kiosk into the labwc autostart"
+mkdir -p "$LABWC_DIR"
 
-[Service]
-Type=simple
-User=$USER_NAME
-Environment=DISPLAY=:0
-Environment=HOME=/home/$USER_NAME
-ExecStartPre=/bin/sleep 8
-ExecStart=/usr/bin/xinit /usr/local/bin/ce-hub-display-start -- :0 -nocursor
-Restart=always
-RestartSec=10
+# autostart: launch the kiosk when the session comes up (idempotent).
+AUTOSTART="$LABWC_DIR/autostart"
+AUTOSTART_LINE="/usr/local/bin/ce-hub-display-start &"
+touch "$AUTOSTART"
+if ! grep -qF "$AUTOSTART_LINE" "$AUTOSTART"; then
+  printf '%s\n' '# CE Hub kiosk — launched inside the labwc auto-login session.' \
+    "$AUTOSTART_LINE" >> "$AUTOSTART"
+fi
 
-[Install]
-WantedBy=graphical.target
-EOF
-sudo systemctl daemon-reload
-sudo systemctl enable cehub-display.service
+# Map the touch panel to the kiosk output so taps land on the Starling, not the
+# secondary monitor. Best-effort: only touches an existing ILITEK <touch> line.
+RC_XML="$LABWC_DIR/rc.xml"
+if [[ -f "$RC_XML" ]]; then
+  KIOSK_OUTPUT="$KIOSK_OUTPUT" RC_XML="$RC_XML" python3 - <<'PY' || true
+import os, re
+rc = os.environ["RC_XML"]; out = os.environ["KIOSK_OUTPUT"]
+s = open(rc).read()
+if "ILITEK" in s and 'mapToOutput' in s:
+    s2 = re.sub(r'(ILITEK[^>]*mapToOutput=")[^"]*(")', r'\g<1>' + out + r'\g<2>', s)
+    if s2 != s:
+        open(rc, "w").write(s2); print("touch mapped to", out)
+PY
+fi
+
+# Retire the legacy xinit unit if a prior setup left one behind.
+if systemctl list-unit-files 2>/dev/null | grep -q '^cehub-display.service'; then
+  echo "==> Disabling the legacy xinit cehub-display.service"
+  sudo systemctl disable --now cehub-display.service 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/cehub-display.service
+  sudo systemctl daemon-reload
+fi
 
 # ── [5/5] Verify ──────────────────────────────────────────────────────────────
 echo "==> [5/5] Done."
@@ -150,8 +168,8 @@ echo
 echo "Kiosk URL:"
 echo "  ${RAILWAY_BASE}/hub/  (signs itself in with the display token — no login)"
 echo
-echo "Services enabled:"
-echo "  cehub-display.service  (Chromium kiosk — starts on reboot)"
+echo "Launch path:"
+echo "  labwc autostart → /usr/local/bin/ce-hub-display-start (Chromium kiosk)"
 echo
 echo "==> sudo reboot to start the display."
 echo "==> To refresh the display token: run this script again."
