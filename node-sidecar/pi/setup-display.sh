@@ -80,13 +80,17 @@ echo "==> [3/5] Installing kiosk launch script"
 sudo tee /usr/local/bin/ce-hub-display-start >/dev/null <<LAUNCH
 #!/usr/bin/env bash
 # Launched by cehub-display.service via xinit. Disables screen blanking and
-# starts Chromium in kiosk mode on the LocalHub Offload Center (/localhub).
-# Auth = the normal app login (sign in once on the touchscreen); the saved
-# display token is reserved for the planned silent auto-login
-# (see memory/apps/live/CE-Hub-Appliance.md → kiosk rebuild).
+# starts Chromium in kiosk mode on the Hub front door (/hub/), which signs
+# itself in with the saved display token, resumes the user's own PA thread and
+# hands off to /chat.html — the Starling GLB + chat, same code as the phone.
+#
+# The token is read HERE, at launch, not baked in at setup time: the recovery
+# runbook re-mints data/display-token.json then reboots, and a launch-time read
+# means that reboot is all it takes. Baking it in would need a full setup re-run.
 set -euo pipefail
 
 RAILWAY_BASE="$RAILWAY_BASE"
+DISPLAY_TOKEN_JSON="$DISPLAY_TOKEN_JSON"
 
 # Disable DPMS + screen blanking for always-on ambient display.
 xset -dpms
@@ -96,7 +100,10 @@ xset s noblank
 # Hide the mouse cursor after 1s idle.
 unclutter -idle 1 -root &
 
-URL="\${RAILWAY_BASE}/localhub/"
+# Silent sign-in: /hub/ trades this display token for a user JWT. Without a
+# readable token the page says so on screen rather than failing blank.
+DT="\$(python3 -c "import json;print(json.load(open('\$DISPLAY_TOKEN_JSON'))['display_token'])" 2>/dev/null || true)"
+URL="\${RAILWAY_BASE}/hub/?dt=\${DT}"
 
 exec chromium \\
   --kiosk \\
@@ -141,7 +148,7 @@ sudo systemctl enable cehub-display.service
 echo "==> [5/5] Done."
 echo
 echo "Kiosk URL:"
-echo "  ${RAILWAY_BASE}/localhub/  (sign in once on the touchscreen)"
+echo "  ${RAILWAY_BASE}/hub/  (signs itself in with the display token — no login)"
 echo
 echo "Services enabled:"
 echo "  cehub-display.service  (Chromium kiosk — starts on reboot)"
