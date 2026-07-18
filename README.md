@@ -30,7 +30,7 @@ Tauri (Rust shell) desktop app that:
   `{slug}.hub.containedevolution.com` (provisioned via `routes/hub-cert.js` +
   `lib/hub-acme.js`); pairing/beacon/claim in `routes/hub-pair.js`; the PWA
   switches PouchDB sync to the HTTPS LAN url from prefs (`hub_lan_url`). Details:
-  `memory/apps/live/Cyclone-LocalHub.md` (Cyclone 3.3/3.4).
+  `memory/apps/App-Builds/Altavia-Command-Center.md` (Cyclone sync engine).
 
 ## Dev (requires the prerequisites below)
 
