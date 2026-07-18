@@ -58,7 +58,10 @@ function modelDir() {
   return process.env.WHISPER_MODEL_DIR || path.join(__dirname, '..', 'data', 'whisper');
 }
 function modelPath() { return path.join(modelDir(), MODEL_NAME); }
-function whisperBin() { return process.env.WHISPER_BIN || ''; }
+// Falls back to a binary sitting beside the model (same locality as modelDir's
+// own default) so a box that built whisper.cpp locally works without needing
+// its systemd unit edited just to set one env var.
+function whisperBin() { return process.env.WHISPER_BIN || path.join(modelDir(), 'whisper-cli'); }
 
 function whisperReady() {
   try {
@@ -192,11 +195,18 @@ function router() {
     try {
       const raw = await transcribe(buf);
       if (!raw) return res.json({ raw: '', text: '' });
-      const text = await ollamaChat(model, [
-        { role: 'system', content: cleanupSystem({ context }) },
-        { role: 'user', content: raw },
-      ]);
-      res.json({ raw, text: text || raw });
+      // whisper succeeding shouldn't be held hostage by Ollama being down/unset
+      // (e.g. a box that only wants raw STT, no cleanup model installed) — fall
+      // back to the raw transcript instead of erroring the whole request.
+      let text = raw;
+      try {
+        const cleaned = await ollamaChat(model, [
+          { role: 'system', content: cleanupSystem({ context }) },
+          { role: 'user', content: raw },
+        ]);
+        if (cleaned) text = cleaned;
+      } catch (_) { /* Ollama unavailable — raw stands */ }
+      res.json({ raw, text });
     } catch (e) {
       res.status((e && e.code) || 500).json({ error: 'local', message: (e && e.msg) || 'Flow failed.' });
     }
