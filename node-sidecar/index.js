@@ -168,6 +168,28 @@ app.use('/mcp', requirePairingToken, mcp.mount());
 // laptop/Tauri, single-tenant on the Pi — same trust as the store itself.
 app.use('/flow', flowLocal.router());
 
+// Plain HTTP twin of the `speak` MCP tool, for a browser client that can't
+// speak the MCP JSON-RPC protocol (the hub kiosk page). Same engine (Piper ->
+// aplay on the pinned ALSA device), same loopback/single-tenant trust as
+// /flow above — deliberately not behind the pairing token. Unlike the MCP
+// tool (fire-and-forget, so the PA tool-loop isn't blocked), this AWAITS
+// playback finishing before responding — the hub's turn-taking needs to know
+// when speech actually ends, not just that it started.
+app.post('/speak', express.json({ limit: '8kb' }), async (req, res) => {
+  const text = String((req.body && req.body.text) || '').trim();
+  if (!text) return res.status(400).json({ error: 'text_required' });
+  try {
+    const result = await require('./lib/speaker').speak(text);
+    res.json(Object.assign({ ok: true }, result));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: (e && e.message) || 'speak failed' });
+  }
+});
+app.post('/speak/cancel', (_req, res) => {
+  require('./lib/speaker').cancel();
+  res.json({ ok: true });
+});
+
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
 // actually use during replication. Smaller surface, less overhead than
 // 'fullCouchDB'; enough for Cyclone (the only client is PouchDB itself).
