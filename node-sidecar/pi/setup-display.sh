@@ -20,7 +20,7 @@
 #
 # On boot: lightdm autologin → labwc → autostart → launcher reads the token →
 # /hub/ signs in with it → resumes the user's own PA thread → hands off to
-# /chat.html: the Starling GLB + chat, fullscreen on the touchscreen, no login.
+# /chat.html: the Companion GLB + chat, fullscreen on the touchscreen, no login.
 #
 # Requirements: hub paired first (data/pairing.json has pairing_token) and the
 # Pi has internet. Endpoints: routes/hub-display.js + routes/chat-sessions.js.
@@ -93,7 +93,7 @@ sudo tee /usr/local/bin/ce-hub-display-start >/dev/null <<LAUNCH
 # CE Hub kiosk launcher (Wayland/labwc). Launched from ~/.config/labwc/autostart
 # inside the auto-login session. Reads the display token at LAUNCH (so the
 # recovery re-mint + reboot is enough), signs in at /hub/, and hands off to
-# /chat.html — the Starling GLB + chat, fullscreen on the touchscreen.
+# /chat.html — the Companion GLB + chat, fullscreen on the touchscreen.
 set -euo pipefail
 RAILWAY_BASE="$RAILWAY_BASE"
 DISPLAY_TOKEN_JSON="$DISPLAY_TOKEN_JSON"
@@ -139,7 +139,7 @@ if ! grep -qF "$AUTOSTART_LINE" "$AUTOSTART"; then
     "$AUTOSTART_LINE" >> "$AUTOSTART"
 fi
 
-# Map the touch panel to the kiosk output so taps land on the Starling, not the
+# Map the touch panel to the kiosk output so taps land on the Companion, not the
 # secondary monitor. Best-effort: only touches an existing ILITEK <touch> line.
 RC_XML="$LABWC_DIR/rc.xml"
 if [[ -f "$RC_XML" ]]; then
