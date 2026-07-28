@@ -38,6 +38,7 @@ const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
 const flowLocal = require('./lib/flow-local');
+const { createAssetForgeRouter } = require('./lib/asset-forge');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -66,6 +67,8 @@ app.use(cors({
   origin: [
     'https://app.containedevolution.com',
     'https://www.containedevolution.com',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
     // Flow HUD: the Tauri desktop HUD is a local page that POSTs the local
     // engine (/flow) cross-origin to this loopback sidecar. Its webview origin
     // is tauri://localhost (macOS/Linux) / http(s)://tauri.localhost (Windows).
@@ -167,6 +170,11 @@ app.use('/mcp', requirePairingToken, mcp.mount());
 // the PouchDB catch-all (like /mcp). No pairing token: loopback-only on a
 // laptop/Tauri, single-tenant on the Pi — same trust as the store itself.
 app.use('/flow', flowLocal.router());
+
+// Media Lab 3D Assets — admin-only browser inspection hands Blender repair and
+// Power Edit jobs to this local desktop process. Must mount before PouchDB's
+// catch-all route.
+app.use('/asset-forge', createAssetForgeRouter({ dataDir: DATA_DIR }));
 
 // Plain HTTP twin of the `speak` MCP tool, for a browser client that can't
 // speak the MCP JSON-RPC protocol (the hub kiosk page). Same engine (Piper ->
