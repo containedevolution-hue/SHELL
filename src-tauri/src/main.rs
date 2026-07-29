@@ -170,7 +170,17 @@ async fn flow_copy_selection() -> Result<String, String> {
     .map_err(|e| format!("copy task failed: {e}"))?
 }
 
-fn spawn_sidecar() -> std::io::Result<Child> {
+/// Managed handle to the Node sidecar child so the ExitRequested handler can
+/// kill it. Held in Tauri state because the sidecar is now spawned in setup()
+/// (where the AppHandle exists) rather than in main().
+struct SidecarChild(Mutex<Option<Child>>);
+
+/// Spawn the Node sidecar. `data_dir`, when present, is a writable per-user
+/// directory (resolved from app_local_data_dir in setup) — passed to the sidecar
+/// so its store, pairing.json, cert, whisper model, and keys live somewhere an
+/// app update won't wipe. When None the sidecar keeps its own legacy path
+/// (`<sidecar>/data`), so the Pi appliance and standalone dev are unchanged.
+fn spawn_sidecar(data_dir: Option<&std::path::Path>) -> std::io::Result<Child> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let localhub = std::path::PathBuf::from(manifest_dir)
         .parent()
@@ -189,27 +199,22 @@ fn spawn_sidecar() -> std::io::Result<Child> {
     if std::env::var_os("WHISPER_BIN").is_none() && whisper_bin.exists() {
         cmd.env("WHISPER_BIN", &whisper_bin);
     }
+    // DA0: point every persistent path at the per-user data dir so a whole
+    // relocation moves together (no split-brain where the store moves but
+    // pairing.json stays behind and the box silently unpairs on the next update).
+    if let Some(dir) = data_dir {
+        let _ = std::fs::create_dir_all(dir);
+        cmd.env("LOCALHUB_DATA_DIR", dir);
+        cmd.env("WHISPER_MODEL_DIR", dir.join("whisper"));
+        cmd.env("ELEVENLABS_KEY_FILE", dir.join("elevenlabs.json"));
+    }
     cmd.spawn()
 }
 
 fn main() {
-    let sidecar = match spawn_sidecar() {
-        Ok(child) => {
-            println!("[localhub] sidecar pid: {}", child.id());
-            Some(child)
-        }
-        Err(e) => {
-            eprintln!(
-                "[localhub] WARN: failed to spawn sidecar ({}). The desktop \
-                 shell will still open, but http://localhost:5984/ won't be \
-                 available. Verify Node is on PATH and node-sidecar/ deps are \
-                 installed (`cd node-sidecar && npm install`).",
-                e
-            );
-            None
-        }
-    };
-    let sidecar_state: Mutex<Option<Child>> = Mutex::new(sidecar);
+    // The sidecar is spawned in setup() (below) — it needs the AppHandle to
+    // resolve app_local_data_dir(). The child is stored in managed state so the
+    // ExitRequested handler can still kill it.
 
     // Flow global hotkeys (system-wide): Ctrl+Alt+Space = dictate, Ctrl+Alt+.
     // = Command Mode. Cloned into the plugin handler; the originals are
@@ -262,6 +267,32 @@ fn main() {
             flow_copy_selection
         ])
         .setup(move |app| {
+            // DA0: spawn the sidecar here so app_local_data_dir() is resolvable.
+            // Point the sidecar at "<app_local_data_dir>/data" — a writable per-user
+            // location an app update won't wipe. If it can't be resolved, spawn
+            // without it (the sidecar falls back to its legacy path with a warning).
+            let data_dir = app.path().app_local_data_dir().ok().map(|p| p.join("data"));
+            if data_dir.is_none() {
+                eprintln!("[localhub] WARN: app_local_data_dir() unavailable — sidecar uses its legacy data path");
+            }
+            let child = match spawn_sidecar(data_dir.as_deref()) {
+                Ok(c) => {
+                    println!("[localhub] sidecar pid: {}", c.id());
+                    Some(c)
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[localhub] WARN: failed to spawn sidecar ({}). The desktop \
+                         shell will still open, but http://localhost:5984/ won't be \
+                         available. Verify Node is on PATH and node-sidecar/ deps are \
+                         installed (`cd node-sidecar && npm install`).",
+                        e
+                    );
+                    None
+                }
+            };
+            app.manage(SidecarChild(Mutex::new(child)));
+
             // Flow: register the global hotkeys + make the HUD click-through
             // (an always-on-top pill that never steals focus/clicks from the app
             // the user is actually typing into).
@@ -325,13 +356,15 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    app.run(move |_handle, event| {
+    app.run(move |handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {
-            if let Ok(mut guard) = sidecar_state.lock() {
-                if let Some(mut child) = guard.take() {
-                    println!("[localhub] killing sidecar pid: {}", child.id());
-                    let _ = child.kill();
-                    let _ = child.wait();
+            if let Some(state) = handle.try_state::<SidecarChild>() {
+                if let Ok(mut guard) = state.0.lock() {
+                    if let Some(mut child) = guard.take() {
+                        println!("[localhub] killing sidecar pid: {}", child.id());
+                        let _ = child.kill();
+                        let _ = child.wait();
+                    }
                 }
             }
         }
