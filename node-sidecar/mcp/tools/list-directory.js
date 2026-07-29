@@ -2,7 +2,8 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { resolveJailed, JailError } = require('../jail');
+const { resolveJailed, JailError, allowedRoots } = require('../jail');
+const audit = require('../audit');
 
 module.exports = {
   name: 'list_directory',
@@ -11,18 +12,29 @@ module.exports = {
     function: {
       name: 'list_directory',
       description:
-        'List entries in a directory on the appliance filesystem. ' +
-        'Paths may be absolute or relative to MCP_ROOT. ' +
+        'List entries in a folder the user has shared with you. ' +
+        'Call with no path to discover which folders are shared, then pass an ' +
+        'absolute path inside one to list it. ' +
         'Returns each entry with name + type (file/directory/symlink/other) + size_bytes for files.',
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'Directory path (absolute or relative to MCP_ROOT). Defaults to MCP_ROOT.' },
+          path: { type: 'string', description: 'Directory path inside a shared folder. Omit to list the shared folders.' },
         },
       },
     },
   },
-  async execute({ path: input = '.' } = {}) {
+  async execute({ path: input } = {}) {
+    // No path → discovery: tell the model which folders it may look inside.
+    if (input === undefined || input === '') {
+      const roots = allowedRoots();
+      return {
+        shared_folders: roots,
+        note: roots.length
+          ? 'Pass an absolute path inside one of these to list it.'
+          : 'No folders are shared yet — ask the user to share one in Settings.',
+      };
+    }
     let resolved;
     try {
       resolved = resolveJailed(input);
@@ -43,6 +55,7 @@ module.exports = {
         return entry;
       }));
       entries.sort((a, b) => a.name.localeCompare(b.name));
+      audit.record({ tool: 'list_directory', path: resolved, count: entries.length });
       return { path: resolved, count: entries.length, entries };
     } catch (err) {
       if (err.code === 'ENOENT') return { error: `not found: ${input}` };

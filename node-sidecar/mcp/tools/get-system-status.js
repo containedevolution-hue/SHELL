@@ -2,7 +2,7 @@
 
 const os = require('os');
 const fs = require('fs');
-const { ROOT } = require('../jail');
+const { allowedRoots } = require('../jail');
 
 module.exports = {
   name: 'get_system_status',
@@ -11,7 +11,7 @@ module.exports = {
     function: {
       name: 'get_system_status',
       description:
-        'Return a snapshot of the appliance: hostname, OS, uptime, memory, load, disk free at MCP_ROOT, and sidecar process info. ' +
+        'Return a snapshot of the appliance: hostname, OS, uptime, memory, load, disk free, and sidecar process info. ' +
         'No arguments. Safe to call frequently — read-only, no side effects.',
       parameters: { type: 'object', properties: {} },
     },
@@ -19,6 +19,8 @@ module.exports = {
   async execute() {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
+    const roots = allowedRoots();
+    const diskPath = roots[0] || os.homedir(); // system disk info; not a file read
     const status = {
       hostname: os.hostname(),
       platform: os.platform(),
@@ -37,13 +39,13 @@ module.exports = {
         node_version: process.version,
         uptime_seconds: Math.round(process.uptime()),
       },
-      mcp_root: ROOT,
+      shared_folders: roots,
     };
     // fs.statfs landed in Node 18.15 — graceful skip if unavailable so the
     // tool still works on older runtimes.
     if (typeof fs.statfs === 'function') {
       await new Promise((resolve) => {
-        fs.statfs(ROOT, (err, stats) => {
+        fs.statfs(diskPath, (err, stats) => {
           if (!err && stats) {
             const blockSize = Number(stats.bsize);
             status.disk = {

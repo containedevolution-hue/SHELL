@@ -223,7 +223,7 @@ app.use('/', requirePairingToken, expressPouchDB(StoreCtor, {
 const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
-  console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (root: ${require('./mcp/jail').ROOT})`);
+  console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (shared folders: ${require('./mcp/jail').allowedRoots().length})`);
   console.log(`[localhub-pairing] token: ${pairing.getToken().slice(0, 8)}… paired: ${pairing.isPaired()}`);
   // Auto-register (paired) or beacon (unpaired) on every boot.
   // Both poll for the cloudflared tunnel URL before acting.
