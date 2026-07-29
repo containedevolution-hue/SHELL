@@ -82,21 +82,30 @@ app.use((req, res, next) => {
   next();
 });
 
-// Allow the deployed PWA origin + future LAN origins. C3b-2 (true LAN sync)
-// will extend this to token-keyed per-device allowlist.
+// Allow the deployed PWA origin + any local dev/desktop origin. C3b-2 (true LAN
+// sync) will extend this to token-keyed per-device allowlist.
+//
+// A fixed list works for a PRODUCTION build (the bundled webview's origin is
+// always tauri://localhost / http(s)://tauri.localhost), but `tauri dev`
+// serves the local frontendDist over a real HTTP server on an EPHEMERAL
+// 127.0.0.1 port that's different every run (e.g. http://127.0.0.1:1430) — a
+// fixed string can never match it. Matching any loopback origin by pattern
+// instead is safe here: this server already only accepts loopback connections
+// at all (HOST defaults to 127.0.0.1), so a browser CORS check is only ever
+// relevant to code already running on this same machine.
+const LOOPBACK_ORIGIN_RE = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
+const FIXED_ORIGINS = new Set([
+  'https://app.containedevolution.com',
+  'https://www.containedevolution.com',
+  // Flow HUD / production desktop webview origin (macOS/Linux vs Windows).
+  'tauri://localhost',
+  'http://tauri.localhost',
+  'https://tauri.localhost',
+]);
 app.use(cors({
-  origin: [
-    'https://app.containedevolution.com',
-    'https://www.containedevolution.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    // Flow HUD: the Tauri desktop HUD is a local page that POSTs the local
-    // engine (/flow) cross-origin to this loopback sidecar. Its webview origin
-    // is tauri://localhost (macOS/Linux) / http(s)://tauri.localhost (Windows).
-    'tauri://localhost',
-    'http://tauri.localhost',
-    'https://tauri.localhost',
-  ],
+  origin(origin, cb) {
+    cb(null, !origin || FIXED_ORIGINS.has(origin) || LOOPBACK_ORIGIN_RE.test(origin));
+  },
   credentials: false,
 }));
 
