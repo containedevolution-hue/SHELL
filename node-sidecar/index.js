@@ -42,6 +42,7 @@ const flowLocal = require('./lib/flow-local');
 const { createAssetForgeRouter } = require('./lib/asset-forge');
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
+const { readLocalDocs } = require('./lib/local-docs');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -203,6 +204,24 @@ app.post('/speak', express.json({ limit: '8kb' }), async (req, res) => {
 app.post('/speak/cancel', (_req, res) => {
   require('./lib/speaker').cancel();
   res.json({ ok: true });
+});
+
+// Local-drawer read for the OFFLINE VIEW (localhub/web/index.html). Read-only,
+// LOOPBACK-ONLY: same-machine only — even on the Pi (0.0.0.0) it refuses
+// non-loopback callers so local docs never leave the box. The desktop's offline
+// page can't reach the pairing-gated store mount, so it reads here instead;
+// the user id comes from the box's own pairing state, not the caller.
+function loopbackOnly(req, res, next) {
+  const ip = req.socket.remoteAddress || '';
+  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return next();
+  return res.status(403).json({ error: 'loopback_only' });
+}
+app.get('/local/docs', loopbackOnly, async (_req, res) => {
+  try {
+    res.json(await readLocalDocs(StoreCtor, pairing.getUserId()));
+  } catch (e) {
+    res.status(500).json({ error: (e && e.message) || 'read failed' });
+  }
 });
 
 // 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients

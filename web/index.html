@@ -2,27 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>LocalHub</title>
-  <!-- The Tauri window opens directly at https://app.containedevolution.com/localhub/
-       (see ../src-tauri/tauri.conf.json -> app.windows[0].url), so this file
-       is normally never shown. It exists only so Tauri has a frontendDist to
-       point at. The meta-refresh below is a fallback if someone opens this
-       file directly in a browser. -->
-  <meta http-equiv="refresh" content="0; url=https://app.containedevolution.com/localhub/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contained Evolution — LocalHub</title>
+  <!-- Boot loader for the desktop window. Online: hand off to the live app.
+       Offline (app unreachable): show a read-only view of the user's local-only
+       memories (the 💾 Local drawer), read straight from the loopback sidecar at
+       http://localhost:5984/local/docs. This is the first bundled local UI. -->
   <style>
+    :root { color-scheme: dark; }
     html, body { margin: 0; padding: 0; background: #0a0e1a; color: #d9e1f2;
-                 font-family: system-ui, sans-serif; height: 100%; }
-    .center { display: flex; align-items: center; justify-content: center;
-              height: 100%; text-align: center; }
-    .panel { padding: 24px 32px; }
-    .panel h1 { font-weight: 600; margin: 0 0 8px; font-size: 20px; }
-    .panel p { margin: 0; opacity: 0.7; font-size: 14px; }
+                 font-family: system-ui, -apple-system, sans-serif; height: 100%; }
+    #boot { display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; }
+    #boot .panel h1 { font-weight: 600; margin: 0 0 8px; font-size: 20px; }
+    #boot .panel p { margin: 0; opacity: 0.7; font-size: 14px; }
+    #offline { display: none; max-width: 860px; margin: 0 auto; padding: 28px 20px 48px; }
+    header.bar { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    header.bar h1 { font-size: 20px; font-weight: 600; margin: 0; }
+    .sub { opacity: 0.7; font-size: 14px; margin: 0 0 18px; }
+    button.retry { background: #1b2540; color: #d9e1f2; border: 1px solid #33436e;
+                   border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+    button.retry:hover { background: #24314f; }
+    .badge { font-size: 12px; background: #33436e; border-radius: 999px; padding: 2px 9px; opacity: 0.9; }
+    ul.docs { list-style: none; padding: 0; margin: 18px 0 0; }
+    li.doc { border: 1px solid #1c2740; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #0e1424; }
+    li.doc .t { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    li.doc .title { font-weight: 600; font-size: 15px; }
+    li.doc .type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.6; }
+    li.doc .snippet { opacity: 0.75; font-size: 13px; margin-top: 4px; white-space: pre-wrap; }
+    li.doc .when { opacity: 0.5; font-size: 11px; margin-top: 6px; }
+    .empty { opacity: 0.6; font-size: 14px; margin-top: 18px; }
   </style>
 </head>
 <body>
-  <div class="center"><div class="panel">
+  <div id="boot"><div class="panel">
     <h1>Contained Evolution — LocalHub</h1>
-    <p>Loading the app…</p>
+    <p id="boot-msg">Connecting…</p>
   </div></div>
+
+  <main id="offline">
+    <header class="bar">
+      <h1>You're offline</h1>
+      <span class="badge">Local only</span>
+    </header>
+    <p class="sub">The app can't be reached right now. Here are your local-only items,
+      read from this computer. They're read-only until you're back online.
+      &nbsp;<button class="retry" onclick="location.reload()">Retry connection</button></p>
+    <div id="list"></div>
+  </main>
+
+  <script>
+    var REMOTE = 'https://app.containedevolution.com/localhub/';
+    var SIDECAR = 'http://localhost:5984';
+
+    function withTimeout(ms) {
+      var c = new AbortController();
+      setTimeout(function () { c.abort(); }, ms);
+      return c.signal;
+    }
+
+    // Is the live app reachable? no-cors HEAD resolves (opaque) if the origin
+    // answers at all; it rejects on a network error / timeout.
+    function appReachable() {
+      return fetch(REMOTE, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: withTimeout(3500) })
+        .then(function () { return true; })
+        .catch(function () { return false; });
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+
+    // The sidecar may still be starting — try a few times before giving up.
+    function loadLocalDocs(tries) {
+      tries = tries || 0;
+      return fetch(SIDECAR + '/local/docs', { cache: 'no-store', signal: withTimeout(3000) })
+        .then(function (r) { return r.json(); })
+        .catch(function (e) {
+          if (tries < 3) return new Promise(function (res) { setTimeout(res, 700); }).then(function () { return loadLocalDocs(tries + 1); });
+          throw e;
+        });
+    }
+
+    function renderDocs(data) {
+      var list = document.getElementById('list');
+      if (!data || !data.paired) {
+        list.innerHTML = '<p class="empty">No account is paired to this computer yet, so there are no local items to show.</p>';
+        return;
+      }
+      var docs = data.docs || [];
+      if (!docs.length) {
+        list.innerHTML = '<p class="empty">You have no local-only items on this computer yet.</p>';
+        return;
+      }
+      var html = '<ul class="docs">' + docs.map(function (d) {
+        var when = d.updated_at ? new Date(d.updated_at).toLocaleString() : '';
+        return '<li class="doc"><div class="t"><span class="title">' + esc(d.title) +
+          '</span><span class="type">' + esc(d.type) + '</span></div>' +
+          (d.snippet ? '<div class="snippet">' + esc(d.snippet) + '</div>' : '') +
+          (when ? '<div class="when">' + esc(when) + '</div>' : '') + '</li>';
+      }).join('') + '</ul>';
+      list.innerHTML = html;
+    }
+
+    function showOffline() {
+      document.getElementById('boot').style.display = 'none';
+      document.getElementById('offline').style.display = 'block';
+      loadLocalDocs().then(renderDocs).catch(function () {
+        document.getElementById('list').innerHTML =
+          '<p class="empty">Couldn\'t reach the local data service on this computer.</p>';
+      });
+    }
+
+    appReachable().then(function (ok) {
+      if (ok) { location.replace(REMOTE); }
+      else { showOffline(); }
+    });
+  </script>
 </body>
 </html>
