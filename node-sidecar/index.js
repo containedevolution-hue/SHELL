@@ -67,10 +67,23 @@ const StoreCtor = PouchDB.defaults({ prefix: DATA_DIR + path.sep });
 
 const app = express();
 
+// PNA preflight — lets a caller whose own origin is treated as a different
+// (or unknown) address space reach this loopback/LAN server anyway (Chrome on
+// Android reaching a LAN box from an HTTPS PWA; the desktop's own local
+// tauri.localhost page reaching http://localhost:5984 for /local/docs).
+// MUST be registered BEFORE cors(): the `cors` package answers and ends an
+// OPTIONS preflight itself (no `preflightContinue`), so anything registered
+// after it never runs for a preflight request — this one sets its header
+// first and calls next() so cors() still finishes the response.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS' && req.headers['access-control-request-private-network']) {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
+  next();
+});
+
 // Allow the deployed PWA origin + future LAN origins. C3b-2 (true LAN sync)
-// will extend this to token-keyed per-device allowlist. Private Network
-// Access header added so Chrome on Android can reach us over HTTP while
-// the phone is on the same LAN (PNA draft spec — Chrome 98+).
+// will extend this to token-keyed per-device allowlist.
 app.use(cors({
   origin: [
     'https://app.containedevolution.com',
@@ -86,14 +99,6 @@ app.use(cors({
   ],
   credentials: false,
 }));
-app.use((req, res, next) => {
-  // PNA preflight — lets Chrome on Android bypass the mixed-content block
-  // for private-network (LAN) addresses when the PWA is HTTPS.
-  if (req.method === 'OPTIONS' && req.headers['access-control-request-private-network']) {
-    res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  }
-  next();
-});
 
 // ── Cyclone C2.1b — Google OAuth loopback callback ───────────────────────────
 //
