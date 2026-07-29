@@ -10,9 +10,9 @@
 
 const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
+const { inData } = require('./paths');
 
-const PAIRING_FILE = path.join(__dirname, '..', 'data', 'pairing.json');
+const PAIRING_FILE = inData('pairing.json');
 
 let _cache = null;
 

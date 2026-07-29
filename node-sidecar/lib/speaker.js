@@ -32,7 +32,7 @@ const FFMPEG_BIN  = process.env.FFMPEG_BIN  || 'ffmpeg';
 const ALSA_DEVICE = process.env.ALSA_DEVICE || '';
 const PIPER_RATE  = 22050;   // lessac-medium voice native sample rate
 
-const KEY_FILE = process.env.ELEVENLABS_KEY_FILE || path.join(__dirname, '..', 'data', 'elevenlabs.json');
+const KEY_FILE = process.env.ELEVENLABS_KEY_FILE || require('./paths').inData('elevenlabs.json');
 
 function elevenLabsConfig() {
   try {

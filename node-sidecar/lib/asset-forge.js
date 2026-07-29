@@ -10,7 +10,7 @@ const MAX_ASSET_BYTES = 250 * 1024 * 1024;
 const SCRIPT_DIR = path.join(__dirname, '..', 'asset-forge');
 
 function createAssetForgeRouter(options = {}) {
-  const dataDir = options.dataDir || path.join(__dirname, '..', 'data');
+  const dataDir = options.dataDir || require('./paths').dataDir();
   const cloudBase = options.cloudBase || process.env.CE_CLOUD_BASE || 'https://app.containedevolution.com';
   const workspaceRoot = path.join(dataDir, 'asset-forge');
   fs.mkdirSync(workspaceRoot, { recursive: true });

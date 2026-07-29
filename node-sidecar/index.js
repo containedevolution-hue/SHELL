@@ -9,8 +9,9 @@
 // sidecar binds 0.0.0.0 (LOCALHUB_HOST=0.0.0.0) so LAN clients and the cloud
 // PA (via tunnel, A3) can reach it.
 //
-// Storage: a `data/` folder next to this script. Each PouchDB database becomes
-// a subfolder; everything's local to this user's machine.
+// Storage: LOCALHUB_DATA_DIR (a writable per-user dir the desktop sets so data
+// survives app updates), else a `data/` folder next to this script (Pi / dev).
+// Resolved once in lib/paths.js. Each PouchDB database becomes a subfolder.
 //
 // Lifecycle: started by Tauri's spawn_sidecar() in main.rs (laptop) or by the
 // `cehub.service` systemd unit on the Pi. Killed by SIGTERM on shutdown.
@@ -39,16 +40,17 @@ const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
 const flowLocal = require('./lib/flow-local');
 const { createAssetForgeRouter } = require('./lib/asset-forge');
+const { dataDir } = require('./lib/paths');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
-const CERT_FILE  = path.join(__dirname, 'data', 'hub-cert.json');
+const CERT_FILE  = path.join(dataDir(), 'hub-cert.json');
 // Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
 // only legitimate client is the in-process Tauri webview). The Pi appliance
 // deployment sets LOCALHUB_HOST=0.0.0.0 so phones/laptops on the LAN can hit
 // it directly — only safe on a single-tenant device on a trusted network.
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = dataDir();
 
 // Ensure data dir exists before PouchDB tries to open / write into it.
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

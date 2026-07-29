@@ -55,7 +55,7 @@ const LLM_TIMEOUT   = 60000;
 // Resolve the model dir lazily so `dataDir` (from index.js) is honored without a
 // hard import cycle. Falls back to a whisper/ subfolder beside this script's data.
 function modelDir() {
-  return process.env.WHISPER_MODEL_DIR || path.join(__dirname, '..', 'data', 'whisper');
+  return process.env.WHISPER_MODEL_DIR || require('./paths').inData('whisper');
 }
 function modelPath() { return path.join(modelDir(), MODEL_NAME); }
 // Falls back to a binary sitting beside the model (same locality as modelDir's
