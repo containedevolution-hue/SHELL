@@ -40,7 +40,8 @@ const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
 const flowLocal = require('./lib/flow-local');
 const { createAssetForgeRouter } = require('./lib/asset-forge');
-const { dataDir } = require('./lib/paths');
+const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
+const { migrateIfNeeded } = require('./lib/migrate-data');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -51,6 +52,10 @@ const CERT_FILE  = path.join(dataDir(), 'hub-cert.json');
 // it directly — only safe on a single-tenant device on a trusted network.
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = dataDir();
+
+// DA0: on the desktop (relocated DATA_DIR), move any pre-relocation data in from
+// the legacy location BEFORE the store opens. No-op on Pi/dev (DATA_DIR == legacy).
+migrateIfNeeded(DATA_DIR, SIDECAR_ROOT);
 
 // Ensure data dir exists before PouchDB tries to open / write into it.
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
