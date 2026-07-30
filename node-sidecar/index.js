@@ -223,8 +223,11 @@ app.post('/speak/cancel', (_req, res) => {
 // Local-drawer read for the OFFLINE VIEW (localhub/web/index.html). Read-only,
 // LOOPBACK-ONLY: same-machine only — even on the Pi (0.0.0.0) it refuses
 // non-loopback callers so local docs never leave the box. The desktop's offline
-// page can't reach the pairing-gated store mount, so it reads here instead;
-// the user id comes from the box's own pairing state, not the caller.
+// page can't reach the pairing-gated store mount, so it reads here instead.
+// Identity is discovered from disk (lib/local-docs.js), NOT the Hub-appliance
+// pairing state — same-machine cyclone-sync already writes the logged-in
+// user's data into a ce-memories-{userId} folder here regardless of whether a
+// Hub has ever been paired.
 function loopbackOnly(req, res, next) {
   const ip = req.socket.remoteAddress || '';
   if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return next();
@@ -232,7 +235,7 @@ function loopbackOnly(req, res, next) {
 }
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {
-    res.json(await readLocalDocs(StoreCtor, pairing.getUserId()));
+    res.json(await readLocalDocs(StoreCtor, DATA_DIR));
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'read failed' });
   }

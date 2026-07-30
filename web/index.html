@@ -87,8 +87,8 @@
 
     function renderDocs(data) {
       var list = document.getElementById('list');
-      if (!data || !data.paired) {
-        list.innerHTML = '<p class="empty">No account is paired to this computer yet, so there are no local items to show.</p>';
+      if (!data || !data.known) {
+        list.innerHTML = '<p class="empty">No local-only items were found on this computer yet.</p>';
         return;
       }
       var docs = data.docs || [];
