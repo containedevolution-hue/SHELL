@@ -10,6 +10,13 @@ Cyclone C2b deliverable — see [`../../memory/apps/Cyclone-LocalHub-Conceptual.
 - Listens on `http://localhost:5984/` (the CouchDB default port).
 - Storage: `./data/` next to this script. One subfolder per PouchDB database.
 - Started + killed by Tauri's `src-tauri/src/main.rs` automatically.
+- Direct loopback requests are trusted for same-machine desktop use; proxy
+  headers or a public Host remove that trust because cloudflared also connects
+  to the origin over loopback. Every remote
+  PouchDB, Flow, speech, and asset request needs the sync-only capability; MCP
+  uses a different capability. Remote PouchDB paths are bound to the paired user.
+- `GET /pair` returns status only. Pair through the Railway beacon plus the
+  ten-minute local code; legacy shared-token files rotate and require re-pairing.
 
 ## Run standalone (dev / verify)
 
@@ -26,11 +33,10 @@ curl http://localhost:5984/
 # {"couchdb":"Welcome","version":"...","vendor":{"name":"PouchDB-Server"}}
 ```
 
-## What's next
+## Sync status
 
-- **C3 — same-network sync.** The PWA's per-user PouchDB (`ce-memories-{id}`)
-  begins replicating to a database here over the LAN, gated by the QR pairing
-  flow.
+- **C3 — same-network sync is built.** The PWA's per-user PouchDB
+  (`ce-memories-{id}`) replicates over HTTPS on the LAN after code pairing.
 - **C2c — bundling.** Today the sidecar uses the *system* Node (which is fine
   for dev on the developer's machine). For a shippable `.exe`, C2c bundles a
   Node binary and runs the sidecar via Tauri's proper "sidecar" pattern.

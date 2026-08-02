@@ -32,7 +32,6 @@ const crypto = require('crypto');
 const os = require('os');
 const https = require('https');
 const express = require('express');
-const cors = require('cors');
 const PouchDB = require('pouchdb-node');
 const expressPouchDB = require('express-pouchdb');
 const mcp = require('./mcp/server');
@@ -43,6 +42,8 @@ const { createAssetForgeRouter } = require('./lib/asset-forge');
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs } = require('./lib/local-docs');
+const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
+const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -75,12 +76,7 @@ const app = express();
 // OPTIONS preflight itself (no `preflightContinue`), so anything registered
 // after it never runs for a preflight request — this one sets its header
 // first and calls next() so cors() still finishes the response.
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS' && req.headers['access-control-request-private-network']) {
-    res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  }
-  next();
-});
+app.use(privateNetworkPreflight);
 
 // Allow the deployed PWA origin + any local dev/desktop origin. C3b-2 (true LAN
 // sync) will extend this to token-keyed per-device allowlist.
@@ -93,21 +89,7 @@ app.use((req, res, next) => {
 // instead is safe here: this server already only accepts loopback connections
 // at all (HOST defaults to 127.0.0.1), so a browser CORS check is only ever
 // relevant to code already running on this same machine.
-const LOOPBACK_ORIGIN_RE = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
-const FIXED_ORIGINS = new Set([
-  'https://app.containedevolution.com',
-  'https://www.containedevolution.com',
-  // Flow HUD / production desktop webview origin (macOS/Linux vs Windows).
-  'tauri://localhost',
-  'http://tauri.localhost',
-  'https://tauri.localhost',
-]);
-app.use(cors({
-  origin(origin, cb) {
-    cb(null, !origin || FIXED_ORIGINS.has(origin) || LOOPBACK_ORIGIN_RE.test(origin));
-  },
-  credentials: false,
-}));
+app.use(createCorsMiddleware());
 
 // ── Cyclone C2.1b — Google OAuth loopback callback ───────────────────────────
 //
@@ -147,14 +129,14 @@ app.get('/oauth/callback', (req, res) => {
 const pairingRouter = express.Router();
 pairingRouter.use(express.json({ limit: '64kb' }));
 
-// GET /pair — returns pairing_token + current tunnel URL.
-// The phone reads this once to bootstrap; no auth required because the token
-// alone is useless without the user's Railway session to bind it to.
+// GET /pair — public health/status only. Pairing authority is never returned by
+// a remotely reachable GET. The Hub beacons its identity to Railway over TLS;
+// the user proves local presence with the short code printed on the Hub.
 pairingRouter.get('/', (req, res) => {
   res.json({
-    pairing_token: pairing.getToken(),
     url: getTunnelUrl(),
     paired: pairing.isPaired(),
+    pairing: 'code_required',
   });
 });
 
@@ -163,49 +145,50 @@ pairingRouter.get('/', (req, res) => {
 // Validated by the pairing token in the body.
 pairingRouter.post('/confirm', (req, res) => {
   const { pairing_token, user_id } = req.body || {};
-  if (pairing_token !== pairing.getToken()) return res.status(403).json({ error: 'bad_token' });
+  if (!pairing.matchesToken('identity', pairing_token)) return res.status(403).json({ error: 'bad_token' });
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
   pairing.setUserId(user_id);
   console.log(`[localhub-pairing] bound to user ${user_id}`);
-  res.json({ ok: true });
+  // Only an authenticated Railway caller holding the appliance identity can
+  // receive the two scoped capabilities. The browser receives sync_token from
+  // its own authenticated CE preferences route; mcp_token remains server-only.
+  res.json({
+    ok: true,
+    sync_token: pairing.getSyncToken(),
+    mcp_token: pairing.getMcpToken(),
+  });
   // Kick off cert provision in the background — first-time pairing.
   certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
 });
 
 app.use('/pair', pairingRouter);
 
-// ── MCP — requires Bearer pairing token once device is paired ────────────────
+// ── Scoped remote authorization ─────────────────────────────────────────────
 
-function requirePairingToken(req, res, next) {
-  // Skip auth if the device hasn't been paired yet — lets the initial
-  // A4 verify step work before the user completes the pairing flow.
-  if (!pairing.isPaired()) return next();
-  const auth = req.headers.authorization || '';
-  if (auth === `Bearer ${pairing.getToken()}`) return next();
-  return res.status(401).json({ error: 'invalid_token' });
-}
+const requireSyncToken = createScopedTokenGuard(pairing, 'sync');
+const requireMcpToken = createScopedTokenGuard(pairing, 'mcp');
+const requirePairedDatabase = createPairedDatabaseGuard(pairing);
 
 // MCP must mount before the PouchDB catch-all on '/'.
-app.use('/mcp', requirePairingToken, mcp.mount());
+app.use('/mcp', requireMcpToken, mcp.mount());
 
-// Flow's NO-API engine — whisper.cpp STT + local Ollama cleanup. Mounts before
-// the PouchDB catch-all (like /mcp). No pairing token: loopback-only on a
-// laptop/Tauri, single-tenant on the Pi — same trust as the store itself.
-app.use('/flow', flowLocal.router());
+// Flow's NO-API engine — whisper.cpp STT + local Ollama cleanup. Loopback is
+// trusted; LAN/tunnel requests require the sync-only capability.
+app.use('/flow', requireSyncToken, flowLocal.router());
 
 // Media Lab 3D Assets — admin-only browser inspection hands Blender repair and
 // Power Edit jobs to this local desktop process. Must mount before PouchDB's
 // catch-all route.
-app.use('/asset-forge', createAssetForgeRouter({ dataDir: DATA_DIR }));
+app.use('/asset-forge', requireSyncToken, createAssetForgeRouter({ dataDir: DATA_DIR }));
 
 // Plain HTTP twin of the `speak` MCP tool, for a browser client that can't
 // speak the MCP JSON-RPC protocol (the hub kiosk page). Same engine (Piper ->
-// aplay on the pinned ALSA device), same loopback/single-tenant trust as
-// /flow above — deliberately not behind the pairing token. Unlike the MCP
+// aplay on the pinned ALSA device), same loopback/scoped-remote trust as
+// /flow above. Unlike the MCP
 // tool (fire-and-forget, so the PA tool-loop isn't blocked), this AWAITS
 // playback finishing before responding — the hub's turn-taking needs to know
 // when speech actually ends, not just that it started.
-app.post('/speak', express.json({ limit: '8kb' }), async (req, res) => {
+app.post('/speak', requireSyncToken, express.json({ limit: '8kb' }), async (req, res) => {
   const text = String((req.body && req.body.text) || '').trim();
   if (!text) return res.status(400).json({ error: 'text_required' });
   try {
@@ -215,7 +198,7 @@ app.post('/speak', express.json({ limit: '8kb' }), async (req, res) => {
     res.status(500).json({ ok: false, error: (e && e.message) || 'speak failed' });
   }
 });
-app.post('/speak/cancel', (_req, res) => {
+app.post('/speak/cancel', requireSyncToken, (_req, res) => {
   require('./lib/speaker').cancel();
   res.json({ ok: true });
 });
@@ -229,8 +212,7 @@ app.post('/speak/cancel', (_req, res) => {
 // user's data into a ce-memories-{userId} folder here regardless of whether a
 // Hub has ever been paired.
 function loopbackOnly(req, res, next) {
-  const ip = req.socket.remoteAddress || '';
-  if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') return next();
+  if (isLoopbackRequest(req)) return next();
   return res.status(403).json({ error: 'loopback_only' });
 }
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
@@ -245,12 +227,9 @@ app.get('/local/docs', loopbackOnly, async (_req, res) => {
 // actually use during replication. Smaller surface, less overhead than
 // 'fullCouchDB'; enough for Cyclone (the only client is PouchDB itself).
 //
-// Ledger #6: gate the store behind the pairing token (same as /mcp) so a paired
-// hub — which binds 0.0.0.0 and can front a public tunnel — no longer exposes
-// every ce-memories-{userId} DB by name. An UNPAIRED hub stays open (bootstrap /
-// loopback-only), so this changes nothing until the hub is paired. Clients send
-// `Authorization: Bearer <pairing_token>` via the cyclone-sync.js fetch hook.
-app.use('/', requirePairingToken, expressPouchDB(StoreCtor, {
+// All non-loopback store access requires the sync-only capability, before and
+// after pairing. MCP has a different credential and cannot read PouchDB.
+app.use('/', requireSyncToken, requirePairedDatabase, expressPouchDB(StoreCtor, {
   mode: 'minimumForPouchDB',
   logPath: path.join(DATA_DIR, 'log.txt'),
   configPath: path.join(DATA_DIR, 'config.json'),
@@ -260,7 +239,7 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (shared folders: ${require('./mcp/jail').allowedRoots().length})`);
-  console.log(`[localhub-pairing] token: ${pairing.getToken().slice(0, 8)}… paired: ${pairing.isPaired()}`);
+  console.log(`[localhub-pairing] credential v${pairing.CREDENTIAL_VERSION}; paired: ${pairing.isPaired()}`);
   // Auto-register (paired) or beacon (unpaired) on every boot.
   // Both poll for the cloudflared tunnel URL before acting.
   if (pairing.isPaired()) autoRegister().then(() => certify());
@@ -426,12 +405,16 @@ async function autoBeacon() {
     return;
   }
 
-  const verifyCode = pairing.getVerifyCode();
   console.log(`[localhub-pairing] Hub not paired — open Settings → Integrations → Hub Appliance`);
-  console.log(`[localhub-pairing] Pair code: ${verifyCode}`);
+  let printedCode = null;
 
   async function sendBeacon() {
     if (pairing.isPaired()) return; // stop beaconing once claimed
+    const verifyCode = pairing.getVerifyCode();
+    if (verifyCode !== printedCode) {
+      printedCode = verifyCode;
+      console.log(`[localhub-pairing] Pair code (valid 10 minutes): ${verifyCode}`);
+    }
     try {
       await fetch(`${RAILWAY_BASE}/api/hub/beacon`, {
         method: 'POST',
