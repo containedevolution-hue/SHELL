@@ -256,7 +256,7 @@ const server = app.listen(PORT, HOST, () => {
 // Skipped on loopback-only installs (laptop/Tauri default) — the localhost
 // exception already covers those; only the Pi (HOST=0.0.0.0) needs this.
 
-const RAILWAY_BASE = 'https://app.containedevolution.com';
+const RAILWAY_BASE = 'https://app.tenari.world';
 
 function getLanIp() {
   const ifaces = os.networkInterfaces();

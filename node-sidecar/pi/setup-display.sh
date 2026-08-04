@@ -39,7 +39,7 @@ SIDECAR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_DIR="$SIDECAR_DIR/data"
 PAIRING_JSON="$DATA_DIR/pairing.json"
 DISPLAY_TOKEN_JSON="$DATA_DIR/display-token.json"
-RAILWAY_BASE="${RAILWAY_BASE:-https://app.containedevolution.com}"
+RAILWAY_BASE="${RAILWAY_BASE:-https://app.tenari.world}"
 LABWC_DIR="$USER_HOME/.config/labwc"
 # The FREENOVE 4.3" touch panel is output DSI-2. Override if your kiosk screen
 # is a different output (see `wlr-randr` for names).

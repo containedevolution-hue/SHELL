@@ -15,7 +15,7 @@ Tauri (Rust shell) desktop app that:
 ## C2 slicing
 
 - ✅ **C2a — Tauri shell.** Opens a desktop window pointing at
-  `https://app.containedevolution.com/`. Bundling is OFF (`bundle.active: false`)
+  `https://app.tenari.world/`. Bundling is OFF (`bundle.active: false`)
   so dev mode works without icons; C2c adds icons + the Windows installer config.
 - ✅ **C2b — Node sidecar + express-pouchdb.** See [`node-sidecar/`](./node-sidecar).
   Tauri's `src-tauri/src/main.rs` spawns it at startup and kills it on
@@ -37,7 +37,7 @@ Tauri (Rust shell) desktop app that:
 ```powershell
 cd localhub
 npm run dev          # == tauri dev
-# A desktop window opens onto https://app.containedevolution.com/
+# A desktop window opens onto https://app.tenari.world/
 ```
 
 ## Build
@@ -68,7 +68,7 @@ localhub/
 └── src-tauri/
     ├── Cargo.toml
     ├── build.rs
-    ├── tauri.conf.json  (window opens https://app.containedevolution.com/)
+    ├── tauri.conf.json  (window opens https://app.tenari.world/)
     ├── capabilities/
     │   └── default.json (Tauri 2 capability — main window, core defaults)
     └── src/

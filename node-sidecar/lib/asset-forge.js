@@ -11,7 +11,7 @@ const SCRIPT_DIR = path.join(__dirname, '..', 'asset-forge');
 
 function createAssetForgeRouter(options = {}) {
   const dataDir = options.dataDir || require('./paths').dataDir();
-  const cloudBase = options.cloudBase || process.env.CE_CLOUD_BASE || 'https://app.containedevolution.com';
+  const cloudBase = options.cloudBase || process.env.CE_CLOUD_BASE || 'https://app.tenari.world';
   const workspaceRoot = path.join(dataDir, 'asset-forge');
   fs.mkdirSync(workspaceRoot, { recursive: true });
 

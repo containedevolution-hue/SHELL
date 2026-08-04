@@ -3,7 +3,7 @@
 //
 // Tauri shell that:
 //   - Opens a desktop window pointing at the live PWA
-//     (https://app.containedevolution.com/) — see tauri.conf.json.
+//     (https://app.tenari.world/) — see tauri.conf.json.
 //   - C2b: spawns the Node sidecar (../node-sidecar/index.js) which runs an
 //     express-pouchdb host on http://localhost:5984/. The sidecar is the
 //     CouchDB-protocol endpoint C3's PouchDB clients replicate to.

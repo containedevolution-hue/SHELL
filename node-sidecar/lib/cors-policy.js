@@ -3,9 +3,10 @@
 const cors = require('cors');
 
 const LOOPBACK_ORIGIN_RE = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/;
+// tenari.world is the app origin. The containedevolution app origin was hard-cut
+// 2026-08-04 and www.containedevolution.com dropped as vestigial (never a real
+// caller). CE stays the company/infra domain, not an origin that calls the sidecar.
 const FIXED_ORIGINS = new Set([
-  'https://app.containedevolution.com',
-  'https://www.containedevolution.com',
   'https://app.tenari.world',
   'https://tenari.world',
   'https://www.tenari.world',
