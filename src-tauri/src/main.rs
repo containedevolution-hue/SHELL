@@ -19,18 +19,22 @@
 //   - Kills the sidecar on ExitRequested so we never leave a zombie holding
 //     port 5984.
 //
-// Dev:    `npm run dev`   (== `tauri dev`)   — uses *system* Node.
-// Build:  `npm run build` (== `tauri build`) — needs C2c's bundled-Node sidecar.
+// Dev + Build: both launch the sidecar via the bundled Node externalBin
+// (`app.shell().sidecar("node")`, DA1). Run `node localhub/scripts/fetch-node-binary.mjs`
+// once to place `src-tauri/binaries/node-<target-triple>.exe`; `tauri build`
+// bundles it plus the node-sidecar/ + whisper/ resources so the installed app
+// runs on a machine with no system Node.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 
 /// Tauri command — perceptual image-dedup over a local folder, run by the
 /// CE-owned `ce_dedup` engine (no third-party product). `threshold` is the
@@ -171,44 +175,101 @@ async fn flow_copy_selection() -> Result<String, String> {
 }
 
 /// Managed handle to the Node sidecar child so the ExitRequested handler can
-/// kill it. Held in Tauri state because the sidecar is now spawned in setup()
-/// (where the AppHandle exists) rather than in main().
-struct SidecarChild(Mutex<Option<Child>>);
+/// kill it. Held in Tauri state because the sidecar is spawned in setup() (where
+/// the AppHandle exists) rather than in main(). A `CommandChild` from the shell
+/// plugin — DA5 will route its shutdown through a single `on_before_exit` path.
+struct SidecarChild(Mutex<Option<CommandChild>>);
 
-/// Spawn the Node sidecar. `data_dir`, when present, is a writable per-user
-/// directory (resolved from app_local_data_dir in setup) — passed to the sidecar
-/// so its store, pairing.json, cert, whisper model, and keys live somewhere an
-/// app update won't wipe. When None the sidecar keeps its own legacy path
-/// (`<sidecar>/data`), so the Pi appliance and standalone dev are unchanged.
-fn spawn_sidecar(data_dir: Option<&std::path::Path>) -> std::io::Result<Child> {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let localhub = std::path::PathBuf::from(manifest_dir)
+/// Spawn the bundled-Node sidecar via `app.shell().sidecar("node")` (DA1). The
+/// pinned `node` externalBin + the `node-sidecar/` and `whisper/` resource dirs
+/// are bundled by `tauri build`, so this runs on a machine with no system Node.
+///
+/// Paths resolve from the app's resource dir in a packaged build and fall back to
+/// the source tree for `tauri dev`. `data_dir`, when present, is a writable
+/// per-user directory (from app_local_data_dir in setup) so the store,
+/// pairing.json, cert, whisper model, and keys live somewhere an app update won't
+/// wipe; None keeps the sidecar's legacy `<sidecar>/data` (Pi appliance unchanged).
+fn spawn_sidecar(
+    app: &tauri::AppHandle,
+    data_dir: Option<&std::path::Path>,
+) -> Result<CommandChild, String> {
+    // Bundled resources (packaged) → source tree (dev). `../node-sidecar` and
+    // `../whisper` are mapped to `node-sidecar`/`whisper` under the resource dir
+    // by tauri.conf.json's bundle.resources.
+    let resource_dir = app.path().resource_dir().ok();
+    let source_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("src-tauri must have a parent dir (localhub/)")
-        .to_path_buf();
-    let script = localhub.join("node-sidecar").join("index.js");
-    println!("[localhub] spawning sidecar: node {}", script.display());
+        .map(|p| p.to_path_buf());
+    let resolve = |rel: &str| -> Option<std::path::PathBuf> {
+        resource_dir
+            .as_ref()
+            .map(|d| d.join(rel))
+            .filter(|p| p.exists())
+            .or_else(|| source_dir.as_ref().map(|d| d.join(rel)).filter(|p| p.exists()))
+    };
 
-    // Flow NO-API engine — tell the sidecar where whisper.cpp + its model live.
-    // The CLI is bundled under localhub/whisper/ (whisper-cli[.exe]); the ggml
-    // model downloads once into the sidecar data dir. Only set defaults when the
-    // launching env hasn't already (dev override / future externalBin packaging).
-    let whisper_bin = localhub.join("whisper").join(if cfg!(windows) { "whisper-cli.exe" } else { "whisper-cli" });
-    let mut cmd = Command::new("node");
-    cmd.arg(&script);
-    if std::env::var_os("WHISPER_BIN").is_none() && whisper_bin.exists() {
-        cmd.env("WHISPER_BIN", &whisper_bin);
+    let script = resolve("node-sidecar/index.js")
+        .ok_or_else(|| "sidecar index.js not found in resources or source tree".to_string())?;
+    println!("[localhub] spawning bundled-node sidecar: {}", script.display());
+
+    // Flow NO-API engine — tell the sidecar where whisper.cpp lives, if present.
+    // The whisper.cpp CLI is not yet provisioned/bundled (README TODO), so this
+    // resolves to None for now and Flow dictation is simply absent; once the
+    // whisper/ artifact + its bundle.resources entry land it lights up. Only set a
+    // default when the launching env hasn't already (dev override).
+    let whisper_name = if cfg!(windows) { "whisper/whisper-cli.exe" } else { "whisper/whisper-cli" };
+    let whisper_bin = resolve(whisper_name);
+
+    let mut cmd = app
+        .shell()
+        .sidecar("node")
+        .map_err(|e| format!("sidecar(\"node\") unavailable — is binaries/node-<triple> bundled? {e}"))?
+        .arg(script.to_string_lossy().to_string());
+
+    if std::env::var_os("WHISPER_BIN").is_none() {
+        if let Some(w) = whisper_bin {
+            cmd = cmd.env("WHISPER_BIN", w.to_string_lossy().to_string());
+        }
     }
     // DA0: point every persistent path at the per-user data dir so a whole
     // relocation moves together (no split-brain where the store moves but
     // pairing.json stays behind and the box silently unpairs on the next update).
     if let Some(dir) = data_dir {
         let _ = std::fs::create_dir_all(dir);
-        cmd.env("LOCALHUB_DATA_DIR", dir);
-        cmd.env("WHISPER_MODEL_DIR", dir.join("whisper"));
-        cmd.env("ELEVENLABS_KEY_FILE", dir.join("elevenlabs.json"));
+        cmd = cmd
+            .env("LOCALHUB_DATA_DIR", dir.to_string_lossy().to_string())
+            .env("WHISPER_MODEL_DIR", dir.join("whisper").to_string_lossy().to_string())
+            .env("ELEVENLABS_KEY_FILE", dir.join("elevenlabs.json").to_string_lossy().to_string());
     }
-    cmd.spawn()
+    // Consumer build excludes Media-Lab asset-forge — tell the sidecar not to
+    // mount/require it (its scripts aren't bundled in that build).
+    #[cfg(feature = "consumer")]
+    {
+        cmd = cmd.env("CE_CONSUMER", "1");
+    }
+
+    let (mut rx, child) = cmd
+        .spawn()
+        .map_err(|e| format!("failed to spawn sidecar: {e}"))?;
+
+    // Drain stdout/stderr so the pipe never backpressures and the sidecar's logs
+    // surface in the app console. Ends when the child terminates (channel closes).
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(line) => print!("[sidecar] {}", String::from_utf8_lossy(&line)),
+                CommandEvent::Stderr(line) => eprint!("[sidecar] {}", String::from_utf8_lossy(&line)),
+                CommandEvent::Error(e) => eprintln!("[sidecar] error: {e}"),
+                CommandEvent::Terminated(payload) => {
+                    eprintln!("[sidecar] terminated: {payload:?}");
+                    break;
+                }
+                _ => {}
+            }
+        }
+    });
+
+    Ok(child)
 }
 
 fn main() {
@@ -236,6 +297,8 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // DA1 — launches the bundled Node externalBin as the sidecar.
+        .plugin(tauri_plugin_shell::init())
         // Flow: OS-level push-to-talk. On press we reveal the HUD overlay and
         // emit `flow-hotkey` (mode) — the flow-hud window records/injects; the
         // remote PWA never sees native input. Fires regardless of focus, so it
@@ -275,17 +338,18 @@ fn main() {
             if data_dir.is_none() {
                 eprintln!("[localhub] WARN: app_local_data_dir() unavailable — sidecar uses its legacy data path");
             }
-            let child = match spawn_sidecar(data_dir.as_deref()) {
+            let child = match spawn_sidecar(app.handle(), data_dir.as_deref()) {
                 Ok(c) => {
-                    println!("[localhub] sidecar pid: {}", c.id());
+                    println!("[localhub] sidecar pid: {}", c.pid());
                     Some(c)
                 }
                 Err(e) => {
                     eprintln!(
                         "[localhub] WARN: failed to spawn sidecar ({}). The desktop \
                          shell will still open, but http://localhost:5984/ won't be \
-                         available. Verify Node is on PATH and node-sidecar/ deps are \
-                         installed (`cd node-sidecar && npm install`).",
+                         available. Verify the bundled node binary is present \
+                         (`node scripts/fetch-node-binary.mjs`) and the sidecar deps \
+                         are installed (`cd node-sidecar && npm install`).",
                         e
                     );
                     None
@@ -360,10 +424,11 @@ fn main() {
         if let tauri::RunEvent::ExitRequested { .. } = event {
             if let Some(state) = handle.try_state::<SidecarChild>() {
                 if let Ok(mut guard) = state.0.lock() {
-                    if let Some(mut child) = guard.take() {
-                        println!("[localhub] killing sidecar pid: {}", child.id());
+                    if let Some(child) = guard.take() {
+                        println!("[localhub] killing sidecar pid: {}", child.pid());
+                        // CommandChild::kill consumes self and releases the LevelDB
+                        // LOCK; DA5 will move this to a single on_before_exit path.
                         let _ = child.kill();
-                        let _ = child.wait();
                     }
                 }
             }

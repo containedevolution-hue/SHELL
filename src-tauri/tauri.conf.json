@@ -70,6 +70,10 @@
     "category": "Utility",
     "shortDescription": "Contained Evolution local sync host",
     "longDescription": "LocalHub is the desktop host for Contained Evolution's Cyclone sync system. It runs a CouchDB-compatible engine on your LAN so your devices sync to your own machine.",
+    "externalBin": ["binaries/node"],
+    "resources": {
+      "../node-sidecar": "node-sidecar"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

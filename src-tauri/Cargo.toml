@@ -6,6 +6,12 @@ authors = ["Contained Evolution"]
 edition = "2021"
 rust-version = "1.77"
 
+[features]
+# Consumer desktop build (DA1): excludes Chris's Media-Lab asset-forge tooling.
+# `cargo`/`tauri build --features consumer` forwards CE_CONSUMER=1 to the sidecar
+# so it neither mounts nor requires /asset-forge.
+consumer = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -36,6 +42,11 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 # browser (WebView2 is blocked by Google for OAuth). The webview calls
 # window.__TAURI__.opener.openUrl(...) to launch the user's default browser.
 tauri-plugin-opener = "2"
+
+# DA1 — bundled-Node sidecar. Ships a pinned node.exe as an externalBin and
+# launches it via app.shell().sidecar("node") so the desktop app runs on a clean
+# machine with no system Node. Replaces the dev-only Command::new("node").
+tauri-plugin-shell = "2"
 
 # Native folder picker for the photo-dedup window's "Browse…" button. Official
 # Tauri plugin (same ecosystem as deep-link/opener above), not a third-party product.

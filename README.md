@@ -32,7 +32,23 @@ Tauri (Rust shell) desktop app that:
   switches PouchDB sync to the HTTPS LAN url from prefs (`hub_lan_url`). Details:
   `memory/apps/Tenari-Command-Center.md` (Cyclone sync engine).
 
-## Dev (requires the prerequisites below)
+## Bundled-Node artifacts (DA1 — provision once before dev/build)
+
+The sidecar launches via the bundled Node externalBin (`app.shell().sidecar("node")`),
+so the app runs on a machine with no system Node. Three artifacts are fetched/built,
+NOT committed (see `.gitignore`), and must ship as ONE atomic set matched to `NODE_VERSION`:
+
+```powershell
+cd localhub
+node scripts/fetch-node-binary.mjs        # → src-tauri/binaries/node-x86_64-pc-windows-msvc.exe
+cd node-sidecar && npm ci --omit=dev      # → node-sidecar/node_modules (native leveldown built for that node)
+cd ..
+# whisper/  → whisper-cli[.exe] + no model (the ggml model self-downloads into the data dir on first Flow use).
+#   Provision the whisper.cpp CLI build into localhub/whisper/ (Flow's NO-API engine). TODO: add a
+#   fetch/build step; until then Flow dictation is absent but the app otherwise runs.
+```
+
+## Dev (requires the prerequisites below + the artifacts above)
 
 ```powershell
 cd localhub
@@ -44,8 +60,9 @@ npm run dev          # == tauri dev
 
 ```powershell
 cd localhub
-npm run build        # == tauri build
-# C2c enables bundling; until then this is a compile-only smoke test.
+npm run build                       # == tauri build → MSI (DA3 switches to NSIS)
+npm run build -- --features consumer  # consumer build: excludes Media-Lab asset-forge
+# Bundles binaries/node + node-sidecar/ + whisper/ as resources. Needs the artifacts above present.
 ```
 
 ## Prerequisites (Windows)

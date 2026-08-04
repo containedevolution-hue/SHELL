@@ -38,7 +38,10 @@ const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
 const flowLocal = require('./lib/flow-local');
-const { createAssetForgeRouter } = require('./lib/asset-forge');
+// Media-Lab asset-forge is excluded from the consumer desktop build (CE_CONSUMER=1):
+// its scripts dir isn't bundled there, so skip the require too or startup would fail
+// resolving a module that isn't shipped. (Tenari-Desktop-App spec, DA1.)
+const { createAssetForgeRouter } = process.env.CE_CONSUMER ? {} : require('./lib/asset-forge');
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs } = require('./lib/local-docs');
@@ -178,8 +181,11 @@ app.use('/flow', requireSyncToken, flowLocal.router());
 
 // Media Lab 3D Assets — admin-only browser inspection hands Blender repair and
 // Power Edit jobs to this local desktop process. Must mount before PouchDB's
-// catch-all route.
-app.use('/asset-forge', requireSyncToken, createAssetForgeRouter({ dataDir: DATA_DIR }));
+// catch-all route. Skipped in the consumer build (CE_CONSUMER=1) — Media-Lab
+// tooling is Chris's build only.
+if (!process.env.CE_CONSUMER) {
+  app.use('/asset-forge', requireSyncToken, createAssetForgeRouter({ dataDir: DATA_DIR }));
+}
 
 // Plain HTTP twin of the `speak` MCP tool, for a browser client that can't
 // speak the MCP JSON-RPC protocol (the hub kiosk page). Same engine (Piper ->
