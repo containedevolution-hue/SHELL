@@ -1,5 +1,5 @@
-// LocalHub Node sidecar — Cyclone C2b (memory/apps/Cyclone-LocalHub-Conceptual.md)
-// + Hub Appliance A2 MCP foundation (memory/apps/CE-Hub-Appliance-Conceptual.md).
+// LocalHub Node sidecar — Cyclone sync + Hub appliance MCP foundation.
+// Owners: memory/apps/System/Tenari-Command-Center.md and memory/platform/MCP-and-Hub.md.
 //
 // Hosts two things on the same Express app:
 //   /         — CouchDB-protocol-compatible PouchDB endpoint (Cyclone replication target)

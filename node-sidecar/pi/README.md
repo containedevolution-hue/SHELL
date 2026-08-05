@@ -11,8 +11,8 @@ Use **Raspberry Pi Imager** on your laptop. Two OS variants are both valid:
   default for a shelf-sitting headless appliance. Phone PWA is the only UI.
 - **Raspberry Pi OS Full (64-bit)** — full desktop + Chromium pre-installed.
   ~1.9 GB. Pick this if you want to attach an HDMI screen and use the deployed
-  PWA from the Pi itself (the "Full Desktop" persona in
-  `memory/apps/CE-Hub-Appliance-Conceptual.md`). Slower boot, ~1 GB more RAM in
+  PWA from the Pi itself (see `memory/apps/System/Tenari-Command-Center.md`).
+  Slower boot, ~1 GB more RAM in
   use — still fine on Pi 5 4GB. Same `setup.sh` works on both.
 
 Click the gear icon (or NEXT → EDIT SETTINGS in Imager 2.x) and set:
