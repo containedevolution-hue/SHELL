@@ -1,10 +1,5 @@
 'use strict';
 
-// The user's folder allowlist for the filesystem MCP tools. A JSON file under
-// the data dir — {"folders": ["C:\\Users\\me\\Documents", ...]} — written by the
-// desktop's folder picker. It is a USER action only (never an assistant tool),
-// so the AI can't widen its own reach. jail.js reads this to enforce default-deny.
-
 const fs = require('fs');
 const { inData } = require('../lib/paths');
 

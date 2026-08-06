@@ -1,15 +1,5 @@
 'use strict';
 
-// MCP tool registry — mirrors the lib/pa-tools.js shape (each tool has
-// `name`, `definition` in OpenAI function-call shape, and `execute(args)`)
-// so a future adapter on the cloud PA side (A4) can translate appliance MCP
-// tools into PA tool-loop entries with one mapping, not per-tool plumbing.
-//
-// `definition.function.parameters` is JSON Schema, which IS MCP's
-// `inputSchema` — listTools() does a structural rename only. No app_access
-// or privacy filtering here (lib/pa-tools.js needs it; the appliance does
-// not — auth is the network boundary, brought online by A5).
-
 const tools = [
   require('./tools/read-file'),
   require('./tools/list-directory'),

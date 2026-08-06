@@ -20,7 +20,7 @@ module.exports = {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const roots = allowedRoots();
-    const diskPath = roots[0] || os.homedir(); // system disk info; not a file read
+    const diskPath = roots[0] || os.homedir(); 
     const status = {
       hostname: os.hostname(),
       platform: os.platform(),
@@ -41,8 +41,7 @@ module.exports = {
       },
       shared_folders: roots,
     };
-    // fs.statfs landed in Node 18.15 — graceful skip if unavailable so the
-    // tool still works on older runtimes.
+    
     if (typeof fs.statfs === 'function') {
       await new Promise((resolve) => {
         fs.statfs(diskPath, (err, stats) => {

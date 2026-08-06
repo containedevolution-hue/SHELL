@@ -25,7 +25,7 @@ module.exports = {
     },
   },
   async execute({ path: input } = {}) {
-    // No path → discovery: tell the model which folders it may look inside.
+    
     if (input === undefined || input === '') {
       const roots = allowedRoots();
       return {

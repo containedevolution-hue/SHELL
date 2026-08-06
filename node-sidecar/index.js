@@ -1,29 +1,3 @@
-// LocalHub Node sidecar — Cyclone sync + Hub appliance MCP foundation.
-// Owners: memory/apps/System/Tenari-Command-Center.md and memory/platform/MCP-and-Hub.md.
-//
-// Hosts two things on the same Express app:
-//   /         — CouchDB-protocol-compatible PouchDB endpoint (Cyclone replication target)
-//   /mcp      — Model Context Protocol JSON-RPC endpoint (read-only tool host for the PA)
-//
-// On a laptop/Tauri install both mount on 127.0.0.1; on the Pi appliance the
-// sidecar binds 0.0.0.0 (LOCALHUB_HOST=0.0.0.0) so LAN clients and the cloud
-// PA (via tunnel, A3) can reach it.
-//
-// Storage: LOCALHUB_DATA_DIR (a writable per-user dir the desktop sets so data
-// survives app updates), else a `data/` folder next to this script (Pi / dev).
-// Resolved once in lib/paths.js. Each PouchDB database becomes a subfolder.
-//
-// Lifecycle: started by Tauri's spawn_sidecar() in main.rs (laptop) or by the
-// `cehub.service` systemd unit on the Pi. Killed by SIGTERM on shutdown.
-// Standalone dev:
-//   cd localhub/node-sidecar
-//   node index.js
-//
-// Verify (sidecar running):
-//   curl http://localhost:5984/                                # PouchDB welcome
-//   curl -X POST http://localhost:5984/mcp -H 'content-type: application/json' \
-//        -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'   # MCP tool list
-
 'use strict';
 
 const path = require('path');
@@ -37,19 +11,14 @@ const expressPouchDB = require('express-pouchdb');
 const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
-// Flow's NO-API engine is optional. It reaches shared prompt assets that aren't
-// part of the standalone sidecar bundle yet, and Flow can't run without the
-// whisper binary anyway. A failure loading it must never take down core
-// sync/OAuth/MCP, so load it defensively and disable Flow if it isn't available.
+
 let flowLocal = null;
 try {
   flowLocal = require('./lib/flow-local');
 } catch (err) {
   console.warn(`[localhub-sidecar] Flow engine disabled (optional dependency unavailable): ${err.message}`);
 }
-// Media-Lab asset-forge is excluded from the consumer desktop build (CE_CONSUMER=1):
-// its scripts dir isn't bundled there, so skip the require too or startup would fail
-// resolving a module that isn't shipped. (Tenari-Desktop-App spec, DA1.)
+
 const { createAssetForgeRouter } = process.env.CE_CONSUMER ? {} : require('./lib/asset-forge');
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
@@ -60,61 +29,22 @@ const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-po
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
 const CERT_FILE  = path.join(dataDir(), 'hub-cert.json');
-// Default 127.0.0.1 keeps the laptop/Tauri scenario locked to loopback (the
-// only legitimate client is the in-process Tauri webview). The Pi appliance
-// deployment sets LOCALHUB_HOST=0.0.0.0 so phones/laptops on the LAN can hit
-// it directly — only safe on a single-tenant device on a trusted network.
+
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = dataDir();
 
-// DA0: on the desktop (relocated DATA_DIR), move any pre-relocation data in from
-// the legacy location BEFORE the store opens. No-op on Pi/dev (DATA_DIR == legacy).
 migrateIfNeeded(DATA_DIR, SIDECAR_ROOT);
 
-// Ensure data dir exists before PouchDB tries to open / write into it.
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// PouchDB.defaults locks the LevelDB on-disk location for any DB created via
-// this constructor (each `new StoreCtor('mydb')` becomes a folder under DATA_DIR).
 const StoreCtor = PouchDB.defaults({ prefix: DATA_DIR + path.sep });
 
 const app = express();
 
-// PNA preflight — lets a caller whose own origin is treated as a different
-// (or unknown) address space reach this loopback/LAN server anyway (Chrome on
-// Android reaching a LAN box from an HTTPS PWA; the desktop's own local
-// tauri.localhost page reaching http://localhost:5984 for /local/docs).
-// MUST be registered BEFORE cors(): the `cors` package answers and ends an
-// OPTIONS preflight itself (no `preflightContinue`), so anything registered
-// after it never runs for a preflight request — this one sets its header
-// first and calls next() so cors() still finishes the response.
 app.use(privateNetworkPreflight);
 
-// Allow the deployed PWA origin + any local dev/desktop origin. C3b-2 (true LAN
-// sync) will extend this to token-keyed per-device allowlist.
-//
-// A fixed list works for a PRODUCTION build (the bundled webview's origin is
-// always tauri://localhost / http(s)://tauri.localhost), but `tauri dev`
-// serves the local frontendDist over a real HTTP server on an EPHEMERAL
-// 127.0.0.1 port that's different every run (e.g. http://127.0.0.1:1430) — a
-// fixed string can never match it. Matching any loopback origin by pattern
-// instead is safe here: this server already only accepts loopback connections
-// at all (HOST defaults to 127.0.0.1), so a browser CORS check is only ever
-// relevant to code already running on this same machine.
 app.use(createCorsMiddleware());
 
-// ── Cyclone C2.1b — Google OAuth loopback callback ───────────────────────────
-//
-// Google's installed-app OAuth policy: Desktop clients can use a loopback IP
-// redirect (http://127.0.0.1:PORT/...) WITHOUT registering the URI on the
-// client config (which custom URI schemes now require, and the Cloud Console
-// Desktop-client UI provides no field for anyway). We accept the redirect
-// here, then bounce to the Tauri custom-scheme `com.containedevolution.localhub:/...`
-// so the existing in-Tauri deep-link → PWA event listener pipeline still
-// carries the `code` + `state` into the webview. Loopback satisfies Google;
-// custom scheme handles the Tauri hop. No auth on this route — Google sends
-// the request unauthenticated by design; the `code` is PKCE-protected and
-// `state` is checked PWA-side before any exchange.
 app.get('/oauth/callback', (req, res) => {
   const qs = req.originalUrl.split('?')[1] || '';
   const customUrl = 'com.containedevolution.localhub:/oauth/callback' + (qs ? '?' + qs : '');
@@ -136,14 +66,9 @@ app.get('/oauth/callback', (req, res) => {
 </body></html>`);
 });
 
-// ── Pairing routes (no token auth — bootstrap surface) ───────────────────────
-
 const pairingRouter = express.Router();
 pairingRouter.use(express.json({ limit: '64kb' }));
 
-// GET /pair — public health/status only. Pairing authority is never returned by
-// a remotely reachable GET. The Hub beacons its identity to Railway over TLS;
-// the user proves local presence with the short code printed on the Hub.
 pairingRouter.get('/', (req, res) => {
   res.json({
     url: getTunnelUrl(),
@@ -152,61 +77,40 @@ pairingRouter.get('/', (req, res) => {
   });
 });
 
-// POST /pair/confirm — called by Railway (proxied through the phone) after
-// a successful /api/hub/pair to bind the sidecar to an user.
-// Validated by the pairing token in the body.
 pairingRouter.post('/confirm', (req, res) => {
   const { pairing_token, user_id } = req.body || {};
   if (!pairing.matchesToken('identity', pairing_token)) return res.status(403).json({ error: 'bad_token' });
   if (!user_id) return res.status(400).json({ error: 'user_id required' });
   pairing.setUserId(user_id);
   console.log(`[localhub-pairing] bound to user ${user_id}`);
-  // Only an authenticated Railway caller holding the appliance identity can
-  // receive the two scoped capabilities. The browser receives sync_token from
-  // its own authenticated CE preferences route; mcp_token remains server-only.
+  
   res.json({
     ok: true,
     sync_token: pairing.getSyncToken(),
     mcp_token: pairing.getMcpToken(),
   });
-  // Kick off cert provision in the background — first-time pairing.
+  
   certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
 });
 
 app.use('/pair', pairingRouter);
 
-// ── Scoped remote authorization ─────────────────────────────────────────────
-
 const requireSyncToken = createScopedTokenGuard(pairing, 'sync');
 const requireMcpToken = createScopedTokenGuard(pairing, 'mcp');
 const requirePairedDatabase = createPairedDatabaseGuard(pairing);
 
-// MCP must mount before the PouchDB catch-all on '/'.
 app.use('/mcp', requireMcpToken, mcp.mount());
 
-// Flow's NO-API engine — whisper.cpp STT + local Ollama cleanup. Loopback is
-// trusted; LAN/tunnel requests require the sync-only capability.
 if (flowLocal) {
   app.use('/flow', requireSyncToken, flowLocal.router());
 } else {
   console.warn('[localhub-sidecar] /flow route not mounted — Flow engine unavailable in this build');
 }
 
-// Media Lab 3D Assets — admin-only browser inspection hands Blender repair and
-// Power Edit jobs to this local desktop process. Must mount before PouchDB's
-// catch-all route. Skipped in the consumer build (CE_CONSUMER=1) — Media-Lab
-// tooling is Chris's build only.
 if (!process.env.CE_CONSUMER) {
   app.use('/asset-forge', requireSyncToken, createAssetForgeRouter({ dataDir: DATA_DIR }));
 }
 
-// Plain HTTP twin of the `speak` MCP tool, for a browser client that can't
-// speak the MCP JSON-RPC protocol (the hub kiosk page). Same engine (Piper ->
-// aplay on the pinned ALSA device), same loopback/scoped-remote trust as
-// /flow above. Unlike the MCP
-// tool (fire-and-forget, so the PA tool-loop isn't blocked), this AWAITS
-// playback finishing before responding — the hub's turn-taking needs to know
-// when speech actually ends, not just that it started.
 app.post('/speak', requireSyncToken, express.json({ limit: '8kb' }), async (req, res) => {
   const text = String((req.body && req.body.text) || '').trim();
   if (!text) return res.status(400).json({ error: 'text_required' });
@@ -222,14 +126,6 @@ app.post('/speak/cancel', requireSyncToken, (_req, res) => {
   res.json({ ok: true });
 });
 
-// Local-drawer read for the OFFLINE VIEW (localhub/web/index.html). Read-only,
-// LOOPBACK-ONLY: same-machine only — even on the Pi (0.0.0.0) it refuses
-// non-loopback callers so local docs never leave the box. The desktop's offline
-// page can't reach the pairing-gated store mount, so it reads here instead.
-// Identity is discovered from disk (lib/local-docs.js), NOT the Hub-appliance
-// pairing state — same-machine cyclone-sync already writes the logged-in
-// user's data into a ce-memories-{userId} folder here regardless of whether a
-// Hub has ever been paired.
 function loopbackOnly(req, res, next) {
   if (isLoopbackRequest(req)) return next();
   return res.status(403).json({ error: 'loopback_only' });
@@ -242,12 +138,6 @@ app.get('/local/docs', loopbackOnly, async (_req, res) => {
   }
 });
 
-// 'minimumForPouchDB' = the subset of the CouchDB HTTP API PouchDB clients
-// actually use during replication. Smaller surface, less overhead than
-// 'fullCouchDB'; enough for Cyclone (the only client is PouchDB itself).
-//
-// All non-loopback store access requires the sync-only capability, before and
-// after pairing. MCP has a different credential and cannot read PouchDB.
 app.use('/', requireSyncToken, requirePairedDatabase, expressPouchDB(StoreCtor, {
   mode: 'minimumForPouchDB',
   logPath: path.join(DATA_DIR, 'log.txt'),
@@ -259,21 +149,10 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] data dir: ${DATA_DIR}`);
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (shared folders: ${require('./mcp/jail').allowedRoots().length})`);
   console.log(`[localhub-pairing] credential v${pairing.CREDENTIAL_VERSION}; paired: ${pairing.isPaired()}`);
-  // Auto-register (paired) or beacon (unpaired) on every boot.
-  // Both poll for the cloudflared tunnel URL before acting.
+  
   if (pairing.isPaired()) autoRegister().then(() => certify());
   else autoBeacon();
 });
-
-// ── LAN HTTPS cert provisioning (C3b-2 / A5c) ────────────────────────────────
-// On every boot (if paired), the sidecar asks Railway to provision/renew a
-// 90-day Let's Encrypt cert for its UUID subdomain (*.hub.containedevolution.com),
-// then starts an HTTPS listener on port 8443 with that cert.  This makes the
-// sidecar reachable over HTTPS on the LAN so both iOS and Android PWAs can run
-// PouchDB sync without the mixed-content block.
-//
-// Skipped on loopback-only installs (laptop/Tauri default) — the localhost
-// exception already covers those; only the Pi (HOST=0.0.0.0) needs this.
 
 const RAILWAY_BASE = 'https://app.tenari.world';
 
@@ -291,7 +170,7 @@ function loadCachedCert() {
   try {
     if (!fs.existsSync(CERT_FILE)) return null;
     const data = JSON.parse(fs.readFileSync(CERT_FILE, 'utf8'));
-    // Consider stale within 30 days of expiry so we re-provision proactively.
+    
     if (new Date(data.expires_at) < new Date(Date.now() + 30 * 86400_000)) return null;
     return data;
   } catch { return null; }
@@ -312,7 +191,7 @@ async function provisionCert() {
         'authorization': `Bearer ${pairing.getToken()}`,
       },
       body: JSON.stringify({ lan_ip: lanIp }),
-      signal: AbortSignal.timeout(120_000), // ACME DNS-01 round-trip takes ~45s
+      signal: AbortSignal.timeout(120_000), 
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -363,10 +242,8 @@ async function registerLanUrl(subdomain) {
   }
 }
 
-// Full cert lifecycle: provision (or use cached), start HTTPS, register URL.
-// Only runs on LAN-bound installs (HOST !== loopback).
 async function certify() {
-  if (HOST === '127.0.0.1') return; // laptop/Tauri — localhost exception covers it
+  if (HOST === '127.0.0.1') return; 
   let certData = loadCachedCert();
   if (!certData) certData = await provisionCert();
   if (!certData) return;
@@ -374,7 +251,7 @@ async function certify() {
   await registerLanUrl(certData.subdomain);
 }
 const REGISTER_POLL_MS = 5000;
-const REGISTER_MAX_POLLS = 18; // 90s total — tunnel can be slow on cold boot
+const REGISTER_MAX_POLLS = 18; 
 
 async function autoRegister() {
   let tunnelUrl = null;
@@ -407,9 +284,6 @@ async function autoRegister() {
   }
 }
 
-// Auto-beacon: when unpaired, broadcast presence to Railway so the user's
-// Settings page can detect the device and prompt for the verify code.
-// Generates a random 6-char code each boot — only way to claim the device.
 const BEACON_INTERVAL_MS = 60000;
 
 async function autoBeacon() {
@@ -428,7 +302,7 @@ async function autoBeacon() {
   let printedCode = null;
 
   async function sendBeacon() {
-    if (pairing.isPaired()) return; // stop beaconing once claimed
+    if (pairing.isPaired()) return; 
     const verifyCode = pairing.getVerifyCode();
     if (verifyCode !== printedCode) {
       printedCode = verifyCode;
@@ -455,8 +329,6 @@ async function autoBeacon() {
   }, BEACON_INTERVAL_MS);
 }
 
-// Tauri's main.rs sends a kill signal on ExitRequested. Graceful close + a
-// short force-exit fallback so we never leave a zombie holding port 5984.
 function shutdown(signal) {
   console.log(`[localhub-sidecar] ${signal} — shutting down`);
   server.close(() => process.exit(0));

@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const { resolveJailed, JailError } = require('../jail');
 const audit = require('../audit');
 
-const MAX_BYTES = 1024 * 1024; // 1 MiB cap — model context isn't infinite.
+const MAX_BYTES = 1024 * 1024; 
 
 module.exports = {
   name: 'read_file',

@@ -1,16 +1,5 @@
 'use strict';
 
-// Minimal MCP server — JSON-RPC 2.0 over HTTP POST, single endpoint.
-// Spec: https://modelcontextprotocol.io. We implement the subset A2 needs:
-//   - initialize  → handshake + capability negotiation
-//   - tools/list  → list of available tools
-//   - tools/call  → invoke one tool, return content blocks
-//   - ping        → liveness probe
-//
-// No sessions, no SSE, no notifications — those are optional in the spec
-// and unnecessary for short read-only calls. If a future tool needs
-// streaming we'll layer it then, not for hypothetical futures now.
-
 const express = require('express');
 const { listTools, executeTool } = require('./registry');
 
@@ -56,7 +45,7 @@ async function dispatch(message) {
       });
     }
     case 'notifications/initialized':
-      // Spec: notifications have no id and no response.
+      
       return null;
     default:
       return jsonrpcError(id, -32601, `Method not found: ${method}`);

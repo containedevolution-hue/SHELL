@@ -1,16 +1,5 @@
 'use strict';
 
-// Persistent pairing state for this appliance instance.
-// Stored in data/pairing.json next to the sidecar's data directory.
-//
-// Credentials are deliberately scoped:
-//   pairing_token — appliance → Railway identity (never sent to a browser)
-//   sync_token    — browser → PouchDB/local-service access
-//   mcp_token     — Railway PA → MCP tool access
-// user_id is set via POST /pair/confirm after the local verification code is
-// claimed. Legacy single-token files are rotated and unpaired on first load;
-// the old credential must be treated as disclosed and cannot be carried over.
-
 const crypto = require('crypto');
 const fs = require('fs');
 const { inData } = require('./paths');

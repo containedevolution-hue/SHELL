@@ -1,26 +1,10 @@
 'use strict';
 
-// Read the user's Local-drawer docs straight from the on-disk PouchDB — the data
-// behind the offline view. Read-only, slim projection. Same per-user DB as the
-// Memory Bank (`ce-memories-{userId}`); the Local drawer is the `doc:{source}:local-*`
-// rows (see public/js/doc-store.js: _id `doc:{source}:{localId}`, localId `local-*`).
-//
-// IDENTITY: which user's DB to read is NOT the Hub-appliance pairing state
-// (lib/pairing.js) — that tracks a separate remote-tunnel concept and is often
-// false even when the app is fully logged in and syncing locally. Instead this
-// discovers identity from disk: `/memory/js/cyclone-sync.js` already replicates
-// the logged-in user's data into a `ce-memories-{userId}` folder here via
-// same-machine sync (Tenari-Command-Center.md "Same-machine replication"), so
-// that folder's mere existence IS the signal. If more than one ever exists
-// (a second account once used this box), the most recently written one wins —
-// never merge two users' local drawers together.
-
 const fs = require('fs');
 const path = require('path');
 
 const PREFIX = 'ce-memories-';
 
-// Newest-first list of userIds with a store folder under dataDir.
 function discoverUserIds(dataDir) {
   let entries;
   try { entries = fs.readdirSync(dataDir, { withFileTypes: true }); } catch (_) { return []; }
@@ -31,8 +15,6 @@ function discoverUserIds(dataDir) {
     .map((e) => e.userId);
 }
 
-// Latest mtime of any file under dir — a folder-level mtime alone can miss an
-// in-place append to an existing LevelDB .log file, so this walks the files.
 function maxMtimeMs(dir) {
   let max = 0;
   const stack = [dir];
@@ -43,7 +25,7 @@ function maxMtimeMs(dir) {
     for (const e of entries) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) { stack.push(p); continue; }
-      try { const t = fs.statSync(p).mtimeMs; if (t > max) max = t; } catch (_) { /* skip */ }
+      try { const t = fs.statSync(p).mtimeMs; if (t > max) max = t; } catch (_) {  }
     }
   }
   return max;

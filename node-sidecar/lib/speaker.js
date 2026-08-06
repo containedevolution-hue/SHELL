@@ -1,22 +1,5 @@
 'use strict';
 
-// localhub/node-sidecar/lib/speaker.js — Pi-side text-to-speech.
-//
-// Two engines, ElevenLabs preferred, Piper the always-available local
-// fallback:
-//   - ElevenLabs: fetch MP3 -> ffmpeg decode to raw PCM -> aplay. Only
-//     tried when data/elevenlabs.json (gitignored, this box only) holds a
-//     key + voiceId. Any failure (network, bad key, ffmpeg missing) falls
-//     back to Piper rather than going silent.
-//   - Piper (local neural TTS, free, runs on ARM): text -> aplay for ALSA
-//     playback. Mirrors the web app's browser-SpeechSynthesis fallback.
-//
-// Paths are env-overridable so a developer laptop can point at any local
-// install; the Pi setup script puts Piper under /opt/piper.
-//
-// Concurrency: one playback at a time. A new speak() cancels whatever
-// is currently playing — proactive notifications shouldn't pile up.
-
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -25,10 +8,7 @@ const PIPER_BIN   = process.env.PIPER_BIN   || '/opt/piper/piper';
 const PIPER_MODEL = process.env.PIPER_MODEL || '/opt/piper/voices/en_US-lessac-medium.onnx';
 const APLAY_BIN   = process.env.APLAY_BIN   || 'aplay';
 const FFMPEG_BIN  = process.env.FFMPEG_BIN  || 'ffmpeg';
-// ALSA_DEVICE pins -D for aplay (e.g. "plughw:0,0"). Set by setup-audio.sh
-// in /etc/cehub/audio.env after it probes the HDMI card. Without this, the
-// sidecar (a systemd service with no user shell context) falls through to
-// whatever ALSA picks as "default" — often the wrong card.
+
 const ALSA_DEVICE = process.env.ALSA_DEVICE || '';
 const PIPER_RATE  = 22050;   // lessac-medium voice native sample rate
 
@@ -42,7 +22,7 @@ function elevenLabsConfig() {
   return null;
 }
 
-let _current = null;   // { procs: [...] } currently-playing pipeline
+let _current = null;   
 
 function cancel() {
   if (!_current) return;
@@ -57,7 +37,6 @@ function runAplay(rate) {
   return spawn(APLAY_BIN, args, { stdio: ['pipe', 'ignore', 'pipe'] });
 }
 
-// ElevenLabs: MP3 buffer -> ffmpeg (decode to raw PCM) -> aplay.
 function speakElevenLabs(text, cfg) {
   return new Promise((resolve, reject) => {
     const url = 'https://api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(cfg.voiceId);
@@ -98,7 +77,6 @@ function speakElevenLabs(text, cfg) {
   });
 }
 
-// Piper: text -> aplay for ALSA playback. Always available, no network.
 function speakPiper(text) {
   return new Promise((resolve, reject) => {
     let piper, aplay;
@@ -128,20 +106,16 @@ function speakPiper(text) {
   });
 }
 
-// Speak `text`. Tries ElevenLabs first when configured, falls back to Piper
-// on ANY failure (bad key, network down, ffmpeg missing) rather than going
-// silent. Returns a promise that resolves when playback ends. Resolves even
-// on cancel — the speaker is fire-and-forget, not a transcript.
 async function speak(text) {
   const clean = String(text || '').trim();
   if (!clean) return { ok: false, reason: 'empty_text' };
 
-  cancel();   // one voice at a time
+  cancel();   
 
   const cfg = elevenLabsConfig();
   if (cfg) {
     try { return await speakElevenLabs(clean, cfg); }
-    catch (err) { /* fall through to Piper below */ }
+    catch (err) {  }
   }
   try { return await speakPiper(clean); }
   catch (err) { return { ok: false, ...err }; }

@@ -1,25 +1,9 @@
-// DA1 — fetch the pinned Node runtime for the Tauri externalBin sidecar.
-//
-// Downloads node.exe for the build target and writes it to
-// src-tauri/binaries/node-<target-triple>.exe, the name `app.shell().sidecar("node")`
-// resolves. This binary is NOT committed (see localhub/.gitignore) — run this once
-// after cloning, and re-run to bump the pinned version. Ship node.exe +
-// node-sidecar/node_modules + whisper/ as ONE atomic set (see Tenari-Desktop-App
-// spec, DA0 "reproducible build") — never bump one without the others.
-//
-// Usage:  node localhub/scripts/fetch-node-binary.mjs
-// Windows-x64 only for v1 (macOS/Linux deferred). Pinned version = NODE_VERSION.
-
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Pin the runtime the app ships. Keep this in step with the version the sidecar
-// deps are built against (`npm ci --omit=dev` in node-sidecar) so native modules
-// (leveldown) match the node ABI. Bump deliberately.
 const NODE_VERSION = 'v24.18.0';
 
-// win-x64 → the Rust host triple Tauri appends to the externalBin name.
 const TARGETS = {
   'win32-x64': { triple: 'x86_64-pc-windows-msvc', url: `https://nodejs.org/dist/${NODE_VERSION}/win-x64/node.exe`, ext: '.exe' },
 };
@@ -42,7 +26,7 @@ async function main() {
       console.log(`[fetch-node] already present: ${dest} (${(s.size / 1e6).toFixed(1)} MB). Delete it to re-fetch.`);
       return;
     }
-  } catch { /* not present — download below */ }
+  } catch {  }
 
   console.log(`[fetch-node] downloading Node ${NODE_VERSION} for ${key} …`);
   console.log(`[fetch-node]   ${target.url}`);

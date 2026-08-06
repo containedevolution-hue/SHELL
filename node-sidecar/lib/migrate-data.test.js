@@ -1,6 +1,5 @@
 'use strict';
 
-// Dependency-free checks for DA0 migration.  Run: node lib/migrate-data.test.js
 const assert = require('assert');
 const os = require('os');
 const path = require('path');
@@ -22,7 +21,6 @@ const MARKER = '.ce-migrated.json';
 const hasMarker = (d) => fs.existsSync(path.join(d, MARKER));
 const readMarker = (d) => JSON.parse(fs.readFileSync(path.join(d, MARKER), 'utf8'));
 
-// 1. No-op when the data dir IS the legacy dir (Pi / dev, env unset).
 check('no-op when dataDir == <sidecar>/data', () => {
   const box = tmp('ce-mig-noop-');
   const legacy = path.join(box, 'data');
@@ -31,16 +29,14 @@ check('no-op when dataDir == <sidecar>/data', () => {
   assert.ok(!hasMarker(legacy), 'no marker written for the legacy-is-current case');
 });
 
-// 2. Fresh install (no legacy data) → nothing migrated, new dir stays empty.
 check('fresh install with no legacy → no marker', () => {
-  const box = tmp('ce-mig-fresh-');       // no data/ dir at all
+  const box = tmp('ce-mig-fresh-');       
   const newDir = tmp('ce-mig-newf-');
   migrateIfNeeded(newDir, box);
   assert.ok(!hasMarker(newDir), 'no marker');
   assert.strictEqual(fs.readdirSync(newDir).length, 0, 'new dir left empty');
 });
 
-// 3. Migration copies + verifies + writes marker pointing at the legacy source.
 check('migrates legacy -> relocated dir, verified, marker.from set', () => {
   const box = tmp('ce-mig-run-');
   const legacy = path.join(box, 'data');
@@ -55,18 +51,17 @@ check('migrates legacy -> relocated dir, verified, marker.from set', () => {
   assert.strictEqual(path.resolve(readMarker(newDir).from), path.resolve(legacy), 'marker.from = legacy');
 });
 
-// 4. Re-runs increment the boot count; legacy is reclaimed after KEEP_LEGACY_BOOTS.
 check('re-runs increment boots; legacy reclaimed after 3 boots', () => {
   const box = tmp('ce-mig-boots-');
   const legacy = path.join(box, 'data');
   seedLegacy(legacy);
   const newDir = tmp('ce-mig-newb-');
-  migrateIfNeeded(newDir, box); // boot 1 (migrate)
+  migrateIfNeeded(newDir, box); 
   assert.ok(fs.existsSync(legacy), 'legacy present after boot 1');
-  migrateIfNeeded(newDir, box); // boot 2
+  migrateIfNeeded(newDir, box); 
   assert.ok(fs.existsSync(legacy), 'legacy present after boot 2');
   assert.strictEqual(readMarker(newDir).boots, 2, 'boots == 2');
-  migrateIfNeeded(newDir, box); // boot 3 → reclaim
+  migrateIfNeeded(newDir, box); 
   assert.ok(!fs.existsSync(legacy), 'legacy reclaimed after boot 3');
   assert.strictEqual(readMarker(newDir).legacyDeleted, true, 'legacyDeleted flag set');
   assert.ok(fs.existsSync(path.join(newDir, 'pairing.json')), 'new data intact after reclaim');

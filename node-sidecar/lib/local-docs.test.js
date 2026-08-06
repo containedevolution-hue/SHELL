@@ -1,6 +1,5 @@
 'use strict';
 
-// Checks for the offline view's data layer. Run: node lib/local-docs.test.js
 const assert = require('assert');
 const os = require('os');
 const path = require('path');
@@ -25,11 +24,8 @@ const { readLocalDocs, discoverUserIds } = require('./local-docs');
     } catch (e) { done('empty dir', false, e.message); }
   }
 
-  // discoverUserIds finds nothing on a dir that doesn't exist.
   done('discoverUserIds on a missing dir returns []', discoverUserIds(path.join(os.tmpdir(), 'ce-nope-' + Date.now())).length === 0);
 
-  // Seed a real ce-memories-{userId} folder (mirrors what cyclone-sync writes on
-  // this machine — identity comes from disk, NOT Hub-appliance pairing).
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ce-localdocs-'));
   const StoreCtor = PouchDB.defaults({ prefix: dataDir + path.sep });
   const uid = 'u1';
@@ -52,12 +48,10 @@ const { readLocalDocs, discoverUserIds } = require('./local-docs');
     done('slim shape (type/snippet)', g && g.type === 'note' && g.snippet === 'milk, eggs', g);
   } catch (e) { done('read local docs', false, e.message); }
 
-  // A second, older-written user folder must NOT be merged in — only the most
-  // recently active identity is ever shown (never mix two users' local drawers).
   const uid2 = 'u2';
   const db2 = new StoreCtor('ce-memories-' + uid2);
   await db2.put({ _id: 'doc:notes:local-ccc', source: 'notes', type: 'note', title: 'Other user note', updated_at: '2020-01-01T00:00:00Z' });
-  // Backdate u2's folder so u1 (touched moments ago, above) stays "most recent".
+  
   const past = new Date('2020-01-01T00:00:00Z');
   fs.utimesSync(path.join(dataDir, 'ce-memories-' + uid2), past, past);
   for (const f of fs.readdirSync(path.join(dataDir, 'ce-memories-' + uid2))) {

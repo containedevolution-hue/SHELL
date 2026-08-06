@@ -1,6 +1,5 @@
 'use strict';
 
-// Dependency-free checks for DA0 jail scoping + audit.  Run: node mcp/jail.test.js
 const assert = require('assert');
 const os = require('os');
 const path = require('path');
@@ -18,12 +17,10 @@ function check(name, fn) {
 const throws = (fn) => { try { fn(); return false; } catch (_) { return true; } };
 const cleanEnv = () => { delete process.env.MCP_ROOT; delete process.env.LOCALHUB_HOST; };
 
-// Fresh temp data dir so the allowlist + audit files are isolated.
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ce-jail-'));
 process.env.LOCALHUB_DATA_DIR = dataDir;
 const mkdir = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
 
-// 1. Default-deny: nothing shared → empty roots, all reads rejected.
 check('default-deny when nothing is shared', () => {
   cleanEnv(); allowlist.save([]);
   assert.deepStrictEqual(jail.allowedRoots(), []);
@@ -31,7 +28,6 @@ check('default-deny when nothing is shared', () => {
   assert.ok(throws(() => jail.resolveJailed('anything')), 'relative read denied');
 });
 
-// 2. MCP_ROOT override: within resolves, outside rejected, relative ok (single root).
 check('MCP_ROOT allows within, rejects outside', () => {
   cleanEnv(); allowlist.save([]);
   const root = mkdir('ce-root-');
@@ -43,7 +39,6 @@ check('MCP_ROOT allows within, rejects outside', () => {
   cleanEnv();
 });
 
-// 3. Allowlist file shares a folder.
 check('allowlist file shares a folder', () => {
   cleanEnv();
   const shared = mkdir('ce-shared-');
@@ -54,7 +49,6 @@ check('allowlist file shares a folder', () => {
   allowlist.save([]);
 });
 
-// 4. Relative path is ambiguous with multiple shared folders; absolute still works.
 check('relative path rejected with multiple roots', () => {
   cleanEnv();
   const a = mkdir('ce-a-'); const b = mkdir('ce-b-');
@@ -65,7 +59,6 @@ check('relative path rejected with multiple roots', () => {
   allowlist.save([]);
 });
 
-// 5. Appliance (Pi) back-compat: 0.0.0.0 bind → home dir when nothing else shared.
 check('appliance mode falls back to home dir', () => {
   cleanEnv(); allowlist.save([]);
   process.env.LOCALHUB_HOST = '0.0.0.0';
@@ -73,7 +66,6 @@ check('appliance mode falls back to home dir', () => {
   cleanEnv();
 });
 
-// 6. Audit log appends a JSON line.
 check('audit.record appends a JSON line', () => {
   audit.record({ tool: 'read_file', path: 'X', bytes: 5 });
   const lines = fs.readFileSync(path.join(dataDir, 'mcp-audit.log'), 'utf8').trim().split('\n');
