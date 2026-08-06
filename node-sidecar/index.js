@@ -222,7 +222,6 @@ function startHttpsServer(certData) {
   }
 }
 
-// After getting a cert, tell Railway the LAN HTTPS URL so the phone can use it.
 async function registerLanUrl(subdomain) {
   try {
     const lanUrl = `https://${subdomain}:${HTTPS_PORT}`;

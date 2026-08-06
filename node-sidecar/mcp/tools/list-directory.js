@@ -50,7 +50,7 @@ module.exports = {
           try {
             const s = await fs.stat(path.join(resolved, d.name));
             entry.size_bytes = s.size;
-          } catch { /* unreadable file — skip size */ }
+          } catch {  }
         }
         return entry;
       }));

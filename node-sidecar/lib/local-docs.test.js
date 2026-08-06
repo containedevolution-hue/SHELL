@@ -14,7 +14,6 @@ const { readLocalDocs, discoverUserIds } = require('./local-docs');
     else { failures++; console.error('  FAIL -', name, extra !== undefined ? JSON.stringify(extra) : ''); }
   };
 
-  // No ce-memories-* folder at all → known:false, not an error.
   {
     const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ce-localdocs-empty-'));
     const StoreCtor = PouchDB.defaults({ prefix: emptyDir + path.sep });

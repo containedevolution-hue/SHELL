@@ -148,7 +148,6 @@ function router() {
     try {
       const raw = await transcribe(buf);
       if (!raw) return res.json({ raw: '', text: '' });
-      // whisper succeeding shouldn't be held hostage by Ollama being down/unset
       
       let text = raw;
       try {
