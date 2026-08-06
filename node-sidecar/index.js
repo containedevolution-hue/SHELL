@@ -37,7 +37,16 @@ const expressPouchDB = require('express-pouchdb');
 const mcp = require('./mcp/server');
 const pairing = require('./lib/pairing');
 const { getTunnelUrl } = require('./lib/tunnel-detect');
-const flowLocal = require('./lib/flow-local');
+// Flow's NO-API engine is optional. It reaches shared prompt assets that aren't
+// part of the standalone sidecar bundle yet, and Flow can't run without the
+// whisper binary anyway. A failure loading it must never take down core
+// sync/OAuth/MCP, so load it defensively and disable Flow if it isn't available.
+let flowLocal = null;
+try {
+  flowLocal = require('./lib/flow-local');
+} catch (err) {
+  console.warn(`[localhub-sidecar] Flow engine disabled (optional dependency unavailable): ${err.message}`);
+}
 // Media-Lab asset-forge is excluded from the consumer desktop build (CE_CONSUMER=1):
 // its scripts dir isn't bundled there, so skip the require too or startup would fail
 // resolving a module that isn't shipped. (Tenari-Desktop-App spec, DA1.)
@@ -177,7 +186,11 @@ app.use('/mcp', requireMcpToken, mcp.mount());
 
 // Flow's NO-API engine — whisper.cpp STT + local Ollama cleanup. Loopback is
 // trusted; LAN/tunnel requests require the sync-only capability.
-app.use('/flow', requireSyncToken, flowLocal.router());
+if (flowLocal) {
+  app.use('/flow', requireSyncToken, flowLocal.router());
+} else {
+  console.warn('[localhub-sidecar] /flow route not mounted — Flow engine unavailable in this build');
+}
 
 // Media Lab 3D Assets — admin-only browser inspection hands Blender repair and
 // Power Edit jobs to this local desktop process. Must mount before PouchDB's

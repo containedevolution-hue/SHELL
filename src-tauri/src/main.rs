@@ -200,12 +200,24 @@ fn spawn_sidecar(
     let source_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .map(|p| p.to_path_buf());
+    // Windows: `resource_dir()` returns a `\\?\`-verbatim extended-length path.
+    // Node.js cannot use such a path as its main-module argument — it crashes
+    // immediately with `EISDIR: lstat 'C:'` at resolveMainPath, before it can
+    // require anything or listen. Strip the `\\?\` prefix from every path we hand
+    // to node (script + whisper bin). app_local_data_dir() is already clean.
+    fn strip_verbatim(p: std::path::PathBuf) -> std::path::PathBuf {
+        match p.to_string_lossy().strip_prefix(r"\\?\") {
+            Some(rest) => std::path::PathBuf::from(rest),
+            None => p,
+        }
+    }
     let resolve = |rel: &str| -> Option<std::path::PathBuf> {
         resource_dir
             .as_ref()
             .map(|d| d.join(rel))
             .filter(|p| p.exists())
             .or_else(|| source_dir.as_ref().map(|d| d.join(rel)).filter(|p| p.exists()))
+            .map(strip_verbatim)
     };
 
     let script = resolve("node-sidecar/index.js")
