@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LocalHub — Typing Trainer</title>
+  <link rel="stylesheet" href="typing-trainer.css?v=20260806" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">LocalHub learning tool</p>
+      <h1>Typing Trainer</h1>
+    </div>
+    <div class="local-badge" title="Practice and progress stay on this computer">Offline · no Stardust</div>
+  </header>
+
+  <div class="shell">
+    <aside class="controls" aria-label="Practice setup">
+      <section>
+        <h2>Practice setup</h2>
+        <label for="lessonType">Drill length</label>
+        <select id="lessonType">
+          <option value="phrase">Phrase</option>
+          <option value="sentence">Sentence</option>
+          <option value="paragraph">Paragraph</option>
+          <option value="custom">My own text</option>
+        </select>
+
+        <div id="customWrap" hidden>
+          <label for="customText">Text to practice</label>
+          <textarea id="customText" rows="5" maxlength="1400" placeholder="Paste or write anything you want to practice."></textarea>
+        </div>
+
+        <label for="profileSelect">Keyboard profile</label>
+        <select id="profileSelect"></select>
+        <p id="profileHelp" class="help"></p>
+
+        <div class="button-row">
+          <button id="newProfile" type="button">New custom profile</button>
+          <button id="editProfile" type="button" hidden>Edit</button>
+        </div>
+        <button id="newDrill" class="primary wide" type="button">Start a new drill</button>
+      </section>
+
+      <section class="quick-help">
+        <h2>How it works</h2>
+        <ol>
+          <li>Choose a drill and keyboard profile.</li>
+          <li>Focus the practice text and begin typing.</li>
+          <li>Use Backspace to correct; mistakes still teach the tracker.</li>
+        </ol>
+        <p>Custom mappings work only here. They never change Windows or other apps.</p>
+      </section>
+    </aside>
+
+    <main>
+      <section class="metrics" aria-label="Live typing metrics">
+        <article><span id="wpm">0</span><small>WPM</small></article>
+        <article><span id="accuracy">100%</span><small>accuracy</small></article>
+        <article><span id="errors">0</span><small>mistakes</small></article>
+        <article><span id="elapsed">0:00</span><small>elapsed</small></article>
+      </section>
+
+      <section class="practice-card" aria-labelledby="practiceTitle">
+        <div class="practice-head">
+          <div>
+            <p id="modeLabel" class="eyebrow"></p>
+            <h2 id="practiceTitle">Ready when you are</h2>
+          </div>
+          <div class="button-row">
+            <button id="restart" type="button">Restart</button>
+            <button id="skip" type="button">Different drill</button>
+          </div>
+        </div>
+
+        <div id="practiceText" class="practice-text" tabindex="0" role="textbox"
+          aria-label="Typing practice. Focus here and type the displayed text." aria-multiline="true"></div>
+        <div class="practice-footer">
+          <span id="typingHint">Click or Tab into the text, then type the highlighted character.</span>
+          <span id="progress">0 / 0</span>
+        </div>
+      </section>
+
+      <section class="keyboard-card" aria-labelledby="keyboardTitle">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Next-key guide</p>
+            <h2 id="keyboardTitle">Keyboard</h2>
+          </div>
+          <p id="handHint" class="hand-hint"></p>
+        </div>
+        <div id="keyboard" class="keyboard" aria-hidden="true"></div>
+      </section>
+
+      <section class="progress-grid">
+        <article class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Your trend</p>
+              <h2>Progress</h2>
+            </div>
+            <button id="resetProgress" class="quiet-danger" type="button">Reset progress</button>
+          </div>
+          <div id="progressSummary" class="summary-grid"></div>
+          <div id="improvement" class="improvement"></div>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Saved on this computer</p>
+          <h2>Recent sessions</h2>
+          <div id="history" class="history"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="completeDialog" class="modal">
+    <form method="dialog">
+      <p class="eyebrow">Drill complete</p>
+      <h2>Nice work. Here is the honest read.</h2>
+      <div id="completeStats" class="complete-stats"></div>
+      <p id="completeAdvice" class="advice"></p>
+      <div class="modal-actions">
+        <button id="retryComplete" value="cancel" type="button">Try this again</button>
+        <button id="nextComplete" class="primary" value="default" type="button">Next drill</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="profileDialog" class="modal profile-modal">
+    <form method="dialog">
+      <p class="eyebrow">Trainer-only key map</p>
+      <h2>Custom keyboard profile</h2>
+      <label for="profileName">Profile name</label>
+      <input id="profileName" type="text" maxlength="48" autocomplete="off" />
+      <label class="check-row"><input id="profilePassthrough" type="checkbox" checked />
+        Let unmapped keys type normally</label>
+
+      <div class="capture-box">
+        <button id="captureKey" type="button">Capture a physical key</button>
+        <span id="capturedCode">No key captured</span>
+        <label for="mappingOutput">Type its trainer output</label>
+        <div class="mapping-add">
+          <input id="mappingOutput" type="text" maxlength="1" autocomplete="off" aria-label="Mapped output character" />
+          <button id="addMapping" type="button">Add</button>
+          <button id="addSpace" type="button">Space</button>
+          <button id="addEnter" type="button">Enter</button>
+        </div>
+      </div>
+
+      <div id="mappingList" class="mapping-list"></div>
+      <p class="help">Example: press a Razer thumb key, then map it to Space. The physical code is saved, not the device brand.</p>
+      <div class="modal-actions split">
+        <button id="deleteProfile" class="quiet-danger" type="button">Delete profile</button>
+        <span></span>
+        <button id="cancelProfile" type="button">Cancel</button>
+        <button id="saveProfile" class="primary" type="button">Save profile</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="liveStatus" class="sr-only" aria-live="polite"></div>
+  <script src="typing-trainer-core.js?v=20260806"></script>
+  <script src="typing-trainer.js?v=20260806"></script>
+</body>
+</html>

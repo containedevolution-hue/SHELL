@@ -12,6 +12,10 @@ Tauri (Rust shell) desktop app that:
 4. **Maintains a persistent agent tunnel** to Railway (paid tier) so the phone
    can command + sync from anywhere. **[C6 — paid feature, not yet built.]**
 
+5. **Runs bundled offline tools** from the native Tools menu: Photo Duplicates
+   and Typing Trainer. Typing progress and custom physical-key profiles remain
+   local to the trainer WebView and require no account, AI, or sidecar.
+
 ## C2 slicing
 
 - ✅ **C2a — Tauri shell.** Opens a desktop window pointing at

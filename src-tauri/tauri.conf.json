@@ -34,6 +34,18 @@
         "visible": false
       },
       {
+        "label": "typing-trainer",
+        "title": "LocalHub — Typing Trainer",
+        "url": "typing-trainer.html",
+        "width": 1220,
+        "height": 860,
+        "minWidth": 760,
+        "minHeight": 620,
+        "resizable": true,
+        "center": true,
+        "visible": false
+      },
+      {
         "label": "flow-hud",
         "title": "Flow",
         "url": "flow-hud.html",

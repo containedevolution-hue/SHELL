@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "typing-trainer",
+  "description": "Bundled offline Typing Trainer window. It stores practice history and custom physical-key profiles in its local WebView storage and does not call native commands, the sidecar, or cloud services.",
+  "windows": ["typing-trainer"],
+  "permissions": [
+    "core:default"
+  ]
+}

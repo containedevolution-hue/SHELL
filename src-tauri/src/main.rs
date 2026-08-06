@@ -387,15 +387,26 @@ fn main() {
             // scan_duplicates / delete_to_trash directly (capabilities/dedup.json).
             let open_dedup =
                 MenuItem::with_id(app, "open_dedup", "Photo Duplicates", true, None::<&str>)?;
-            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup])?;
+            let open_typing =
+                MenuItem::with_id(app, "open_typing", "Typing Trainer", true, None::<&str>)?;
+            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup, &open_typing])?;
             let menu = Menu::with_items(app, &[&tools])?;
             app.set_menu(menu)?;
             app.on_menu_event(|app_handle, event| {
-                if event.id().0.as_str() == "open_dedup" {
-                    if let Some(w) = app_handle.get_webview_window("dedup") {
-                        let _ = w.show();
-                        let _ = w.set_focus();
+                match event.id().0.as_str() {
+                    "open_dedup" => {
+                        if let Some(w) = app_handle.get_webview_window("dedup") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
                     }
+                    "open_typing" => {
+                        if let Some(w) = app_handle.get_webview_window("typing-trainer") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    _ => {}
                 }
             });
 
