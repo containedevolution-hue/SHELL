@@ -3,8 +3,19 @@
 const express = require('express');
 const { listTools, executeTool } = require('./registry');
 
-const PROTOCOL_VERSION = '2025-03-26';
+const PROTOCOL_VERSION = '2025-11-25';
 const SERVER_INFO = { name: 'ce-hub-appliance', version: '0.1.0' };
+
+function originAllowed(origin) {
+  if (!origin) return true;
+  let host;
+  try { host = new URL(origin).hostname; } catch (_) { return false; }
+  return host === 'localhost'
+    || host === '127.0.0.1'
+    || host === '::1'
+    || host === '[::1]'
+    || host.endsWith('.localhost');
+}
 
 function jsonrpcError(id, code, message, data) {
   const err = { code, message };
@@ -57,6 +68,9 @@ function mount() {
   router.use(express.json({ limit: '1mb' }));
 
   router.post('/', async (req, res) => {
+    if (!originAllowed(req.headers.origin)) {
+      return res.status(403).json(jsonrpcError(null, -32000, 'Origin not allowed'));
+    }
     try {
       const body = req.body;
       if (Array.isArray(body)) {

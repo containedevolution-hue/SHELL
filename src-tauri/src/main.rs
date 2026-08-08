@@ -120,11 +120,18 @@ async fn delete_to_trash(paths: Vec<String>) -> DeleteResult {
 // Send a keyboard shortcut (Ctrl + <ch>) into the focused app. Built fresh each
 // call — Enigo isn't Send, so it can't be held across the async boundary.
 fn send_ctrl(ch: char) -> Result<(), String> {
-    use enigo::{Direction::{Click, Press, Release}, Enigo, Key, Keyboard, Settings};
+    use enigo::{
+        Direction::{Click, Press, Release},
+        Enigo, Key, Keyboard, Settings,
+    };
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
     enigo.key(Key::Control, Press).map_err(|e| e.to_string())?;
-    enigo.key(Key::Unicode(ch), Click).map_err(|e| e.to_string())?;
-    enigo.key(Key::Control, Release).map_err(|e| e.to_string())?;
+    enigo
+        .key(Key::Unicode(ch), Click)
+        .map_err(|e| e.to_string())?;
+    enigo
+        .key(Key::Control, Release)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -216,26 +223,40 @@ fn spawn_sidecar(
             .as_ref()
             .map(|d| d.join(rel))
             .filter(|p| p.exists())
-            .or_else(|| source_dir.as_ref().map(|d| d.join(rel)).filter(|p| p.exists()))
+            .or_else(|| {
+                source_dir
+                    .as_ref()
+                    .map(|d| d.join(rel))
+                    .filter(|p| p.exists())
+            })
             .map(strip_verbatim)
     };
 
     let script = resolve("node-sidecar/index.js")
         .ok_or_else(|| "sidecar index.js not found in resources or source tree".to_string())?;
-    println!("[localhub] spawning bundled-node sidecar: {}", script.display());
+    println!(
+        "[localhub] spawning bundled-node sidecar: {}",
+        script.display()
+    );
 
     // Flow NO-API engine — tell the sidecar where whisper.cpp lives, if present.
     // The whisper.cpp CLI is not yet provisioned/bundled (README TODO), so this
     // resolves to None for now and Flow dictation is simply absent; once the
     // whisper/ artifact + its bundle.resources entry land it lights up. Only set a
     // default when the launching env hasn't already (dev override).
-    let whisper_name = if cfg!(windows) { "whisper/whisper-cli.exe" } else { "whisper/whisper-cli" };
+    let whisper_name = if cfg!(windows) {
+        "whisper/whisper-cli.exe"
+    } else {
+        "whisper/whisper-cli"
+    };
     let whisper_bin = resolve(whisper_name);
 
     let mut cmd = app
         .shell()
         .sidecar("node")
-        .map_err(|e| format!("sidecar(\"node\") unavailable — is binaries/node-<triple> bundled? {e}"))?
+        .map_err(|e| {
+            format!("sidecar(\"node\") unavailable — is binaries/node-<triple> bundled? {e}")
+        })?
         .arg(script.to_string_lossy().to_string());
 
     if std::env::var_os("WHISPER_BIN").is_none() {
@@ -250,8 +271,14 @@ fn spawn_sidecar(
         let _ = std::fs::create_dir_all(dir);
         cmd = cmd
             .env("LOCALHUB_DATA_DIR", dir.to_string_lossy().to_string())
-            .env("WHISPER_MODEL_DIR", dir.join("whisper").to_string_lossy().to_string())
-            .env("ELEVENLABS_KEY_FILE", dir.join("elevenlabs.json").to_string_lossy().to_string());
+            .env(
+                "WHISPER_MODEL_DIR",
+                dir.join("whisper").to_string_lossy().to_string(),
+            )
+            .env(
+                "ELEVENLABS_KEY_FILE",
+                dir.join("elevenlabs.json").to_string_lossy().to_string(),
+            );
     }
     // Consumer build excludes Media-Lab asset-forge — tell the sidecar not to
     // mount/require it (its scripts aren't bundled in that build).
@@ -269,8 +296,12 @@ fn spawn_sidecar(
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             match event {
-                CommandEvent::Stdout(line) => print!("[sidecar] {}", String::from_utf8_lossy(&line)),
-                CommandEvent::Stderr(line) => eprint!("[sidecar] {}", String::from_utf8_lossy(&line)),
+                CommandEvent::Stdout(line) => {
+                    print!("[sidecar] {}", String::from_utf8_lossy(&line))
+                }
+                CommandEvent::Stderr(line) => {
+                    eprint!("[sidecar] {}", String::from_utf8_lossy(&line))
+                }
                 CommandEvent::Error(e) => eprintln!("[sidecar] error: {e}"),
                 CommandEvent::Terminated(payload) => {
                     eprintln!("[sidecar] terminated: {payload:?}");
@@ -466,10 +497,14 @@ mod tests {
     /// temp file is harmless — it lands in the Recycle Bin.
     #[test]
     fn trash_removes_file_from_original_location() {
-        let f = std::env::temp_dir().join(format!("ce-dedup-trash-test-{}.tmp", std::process::id()));
+        let f =
+            std::env::temp_dir().join(format!("ce-dedup-trash-test-{}.tmp", std::process::id()));
         std::fs::write(&f, b"throwaway").unwrap();
         assert!(f.exists());
         trash::delete(&f).expect("trash::delete should succeed");
-        assert!(!f.exists(), "file must be gone from its original path after trashing");
+        assert!(
+            !f.exists(),
+            "file must be gone from its original path after trashing"
+        );
     }
 }
