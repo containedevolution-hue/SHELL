@@ -5,6 +5,8 @@ const tools = [
   require('./tools/list-directory'),
   require('./tools/get-system-status'),
   require('./tools/speak'),
+  require('./tools/camera-status'),
+  require('./tools/camera-snapshot'),
 ];
 
 const BY_NAME = Object.fromEntries(tools.map((t) => [t.name, t]));
