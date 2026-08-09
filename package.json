@@ -1,6 +1,6 @@
 {
   "name": "localhub",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Contained Evolution — LocalHub (Cyclone C2 desktop host)",
   "scripts": {
