@@ -23,6 +23,7 @@ const { createAssetForgeRouter } = process.env.CE_CONSUMER ? {} : require('./lib
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs } = require('./lib/local-docs');
+const accessControl = require('./lib/access');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
 
@@ -130,6 +131,8 @@ function loopbackOnly(req, res, next) {
   if (isLoopbackRequest(req)) return next();
   return res.status(403).json({ error: 'loopback_only' });
 }
+app.use('/access', loopbackOnly, accessControl.router());
+
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {
     res.json(await readLocalDocs(StoreCtor, DATA_DIR));
