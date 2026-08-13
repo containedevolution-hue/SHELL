@@ -78,7 +78,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi"],
+    "targets": ["nsis"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": ["English"]
+      }
+    },
     "category": "Utility",
     "shortDescription": "Contained Evolution local sync host",
     "longDescription": "LocalHub is the desktop host for Contained Evolution's Cyclone sync system. It runs a CouchDB-compatible engine on your LAN so your devices sync to your own machine.",

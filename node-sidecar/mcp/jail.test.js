@@ -66,6 +66,68 @@ check('appliance mode falls back to home dir', () => {
   cleanEnv();
 });
 
+check('a junction planted inside a shared folder cannot escape it', () => {
+  cleanEnv(); allowlist.save([]);
+  const shared = mkdir('ce-jail-shared-');
+  const outside = mkdir('ce-jail-outside-');
+  fs.writeFileSync(path.join(outside, 'secret.txt'), 'secret');
+  process.env.MCP_ROOT = shared;
+  let linked = true;
+  try { fs.symlinkSync(outside, path.join(shared, 'link'), 'junction'); }
+  catch (_) { linked = false; }
+  if (linked) {
+    assert.ok(throws(() => jail.resolveJailed(path.join(shared, 'link', 'secret.txt'))), 'junction escape rejected');
+  }
+  assert.strictEqual(jail.resolveJailed(path.join(shared, 'inside.txt')), path.join(fs.realpathSync(shared), 'inside.txt'));
+  cleanEnv();
+});
+
+check('a path that does not exist yet still resolves inside its shared folder', () => {
+  cleanEnv(); allowlist.save([]);
+  const shared = mkdir('ce-jail-new-');
+  process.env.MCP_ROOT = shared;
+  const target = path.join(shared, 'nested', 'deeper', 'new.txt');
+  assert.strictEqual(jail.resolveJailed(target), path.join(fs.realpathSync(shared), 'nested', 'deeper', 'new.txt'));
+  assert.ok(throws(() => jail.resolveJailed(path.join(os.tmpdir(), 'ce-absent', 'new.txt'))), 'outside absent path rejected');
+  cleanEnv();
+});
+
+check('sharing a folder does not grant write access to it', () => {
+  cleanEnv();
+  const shared = mkdir('ce-jail-ro-');
+  allowlist.save([shared]);
+  assert.deepStrictEqual(allowlist.writable(), []);
+  assert.deepStrictEqual(jail.writableRoots(), []);
+  assert.ok(throws(() => jail.resolveWritable(path.join(shared, 'x.txt'))), 'write denied without approval');
+  assert.strictEqual(jail.resolveJailed(path.join(shared, 'x.txt')), path.join(fs.realpathSync(shared), 'x.txt'));
+  allowlist.save([]);
+});
+
+check('write approval is scoped to the approved folder only', () => {
+  cleanEnv();
+  const writableDir = mkdir('ce-jail-rw-');
+  const readOnly = mkdir('ce-jail-ro2-');
+  allowlist.save([writableDir, readOnly]);
+  allowlist.allowWrite(writableDir);
+  assert.deepStrictEqual(allowlist.writable(), [writableDir]);
+  assert.strictEqual(jail.resolveWritable(path.join(writableDir, 'ok.txt')), path.join(fs.realpathSync(writableDir), 'ok.txt'));
+  assert.ok(throws(() => jail.resolveWritable(path.join(readOnly, 'no.txt'))), 'unapproved folder stays read-only');
+  allowlist.denyWrite(writableDir);
+  assert.ok(throws(() => jail.resolveWritable(path.join(writableDir, 'ok.txt'))), 'revoking write takes effect');
+  allowlist.save([]);
+});
+
+check('unsharing a folder also drops its write approval', () => {
+  cleanEnv();
+  const dir = mkdir('ce-jail-drop-');
+  allowlist.save([dir]);
+  allowlist.allowWrite(dir);
+  assert.deepStrictEqual(allowlist.writable(), [dir]);
+  allowlist.remove(dir);
+  assert.deepStrictEqual(allowlist.list(), []);
+  assert.deepStrictEqual(allowlist.writable(), []);
+});
+
 check('audit.record appends a JSON line', () => {
   audit.record({ tool: 'read_file', path: 'X', bytes: 5 });
   const lines = fs.readFileSync(path.join(dataDir, 'mcp-audit.log'), 'utf8').trim().split('\n');

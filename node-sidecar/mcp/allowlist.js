@@ -5,21 +5,35 @@ const { inData } = require('../lib/paths');
 
 function file() { return inData('mcp-allowlist.json'); }
 
-function list() {
-  try {
-    const data = JSON.parse(fs.readFileSync(file(), 'utf8'));
-    const folders = Array.isArray(data && data.folders) ? data.folders : [];
-    return folders.filter((f) => typeof f === 'string' && f.length > 0);
-  } catch (_) { return []; }
+function read() {
+  try { return JSON.parse(fs.readFileSync(file(), 'utf8')) || {}; } catch (_) { return {}; }
 }
 
-function save(folders) {
-  const unique = [...new Set(folders.filter((f) => typeof f === 'string' && f.length > 0))];
-  fs.writeFileSync(file(), JSON.stringify({ folders: unique }, null, 2));
-  return unique;
+function clean(value) {
+  const items = Array.isArray(value) ? value : [];
+  return items.filter((f) => typeof f === 'string' && f.length > 0);
 }
 
+function list() { return clean(read().folders); }
+
+function writable() {
+  const folders = new Set(list());
+  return clean(read().writable).filter((f) => folders.has(f));
+}
+
+function persist(folders, writableFolders) {
+  const uniqueFolders = [...new Set(clean(folders))];
+  const allowed = new Set(uniqueFolders);
+  const uniqueWritable = [...new Set(clean(writableFolders))].filter((f) => allowed.has(f));
+  fs.writeFileSync(file(), JSON.stringify({ folders: uniqueFolders, writable: uniqueWritable }, null, 2));
+  return uniqueFolders;
+}
+
+function save(folders) { return persist(folders, writable()); }
 function add(folder) { return save([...list(), folder]); }
-function remove(folder) { return save(list().filter((f) => f !== folder)); }
+function remove(folder) { return persist(list().filter((f) => f !== folder), writable().filter((f) => f !== folder)); }
 
-module.exports = { list, add, remove, save, file };
+function allowWrite(folder) { persist(list(), [...writable(), folder]); return writable(); }
+function denyWrite(folder) { persist(list(), writable().filter((f) => f !== folder)); return writable(); }
+
+module.exports = { list, writable, add, remove, save, allowWrite, denyWrite, file };
