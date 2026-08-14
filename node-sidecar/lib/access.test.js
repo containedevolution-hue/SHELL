@@ -11,6 +11,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ce-access-'));
 process.env.LOCALHUB_DATA_DIR = dataDir;
 
 const accessControl = require('./access');
+const { isLoopbackRequest } = require('./scoped-auth');
 const allowlist = require('../mcp/allowlist');
 const browser = require('../mcp/browser');
 const moveToTrash = require('../mcp/tools/move-to-trash');
@@ -22,14 +23,39 @@ const mkdir = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
 
 let server;
 let base;
+let guarded;
+let guardedBase;
+function loopbackOnly(req, res, next) {
+  if (isLoopbackRequest(req)) return next();
+  return res.status(403).json({ error: 'loopback_only' });
+}
 function start() {
   return new Promise((resolve) => {
     const app = express();
     app.use('/access', accessControl.router());
     server = app.listen(0, '127.0.0.1', () => {
       base = `http://127.0.0.1:${server.address().port}/access`;
-      resolve();
+      const wired = express();
+      wired.use('/access', loopbackOnly, accessControl.router());
+      guarded = wired.listen(0, '127.0.0.1', () => {
+        guardedBase = `http://127.0.0.1:${guarded.address().port}/access`;
+        resolve();
+      });
     });
+  });
+}
+
+function rawStatus(headers) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      host: '127.0.0.1',
+      port: guarded.address().port,
+      path: '/access/state',
+      method: 'GET',
+      headers,
+    }, (res) => { res.resume(); resolve(res.statusCode); });
+    req.on('error', reject);
+    req.end();
   });
 }
 
@@ -169,6 +195,28 @@ check('state reports folders, websites and browser reachability together', async
   browser.saveDomains([]);
 });
 
+check('a tunnelled request cannot reach access even though cloudflared is on this machine', async () => {
+  const direct = await fetch(guardedBase + '/state');
+  assert.strictEqual(direct.status, 200, 'someone at the machine gets through');
+
+  const proxyHeaders = ['cf-connecting-ip', 'cf-ray', 'x-forwarded-for', 'x-real-ip', 'forwarded'];
+  for (const header of proxyHeaders) {
+    const res = await fetch(guardedBase + '/state', { headers: { [header]: '203.0.113.7' } });
+    assert.strictEqual(res.status, 403, `${header} is refused`);
+  }
+
+  assert.strictEqual(await rawStatus({ host: 'cehub.tenari.world' }), 403, 'a public Host header is refused');
+  assert.strictEqual(await rawStatus({}), 200, 'a genuine local Host still works');
+
+  const granted = await fetch(guardedBase + '/folders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'cf-connecting-ip': '203.0.113.7' },
+    body: JSON.stringify({ path: os.tmpdir() }),
+  });
+  assert.strictEqual(granted.status, 403, 'a tunnelled caller cannot grant itself a folder');
+  assert.deepStrictEqual(allowlist.list(), [], 'nothing was shared');
+});
+
 (async () => {
   await start();
   for (const [name, fn] of pending) {
@@ -176,6 +224,7 @@ check('state reports folders, websites and browser reachability together', async
     catch (e) { failures++; console.error('  FAIL -', name, '\n         ', e.stack || e.message); }
   }
   server.close();
+  guarded.close();
   delete process.env.LOCALHUB_DATA_DIR;
   if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }
   console.log('\nall access checks passed');
