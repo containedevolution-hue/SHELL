@@ -44,16 +44,41 @@ async function readLocalDocs(StoreCtor, dataDir) {
   return { known: true, count: docs.length, docs };
 }
 
+async function readLocalDoc(StoreCtor, dataDir, id) {
+  if (typeof id !== 'string' || !id.startsWith('doc:')) return { known: true, found: false, doc: null };
+  const [userId] = discoverUserIds(dataDir);
+  if (!userId) return { known: false, found: false, doc: null };
+  const db = new StoreCtor(PREFIX + userId);
+  let doc;
+  try { doc = await db.get(id); } catch (_) { return { known: true, found: false, doc: null }; }
+  return { known: true, found: true, doc: full(doc) };
+}
+
+function bodyText(d) {
+  return String(d.body || d.text || d.content || d.note || '');
+}
+
 function slim(d) {
-  const text = d.body || d.text || d.content || d.note || '';
   return {
     id: d._id,
     source: d.source || null,
     type: d.type || d.source || 'note',
     title: d.title || d.name || '(untitled)',
-    snippet: String(text).slice(0, 200),
+    snippet: bodyText(d).slice(0, 200),
     updated_at: d.updated_at || d.created_at || null,
   };
 }
 
-module.exports = { readLocalDocs, discoverUserIds, slim };
+function full(d) {
+  return {
+    id: d._id,
+    source: d.source || null,
+    type: d.type || d.source || 'note',
+    title: d.title || d.name || '(untitled)',
+    text: bodyText(d),
+    created_at: d.created_at || null,
+    updated_at: d.updated_at || d.created_at || null,
+  };
+}
+
+module.exports = { readLocalDocs, readLocalDoc, discoverUserIds, slim, full };

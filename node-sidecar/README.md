@@ -17,6 +17,10 @@ Cyclone C2b deliverable — see [`../../memory/apps/System/Tenari-Command-Center
   uses a different capability. Remote PouchDB paths are bound to the paired user.
 - `GET /pair` returns status only. Pair through the Railway beacon plus the
   ten-minute local code; legacy shared-token files rotate and require re-pairing.
+- `GET /local/docs` and `GET /local/docs/:id` are loopback-only and feed the
+  bundled offline shell. The list carries a 200-character snippet; the single
+  read carries the whole body. Both serve `doc:*` rows from the most recently
+  used store only, so a `mem:*` cloud cache row is never returned as local data.
 
 ## Run standalone (dev / verify)
 

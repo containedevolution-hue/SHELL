@@ -22,7 +22,7 @@ try {
 const { createAssetForgeRouter } = process.env.CE_CONSUMER ? {} : require('./lib/asset-forge');
 const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
-const { readLocalDocs } = require('./lib/local-docs');
+const { readLocalDocs, readLocalDoc } = require('./lib/local-docs');
 const accessControl = require('./lib/access');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
@@ -136,6 +136,16 @@ app.use('/access', loopbackOnly, accessControl.router());
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {
     res.json(await readLocalDocs(StoreCtor, DATA_DIR));
+  } catch (e) {
+    res.status(500).json({ error: (e && e.message) || 'read failed' });
+  }
+});
+
+app.get('/local/docs/:id', loopbackOnly, async (req, res) => {
+  try {
+    const body = await readLocalDoc(StoreCtor, DATA_DIR, req.params.id);
+    if (!body.found) return res.status(404).json(body);
+    res.json(body);
   } catch (e) {
     res.status(500).json({ error: (e && e.message) || 'read failed' });
   }

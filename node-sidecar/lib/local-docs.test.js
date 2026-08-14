@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const PouchDB = require('pouchdb-node');
-const { readLocalDocs, discoverUserIds } = require('./local-docs');
+const { readLocalDocs, readLocalDoc, discoverUserIds } = require('./local-docs');
 
 (async () => {
   let failures = 0;
@@ -62,6 +62,32 @@ const { readLocalDocs, discoverUserIds } = require('./local-docs');
     done('multiple users on disk -> only the most-recent one is read (never merged)',
       r.known === true && r.count === 2 && !r.docs.some((d) => d.title === 'Other user note'), r.docs.map((d) => d.title));
   } catch (e) { done('multi-user isolation', false, e.message); }
+
+  try {
+    const r = await readLocalDoc(StoreCtor, dataDir, 'doc:notes:local-aaa');
+    done('readLocalDoc returns the whole body, not a snippet',
+      r.found === true && r.doc.text === 'milk, eggs' && r.doc.title === 'Groceries', r.doc);
+  } catch (e) { done('readLocalDoc', false, e.message); }
+
+  try {
+    const r = await readLocalDoc(StoreCtor, dataDir, 'mem:should-not-appear');
+    done('readLocalDoc refuses a cloud mem:* id', r.found === false && r.doc === null, r);
+  } catch (e) { done('readLocalDoc mem:* refusal', false, e.message); }
+
+  try {
+    const r = await readLocalDoc(StoreCtor, dataDir, '_local/anything');
+    done('readLocalDoc refuses a non-doc id', r.found === false && r.doc === null, r);
+  } catch (e) { done('readLocalDoc non-doc refusal', false, e.message); }
+
+  try {
+    const r = await readLocalDoc(StoreCtor, dataDir, 'doc:notes:missing');
+    done('readLocalDoc reports a missing doc without throwing', r.known === true && r.found === false, r);
+  } catch (e) { done('readLocalDoc missing', false, e.message); }
+
+  try {
+    const r = await readLocalDoc(StoreCtor, dataDir, 'doc:notes:local-ccc');
+    done('readLocalDoc cannot reach another user\'s store', r.found === false, r);
+  } catch (e) { done('readLocalDoc cross-user', false, e.message); }
 
   if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }
   console.log('\nall local-docs checks passed');
