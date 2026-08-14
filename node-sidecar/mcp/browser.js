@@ -77,7 +77,11 @@ async function cdpFetch(pathname, init) {
     return await fetch(endpoint() + pathname, { ...init, signal: controller.signal });
   } catch (err) {
     throw new BrowserError(
-      `no debuggable Chrome is reachable on port ${port()}. The user must start Chrome with --remote-debugging-port=${port()} for browser tools to work; Tenari never launches or relaunches the browser on its own.`
+      `no debuggable Chrome is reachable on port ${port()}. Chrome 136 and later ignore ` +
+      `--remote-debugging-port on the default profile, so the user must start Chrome with both ` +
+      `--remote-debugging-port=${port()} and --user-data-dir pointing at a separate folder, then sign in ` +
+      `to the sites they want reachable inside that window. Tenari never launches or relaunches the ` +
+      `browser on its own.`
     );
   } finally {
     clearTimeout(timer);
