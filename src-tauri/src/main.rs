@@ -1,21 +1,20 @@
-// LocalHub — Cyclone C2a + C2b + C2.1a + C2.1b
+// LocalHub — the Tauri desktop shell
 // (memory/hub-and-desktop/Tenari-Command-Center.md).
 //
-// Tauri shell that:
+// It:
 //   - Opens a desktop window pointing at the live PWA
 //     (https://app.tenari.world/) — see tauri.conf.json.
-//   - C2b: spawns the Node sidecar (../node-sidecar/index.js) which runs an
-//     express-pouchdb host on http://localhost:5984/. The sidecar is the
-//     CouchDB-protocol endpoint C3's PouchDB clients replicate to.
-//   - C2.1a: registers the `localhub://` custom protocol via the deep-link
-//     plugin so Google's OAuth callback can return into this app from the
-//     user's system browser. single-instance ensures the callback URL hits
-//     the EXISTING Tauri process.
-//   - C2.1b: forwards the deep-link URL into the webview as an `oauth-callback`
-//     event so the PWA can read `?code=&state=` and complete the login. Also
-//     loads tauri-plugin-opener so the PWA can call
-//     `window.__TAURI__.opener.openUrl(...)` to launch the OAuth URL in the
-//     user's system browser.
+//   - Spawns the Node sidecar (../node-sidecar/index.js), which runs an
+//     express-pouchdb host on http://localhost:5984/. That is the
+//     CouchDB-protocol endpoint the PWA's PouchDB clients replicate to.
+//   - Registers the `localhub://` custom protocol via the deep-link plugin so
+//     Google's OAuth callback can return into this app from the user's system
+//     browser, and forwards that URL into the webview as an `oauth-callback`
+//     event carrying `?code=&state=`. single-instance is what makes the
+//     callback reach the EXISTING process instead of a second shell.
+//   - Loads tauri-plugin-opener so the PWA can call
+//     `window.__TAURI__.opener.openUrl(...)` to launch the OAuth URL in that
+//     system browser in the first place.
 //   - Kills the sidecar on ExitRequested so we never leave a zombie holding
 //     port 5984.
 //
@@ -184,7 +183,7 @@ async fn flow_copy_selection() -> Result<String, String> {
 /// Managed handle to the Node sidecar child so the ExitRequested handler can
 /// kill it. Held in Tauri state because the sidecar is spawned in setup() (where
 /// the AppHandle exists) rather than in main(). A `CommandChild` from the shell
-/// plugin — DA5 will route its shutdown through a single `on_before_exit` path.
+/// plugin. TODO(#258): route its shutdown through a single `on_before_exit` path.
 struct SidecarChild(Mutex<Option<CommandChild>>);
 
 /// Spawn the bundled-Node sidecar via `app.shell().sidecar("node")` (DA1). The
@@ -240,10 +239,10 @@ fn spawn_sidecar(
     );
 
     // Flow NO-API engine — tell the sidecar where whisper.cpp lives, if present.
-    // The whisper.cpp CLI is not yet provisioned/bundled (README TODO), so this
-    // resolves to None for now and Flow dictation is simply absent; once the
-    // whisper/ artifact + its bundle.resources entry land it lights up. Only set a
-    // default when the launching env hasn't already (dev override).
+    // TODO(#256): the whisper.cpp CLI is not provisioned or bundled yet, so this
+    // resolves to None and Flow dictation is simply absent until the whisper/
+    // artifact and its bundle.resources entry land. Only set a default when the
+    // launching env hasn't already (dev override).
     let whisper_name = if cfg!(windows) {
         "whisper/whisper-cli.exe"
     } else {
@@ -322,7 +321,7 @@ fn main() {
 
     // Flow global hotkeys (system-wide): Ctrl+Alt+Space = dictate, Ctrl+Alt+.
     // = Command Mode. Cloned into the plugin handler; the originals are
-    // registered in setup(). (User-configurable chords are a later step.)
+    // registered in setup(). The chords are fixed, not user-configurable.
     let dictate_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
     let command_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Period);
     let (hd, hc) = (dictate_sc.clone(), command_sc.clone());
@@ -444,13 +443,13 @@ fn main() {
             // On Linux + Windows-dev, the deep-link plugin can register the
             // `localhub://` scheme in the OS at runtime. macOS reads it from
             // Info.plist (bundled). Production Windows registration is the
-            // MSI installer's job — that's C2c.
+            // installer's job, not this call's.
             #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
             {
                 let _ = app.deep_link().register_all();
             }
 
-            // C2.1b — when a deep-link URL arrives, forward it to the main
+            // When a deep-link URL arrives, forward it to the main
             // webview as an `oauth-callback` event. The PWA's login script
             // listens for this and extracts ?code=&state= to complete the
             // OAuth exchange with the server. Capturing the AppHandle is
@@ -481,7 +480,8 @@ fn main() {
                     if let Some(child) = guard.take() {
                         println!("[localhub] killing sidecar pid: {}", child.pid());
                         // CommandChild::kill consumes self and releases the LevelDB
-                        // LOCK; DA5 will move this to a single on_before_exit path.
+                        // LOCK. TODO(#258): a force-kill never reaches here, which
+                        // is what strands the sidecar on the port and the LOCK.
                         let _ = child.kill();
                     }
                 }
