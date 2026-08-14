@@ -50,18 +50,44 @@ app.get('/oauth/callback', (req, res) => {
   const qs = req.originalUrl.split('?')[1] || '';
   const customUrl = 'com.containedevolution.localhub:/oauth/callback' + (qs ? '?' + qs : '');
   res.set('Content-Type', 'text/html').send(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Signing in to Contained Evolution…</title></head>
-<body style="background:#0a0e1a;color:#d9e1f2;font-family:system-ui,sans-serif;text-align:center;padding:48px;">
-  <h2>Returning to LocalHub…</h2>
-  <p>You can close this tab.</p>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signed in to Tenari</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(900px 620px at 12% -10%,#174d405e,transparent 62%),radial-gradient(760px 520px at 90% 100%,#13354866,transparent 68%),#07100f;color:#eef8f5;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;display:grid;place-items:center;padding:24px}
+.card{width:min(420px,100%);padding:36px 32px;border:1px solid #29413d;border-radius:22px;background:#0d1918e8;box-shadow:0 22px 60px #0008;text-align:center}
+.mark{width:56px;height:56px;margin:0 auto 20px;border:1px solid #77e3ba66;border-radius:18px;display:grid;place-items:center;color:#77e3ba;font-weight:700;font-size:20px;letter-spacing:.04em;background:#77e3ba12;box-shadow:0 0 30px #77e3ba22}
+h1{margin:0 0 10px;font-size:20px;font-weight:600}
+p{margin:0;color:#8ca7a1;font-size:14px;line-height:1.55}
+.spin{width:22px;height:22px;margin:22px auto 0;border:2px solid #29413d;border-top-color:#77e3ba;border-radius:50%;animation:s .8s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none;border-top-color:#29413d}}
+.fallback{display:none;margin-top:22px}
+.fallback.show{display:block}
+a.btn{display:inline-block;padding:11px 18px;border-radius:11px;background:#77e3ba;color:#07120f;font-weight:700;font-size:14px;text-decoration:none}
+a.btn:hover{filter:brightness(1.06)}
+.hint{margin-top:12px;font-size:12px;color:#8ca7a1}
+</style></head>
+<body>
+  <main class="card">
+    <div class="mark">T</div>
+    <h1>You're signed in</h1>
+    <p>Taking you back to Tenari on this computer.</p>
+    <div class="spin" id="spin" aria-hidden="true"></div>
+    <div class="fallback" id="fallback">
+      <a class="btn" id="link" href="#">Open Tenari</a>
+      <div class="hint">You can close this tab once Tenari is open.</div>
+    </div>
+  </main>
   <script>
-    location.replace(${JSON.stringify(customUrl)});
+    var target=${JSON.stringify(customUrl)};
+    document.getElementById('link').href=target;
+    location.replace(target);
     setTimeout(function(){
-      var a=document.createElement('a');
-      a.href=${JSON.stringify(customUrl)};
-      a.textContent='Click here if LocalHub didn\\'t open automatically';
-      a.style.color='#5bc0eb';
-      document.body.appendChild(a);
+      document.getElementById('spin').style.display='none';
+      document.getElementById('fallback').className='fallback show';
     },1500);
   </script>
 </body></html>`);
