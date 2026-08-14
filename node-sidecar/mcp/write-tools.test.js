@@ -12,6 +12,7 @@ const allowlist = require('./allowlist');
 const writeFile = require('./tools/write-file');
 const createDirectory = require('./tools/create-directory');
 const moveToTrash = require('./tools/move-to-trash');
+const moveFile = require('./tools/move-file');
 const searchFiles = require('./tools/search-files');
 const registry = require('./registry');
 
@@ -24,7 +25,7 @@ const cleanEnv = () => { delete process.env.MCP_ROOT; delete process.env.LOCALHU
 check('every registered tool exposes a name, description and schema', () => {
   const tools = registry.listTools();
   const names = tools.map((t) => t.name);
-  for (const expected of ['read_file', 'list_directory', 'search_files', 'write_file', 'create_directory', 'move_to_trash']) {
+  for (const expected of ['read_file', 'list_directory', 'search_files', 'write_file', 'create_directory', 'move_file', 'move_to_trash']) {
     assert.ok(names.includes(expected), `${expected} is registered`);
   }
   for (const tool of tools) {
@@ -107,6 +108,82 @@ check('create_directory makes nested folders and is repeatable', async () => {
   const second = await createDirectory.execute({ path: target });
   assert.strictEqual(second.error, undefined, 'second call succeeds quietly');
   assert.strictEqual(second.created, false);
+  allowlist.save([]);
+});
+
+check('move_file moves and renames inside approved folders', async () => {
+  cleanEnv();
+  const dir = mkdir('ce-w-move-');
+  allowlist.save([dir]);
+  allowlist.allowWrite(dir);
+  const source = path.join(dir, 'draft.txt');
+  fs.writeFileSync(source, 'the contents');
+
+  const renamed = path.join(dir, 'final.txt');
+  const first = await moveFile.execute({ from: source, to: renamed });
+  assert.strictEqual(first.error, undefined, 'renamed without error');
+  assert.strictEqual(fs.existsSync(source), false, 'old name gone');
+  assert.strictEqual(fs.readFileSync(renamed, 'utf8'), 'the contents', 'contents preserved');
+
+  const nested = path.join(dir, 'Archive', '2026', 'final.txt');
+  const second = await moveFile.execute({ from: renamed, to: nested });
+  assert.strictEqual(second.error, undefined, 'moved into a new folder');
+  assert.strictEqual(fs.readFileSync(nested, 'utf8'), 'the contents');
+  allowlist.save([]);
+});
+
+check('move_file never silently replaces anything', async () => {
+  cleanEnv();
+  const dir = mkdir('ce-w-move-clash-');
+  allowlist.save([dir]);
+  allowlist.allowWrite(dir);
+  const a = path.join(dir, 'a.txt');
+  const b = path.join(dir, 'b.txt');
+  fs.writeFileSync(a, 'aaa');
+  fs.writeFileSync(b, 'bbb');
+
+  const res = await moveFile.execute({ from: a, to: b });
+  assert.ok(res.error, 'refused');
+  assert.ok(/already exists/.test(res.error), 'says why');
+  assert.strictEqual(fs.readFileSync(a, 'utf8'), 'aaa', 'source untouched');
+  assert.strictEqual(fs.readFileSync(b, 'utf8'), 'bbb', 'destination untouched');
+  allowlist.save([]);
+});
+
+check('move_file cannot move a file out of, or into, an unapproved folder', async () => {
+  cleanEnv();
+  const writableDir = mkdir('ce-w-move-rw-');
+  const readOnly = mkdir('ce-w-move-ro-');
+  allowlist.save([writableDir, readOnly]);
+  allowlist.allowWrite(writableDir);
+  const inside = path.join(writableDir, 'secret.txt');
+  fs.writeFileSync(inside, 'private');
+  const readOnlyFile = path.join(readOnly, 'theirs.txt');
+  fs.writeFileSync(readOnlyFile, 'theirs');
+
+  const out = await moveFile.execute({ from: inside, to: path.join(readOnly, 'secret.txt') });
+  assert.ok(out.error, 'cannot move into a read-only folder');
+  assert.strictEqual(fs.existsSync(inside), true, 'source still there');
+
+  const inbound = await moveFile.execute({ from: readOnlyFile, to: path.join(writableDir, 'theirs.txt') });
+  assert.ok(inbound.error, 'cannot move out of a read-only folder');
+  assert.strictEqual(fs.readFileSync(readOnlyFile, 'utf8'), 'theirs', 'read-only file untouched');
+
+  const escape = await moveFile.execute({ from: inside, to: path.join(os.tmpdir(), 'escaped.txt') });
+  assert.ok(escape.error, 'cannot move outside every shared folder');
+  allowlist.save([]);
+});
+
+check('move_file refuses to move a folder inside itself', async () => {
+  cleanEnv();
+  const dir = mkdir('ce-w-move-self-');
+  allowlist.save([dir]);
+  allowlist.allowWrite(dir);
+  const parent = path.join(dir, 'parent');
+  fs.mkdirSync(parent);
+  const res = await moveFile.execute({ from: parent, to: path.join(parent, 'child') });
+  assert.ok(res.error, 'refused');
+  assert.strictEqual(fs.statSync(parent).isDirectory(), true, 'folder intact');
   allowlist.save([]);
 });
 

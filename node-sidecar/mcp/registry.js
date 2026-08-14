@@ -6,6 +6,7 @@ const tools = [
   require('./tools/search-files'),
   require('./tools/write-file'),
   require('./tools/create-directory'),
+  require('./tools/move-file'),
   require('./tools/move-to-trash'),
   require('./tools/browser-status'),
   require('./tools/browser-tabs'),
