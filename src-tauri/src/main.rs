@@ -1,5 +1,5 @@
 // LocalHub — Cyclone C2a + C2b + C2.1a + C2.1b
-// (memory/apps/System/Tenari-Command-Center.md).
+// (memory/hub-and-desktop/Tenari-Command-Center.md).
 //
 // Tauri shell that:
 //   - Opens a desktop window pointing at the live PWA
