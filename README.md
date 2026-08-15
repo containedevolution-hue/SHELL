@@ -1,6 +1,6 @@
 # LocalHub — Cyclone C2
 
-The desktop half of [Cyclone](../memory/hub-and-desktop/Tenari-Command-Center.md). A
+The desktop half of [Cyclone](../memory/command-center/Tenari-Command-Center.md). A
 Tauri (Rust shell) desktop app that:
 
 1. **Loads the live CE PWA** in a desktop window (so the desktop is a full
@@ -34,7 +34,7 @@ Tauri (Rust shell) desktop app that:
   `{slug}.hub.containedevolution.com` (provisioned via `routes/hub-cert.js` +
   `lib/hub-acme.js`); pairing/beacon/claim in `routes/hub-pair.js`; the PWA
   switches PouchDB sync to the HTTPS LAN url from prefs (`hub_lan_url`). Details:
-  `memory/hub-and-desktop/Tenari-Command-Center.md` (Cyclone sync engine).
+  `memory/command-center/Tenari-Command-Center.md` (Cyclone sync engine).
 
 ## Bundled-Node artifacts (DA1 — provision once before dev/build)
 

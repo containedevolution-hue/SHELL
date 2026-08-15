@@ -1,5 +1,5 @@
 // LocalHub — the Tauri desktop shell
-// (memory/hub-and-desktop/Tenari-Command-Center.md).
+// (memory/command-center/Tenari-Command-Center.md).
 //
 // It:
 //   - Opens a desktop window pointing at the live PWA
