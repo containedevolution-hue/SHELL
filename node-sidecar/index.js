@@ -24,6 +24,7 @@ const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs, readLocalDoc } = require('./lib/local-docs');
 const accessControl = require('./lib/access');
+const parentWatch = require('./lib/parent-watch');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
 
@@ -182,6 +183,11 @@ app.use('/', requireSyncToken, requirePairedDatabase, expressPouchDB(StoreCtor, 
   logPath: path.join(DATA_DIR, 'log.txt'),
   configPath: path.join(DATA_DIR, 'config.json'),
 }));
+
+parentWatch.start((pid) => {
+  console.log(`[localhub-sidecar] parent ${pid} is gone — shutting down so the port and store are released`);
+  process.exit(0);
+});
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] listening on http://${HOST}:${PORT}/`);

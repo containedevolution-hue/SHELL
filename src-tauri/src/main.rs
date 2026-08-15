@@ -258,6 +258,12 @@ fn spawn_sidecar(
         })?
         .arg(script.to_string_lossy().to_string());
 
+    // ExitRequested only fires on a graceful quit. A Task Manager kill or a crash
+    // skips it and leaves node.exe holding port 5984 and the LevelDB lock, which
+    // then fails the next install with "Error opening file for writing". Handing
+    // the sidecar our pid lets it exit on its own when we disappear by any route.
+    cmd = cmd.env("LOCALHUB_PARENT_PID", std::process::id().to_string());
+
     if std::env::var_os("WHISPER_BIN").is_none() {
         if let Some(w) = whisper_bin {
             cmd = cmd.env("WHISPER_BIN", w.to_string_lossy().to_string());
