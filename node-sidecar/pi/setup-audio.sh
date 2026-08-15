@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# CE Hub Appliance — Pi audio bring-up (Hub 7 root path).
+# Tenari Command Center — Pi audio bring-up (legacy Hub 7 root path).
 #
-# Single source of truth for "the Hub can make sound." Six concerns,
+# Single source of truth for Command Center audio. Six concerns,
 # each addressed once at the system level so every audio path (Chromium
 # kiosk browser TTS, the hub_speak MCP via Piper, future ElevenLabs)
 # reaches the speakers without per-path config:

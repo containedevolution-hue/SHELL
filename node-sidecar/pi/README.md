@@ -1,6 +1,6 @@
-# CE Hub Appliance — Pi bring-up
+# Command Center — Pi bring-up
 
-Plug-and-play setup for the Tier 0 Pi 5 Hub Nano. Takes ~5 min from sealed
+Plug-and-play setup for the Tier 0 Pi 5 Command Center. Takes ~5 min from sealed
 box to live appliance (excluding the OS flash itself).
 
 ## 1 — Flash Pi OS (64-bit)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CE Hub — auto-update setup.
+# Tenari Command Center — auto-update setup.
 #
 # Installs a systemd timer that checks for new commits on origin/main every
 # 5 minutes. Only pulls + restarts the sidecar when new code is available.
@@ -42,7 +42,7 @@ sudo chmod +x /usr/local/bin/ce-hub-update
 # ── systemd service ───────────────────────────────────────────────────────────
 sudo tee /etc/systemd/system/cehub-update.service >/dev/null <<EOF
 [Unit]
-Description=CE Hub — pull latest code from Railway deploy
+Description=Tenari Command Center — pull latest code from Railway deploy
 
 [Service]
 Type=oneshot
@@ -53,7 +53,7 @@ EOF
 # ── systemd timer (every 5 min) ───────────────────────────────────────────────
 sudo tee /etc/systemd/system/cehub-update.timer >/dev/null <<EOF
 [Unit]
-Description=CE Hub — check for updates every 5 minutes
+Description=Tenari Command Center — check for updates every 5 minutes
 
 [Timer]
 OnBootSec=2min

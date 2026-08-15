@@ -342,7 +342,7 @@ async function autoBeacon() {
     return;
   }
 
-  console.log(`[localhub-pairing] Hub not paired — open Settings → Integrations → Hub Appliance`);
+  console.log(`[localhub-pairing] Command Center not paired — open Settings → Command Center`);
   let printedCode = null;
 
   async function sendBeacon() {

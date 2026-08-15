@@ -33,7 +33,7 @@ module.exports = {
     type: 'function',
     function: {
       name: 'camera_status',
-      description: 'Check whether the Hub camera is connected and ready. This does not capture an image.',
+      description: 'Check whether the Command Center camera is connected and ready. This does not capture an image.',
       parameters: { type: 'object', properties: {} },
     },
   },

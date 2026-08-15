@@ -17,7 +17,7 @@ module.exports = {
     type: 'function',
     function: {
       name: 'camera_snapshot',
-      description: 'Capture one current image from the Hub camera and visually inspect it. Use only when the user explicitly asks to take a picture or asks what the Hub camera sees.',
+      description: 'Capture one current image from the Command Center camera and visually inspect it. Use only when the user explicitly asks to take a picture or asks what the Command Center camera sees.',
       parameters: {
         type: 'object',
         properties: {

@@ -1,14 +1,14 @@
-# LocalHub — Cyclone C2
+# Tenari Command Center
 
 The desktop half of [Cyclone](../memory/command-center/Tenari-Command-Center.md). A
-Tauri (Rust shell) desktop app that:
+Tenari Command Center is a Tauri (Rust shell) Windows app that:
 
 1. **Loads the live CE PWA** in a desktop window (so the desktop is a full
    counterpart to the mobile app from day one — same codebase, same features).
 2. **Hosts a CouchDB-compatible engine** as a Node sidecar (`express-pouchdb` —
    the v1 host engine), so the user's devices on the LAN sync to *their own
    machine*. **[C2b — not yet built.]**
-3. **Runs the cron jobs** locally when LocalHub is open. **[Later.]**
+3. **Runs the cron jobs** locally when Command Center is open. **[Later.]**
 4. **Maintains a persistent agent tunnel** to Railway (paid tier) so the phone
    can command + sync from anywhere. **[C6 — paid feature, not yet built.]**
 
