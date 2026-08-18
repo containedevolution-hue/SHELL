@@ -1,6 +1,6 @@
 [package]
 name = "localhub"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tenari Command Center desktop host"
 authors = ["Contained Evolution"]
 edition = "2021"
