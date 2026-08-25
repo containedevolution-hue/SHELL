@@ -98,8 +98,7 @@ localhub/
 
 ## Why a separate folder, same repo
 
-Per `AGENTS.md` doctrine ("One repo. `ce-team` is the unified app. All code
-lives here.") + the C0 decision in the Cyclone spec doc: LocalHub lives in a
+Tenari remains one repository. Command Center lives in a
 subfolder so it can share types/protocol code with the server when C3+ wires
 the sync layer, without the cross-repo pain we hit with `beta-team`. Split out
 to its own repo *only* if the desktop toolchain ever genuinely fights the

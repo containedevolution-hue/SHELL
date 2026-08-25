@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Tenari Command Center — Pi bring-up script.
 #
-# Run on a fresh Pi OS Lite install AFTER you've cloned the ce-team repo:
-#   git clone <repo-url> ~/ce-team
-#   cd ~/ce-team/localhub/node-sidecar/pi
+# Run on a fresh Pi OS Lite install AFTER you've cloned the Tenari repo:
+#   git clone <repo-url> ~/Tenari
+#   cd ~/Tenari/localhub/node-sidecar/pi
 #   ./setup.sh
 #   sudo reboot
 #
