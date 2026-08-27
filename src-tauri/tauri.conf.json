@@ -91,7 +91,8 @@
     "longDescription": "Tenari Command Center runs Tenari on your own computer. It keeps your local-only Memory safe, gives your Companion the file and browser access you approve, and works when Tenari cannot be reached.",
     "externalBin": ["binaries/node"],
     "resources": {
-      "../node-sidecar": "node-sidecar"
+      "../node-sidecar": "node-sidecar",
+      "../../lib/flow-prompts.js": "lib/flow-prompts.js"
     },
     "icon": [
       "icons/32x32.png",
