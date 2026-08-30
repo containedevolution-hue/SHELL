@@ -9,7 +9,7 @@ const { normalizePublicTunnelUrl, namedTunnelUrl } = require('./tunnel-detect');
 
 test('public tunnel URLs reject stale machine hostnames', () => {
   assert.equal(normalizePublicTunnelUrl('https://cehub'), null);
-  assert.equal(normalizePublicTunnelUrl('cehub-mcp.containedevolution.com'), 'https://cehub-mcp.containedevolution.com');
+  assert.equal(normalizePublicTunnelUrl('hub.tenari.world'), 'https://hub.tenari.world');
   assert.equal(normalizePublicTunnelUrl('https://abc.trycloudflare.com/path'), 'https://abc.trycloudflare.com');
 });
 
@@ -19,11 +19,11 @@ test('named tunnel URL is recovered from cloudflared config', () => {
   fs.writeFileSync(configPath, [
     'tunnel: appliance-id',
     'ingress:',
-    '  - hostname: cehub-mcp.containedevolution.com',
+    '  - hostname: hub.tenari.world',
     '    service: http://127.0.0.1:5984',
   ].join('\n'));
   try {
-    assert.equal(namedTunnelUrl(configPath), 'https://cehub-mcp.containedevolution.com');
+    assert.equal(namedTunnelUrl(configPath), 'https://hub.tenari.world');
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

@@ -15,7 +15,7 @@
 #
 # What it does:
 #   1. Creates a `cehub-mcp` named tunnel (or reuses if it already exists)
-#   2. Routes DNS: cehub-mcp.containedevolution.com → this tunnel
+#   2. Routes DNS: hub.tenari.world → this tunnel
 #   3. Writes ~/.cloudflared/config.yml pinning the tunnel to localhost:5984
 #   4. Writes /etc/cehub/tunnel.env so the sidecar reads CEHUB_TUNNEL_URL
 #      without parsing journalctl
@@ -23,7 +23,7 @@
 #      named-tunnel ExecStart
 #   6. Restarts the service + verifies the public hostname returns 200
 #
-# Hostname choice: cehub-mcp.containedevolution.com (single-level so
+# Hostname choice: hub.tenari.world (single-level so
 # Cloudflare Universal SSL covers it for free). Two-level wildcards under
 # *.hub.containedevolution.com would need Advanced Certificate Manager
 # ($10/mo). For multi-tenant production we'll revisit the slug + ACM
@@ -37,7 +37,7 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 TUNNEL_NAME="${TUNNEL_NAME:-cehub-mcp}"
-TUNNEL_HOSTNAME="${CEHUB_TUNNEL_HOSTNAME:-cehub-mcp.containedevolution.com}"
+TUNNEL_HOSTNAME="${CEHUB_TUNNEL_HOSTNAME:-hub.tenari.world}"
 TUNNEL_ENV_DIR="/etc/cehub"
 TUNNEL_ENV_FILE="$TUNNEL_ENV_DIR/tunnel.env"
 CONFIG_YML="$HOME/.cloudflared/config.yml"

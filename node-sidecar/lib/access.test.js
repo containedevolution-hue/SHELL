@@ -205,7 +205,7 @@ check('a tunnelled request cannot reach access even though cloudflared is on thi
     assert.strictEqual(res.status, 403, `${header} is refused`);
   }
 
-  assert.strictEqual(await rawStatus({ host: 'cehub.tenari.world' }), 403, 'a public Host header is refused');
+  assert.strictEqual(await rawStatus({ host: 'hub.tenari.world' }), 403, 'a public Host header is refused');
   assert.strictEqual(await rawStatus({}), 200, 'a genuine local Host still works');
 
   const granted = await fetch(guardedBase + '/folders', {
