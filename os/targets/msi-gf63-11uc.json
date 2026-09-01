@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "msi-gf63-thin-11uc",
+  "role": "first-shell-os-target",
+  "host": {
+    "manufacturer": "Micro-Star International Co., Ltd.",
+    "model": "GF63 Thin 11UC",
+    "systemSku": "16R6.1",
+    "baseboard": "MS-16R6",
+    "firmware": "UEFI",
+    "secureBootObserved": true,
+    "cpu": "Intel Core i5-11400H",
+    "memoryGiB": 32,
+    "graphics": ["Intel UHD Graphics", "NVIDIA GeForce RTX 3050 Laptop GPU"],
+    "storage": "512 GB Micron NVMe"
+  },
+  "vm": {
+    "firmware": "UEFI",
+    "vcpus": 4,
+    "memoryMiB": 8192,
+    "diskGiB": 64,
+    "network": "nat",
+    "display": "1920x1080"
+  },
+  "stages": ["vm", "live-usb", "isolated-disk", "primary-install"],
+  "physicalProofRequired": [
+    "boot-and-recovery", "intel-graphics", "nvidia-graphics", "wifi",
+    "bluetooth", "ethernet", "audio", "camera", "keyboard", "touchpad",
+    "external-display", "suspend-resume", "battery", "secure-boot", "update-rollback"
+  ],
+  "hostDiskMutationAllowed": false
+}

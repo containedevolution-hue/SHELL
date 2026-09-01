@@ -27,6 +27,7 @@ const accessControl = require('./lib/access');
 const parentWatch = require('./lib/parent-watch');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
+const capabilities = require('./lib/capabilities');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -159,6 +160,7 @@ function loopbackOnly(req, res, next) {
   return res.status(403).json({ error: 'loopback_only' });
 }
 app.use('/access', loopbackOnly, accessControl.router());
+app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {

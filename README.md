@@ -65,6 +65,9 @@ npm run dev
 6. Add independent SHELL Cloud storage and sync.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
+The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),
+served locally at `GET /v1/capabilities`. The safe MSI VM and recovery path starts in
+[SHELL OS](os/README.md).
 
 ## License
 

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+SHELL_EXECUTABLE=/opt/shell/bin/shell
+
+if [ ! -x "$SHELL_EXECUTABLE" ]; then
+  echo "SHELL session cannot start: $SHELL_EXECUTABLE is missing or not executable." >&2
+  exit 66
+fi
+
+export SHELL_CAPABILITY_CONTRACT=com.containedevolution.shell.capabilities/1
+exec "$SHELL_EXECUTABLE"

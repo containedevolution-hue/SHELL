@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shell.containedevolution.com/contracts/v1/capabilities.schema.json",
+  "title": "SHELL capability discovery v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "version", "product", "localFirst", "accountRequired", "defaultPolicy", "capabilities"],
+  "properties": {
+    "contract": { "const": "com.containedevolution.shell.capabilities" },
+    "version": { "type": "string", "pattern": "^1\\.[0-9]+\\.[0-9]+$" },
+    "product": { "const": "SHELL" },
+    "localFirst": { "const": true },
+    "accountRequired": { "const": false },
+    "defaultPolicy": { "const": "deny" },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "state", "transport"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+          "category": { "enum": ["apps", "windows", "data", "files", "browser", "assistant", "sync", "devices", "settings", "integrations"] },
+          "state": { "enum": ["available", "legacy", "optional", "planned"] },
+          "transport": { "type": ["string", "null"] },
+          "endpoint": { "type": "string" },
+          "grantRequired": { "type": "boolean" },
+          "provider": { "type": ["string", "null"] },
+          "enabled": { "type": "boolean" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}
