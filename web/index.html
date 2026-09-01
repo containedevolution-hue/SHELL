@@ -36,19 +36,39 @@ button,input{font:inherit}
 .pill.ok{color:var(--mint)}
 .pill.ok i{background:var(--mint);box-shadow:0 0 9px var(--mint)}
 
-.desktop{position:absolute;inset:calc(52px + env(safe-area-inset-top,0px)) 0 0 0;display:grid;place-items:center;overflow:hidden}
-.tree{display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;background:none;border:0;color:inherit;padding:0}
-.tree-globe{width:min(216px,46vw);aspect-ratio:1;border-radius:50%;
+.desktop{position:absolute;inset:calc(52px + env(safe-area-inset-top,0px)) 0 0 0;overflow:hidden}
+.centre{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:12px;cursor:pointer;background:none;border:0;color:inherit;padding:0}
+.tree-globe{width:min(206px,44vw);aspect-ratio:1;border-radius:50%;
   background:radial-gradient(circle at 38% 30%,#1f4e40,#0c1a17 72%);
   border:1px solid #77e3ba55;
   box-shadow:inset 0 -22px 40px rgba(255,255,255,.10),inset 0 14px 26px rgba(0,0,0,.5),0 26px 60px rgba(4,10,10,.6),0 0 60px #77e3ba18;
   display:grid;place-items:center;position:relative;overflow:hidden;transition:transform .18s}
-.tree:hover .tree-globe,.tree:focus-visible .tree-globe{transform:translateY(-3px);outline:none}
+.centre:hover .tree-globe,.centre:focus-visible .tree-globe{transform:translateY(-3px);outline:none}
 .tree-globe::after{content:'';position:absolute;left:16%;top:12%;width:26%;height:18%;border-radius:50%;background:rgba(255,255,255,.5);filter:blur(3px)}
 .tree-globe svg{width:54%;height:54%;color:#bfe9d6;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
 .tree-label{font-size:13px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
 .tree-sub{font-size:11px;color:var(--muted);margin-top:-4px}
-.desktop-hint{position:absolute;left:0;right:0;bottom:20px;text-align:center;color:var(--muted);font-size:11px;opacity:.68}
+.desktop-hint{position:absolute;left:0;right:0;bottom:18px;text-align:center;color:var(--muted);font-size:11px;opacity:.6}
+
+#bubbles{position:absolute;inset:0}
+.bubble{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:7px;width:104px;cursor:grab;user-select:none;touch-action:none}
+.bubble.dragging{cursor:grabbing;z-index:30;opacity:.94}
+.bubble.merge-target .globe{border-color:var(--mint);box-shadow:0 0 0 3px #77e3ba44,inset 0 -14px 22px rgba(255,255,255,.16)}
+.globe{width:72px;height:72px;border-radius:50%;position:relative;overflow:hidden;display:grid;place-items:center;
+  background:rgba(13,25,24,.6);border:1px solid rgba(255,255,255,.34);
+  box-shadow:inset 0 -14px 20px rgba(255,255,255,.16),inset 0 8px 14px rgba(255,255,255,.06),0 10px 20px rgba(4,10,10,.5);
+  transition:transform .16s}
+.bubble:hover .globe{transform:translateY(-2px)}
+.globe::after{content:'';position:absolute;left:16%;top:12%;width:30%;height:22%;border-radius:50%;background:rgba(255,255,255,.5);filter:blur(1px)}
+.globe .emoji{font-size:29px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.globe .count{position:absolute;right:-1px;bottom:-1px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--mint);color:#07120f;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid #08110f}
+.bubble-label{font-size:11px;font-weight:600;text-align:center;color:var(--ink);text-shadow:0 1px 3px rgba(0,0,0,.65);max-width:100%}
+.bubble-label.hidden{display:none}
+
+.ctx{position:fixed;z-index:150;min-width:176px;padding:5px;border:1px solid var(--line);border-radius:12px;background:#10211ef7;backdrop-filter:blur(12px);box-shadow:var(--shadow)}
+.ctx[hidden]{display:none}
+.ctx button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--ink);padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px}
+.ctx button:hover{background:#77e3ba18}
 
 .panel{position:absolute;inset:calc(52px + env(safe-area-inset-top,0px)) 0 0 0;z-index:40;background:#08110ff7;backdrop-filter:blur(4px);display:flex;flex-direction:column;transform:translateY(16px);opacity:0;pointer-events:none;transition:.2s}
 .panel.show{transform:none;opacity:1;pointer-events:auto}
@@ -93,7 +113,19 @@ h2.head{font-size:24px;font-weight:700;margin:8px 0 10px}
 .reasons li{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;border:1px solid var(--line2);border-radius:12px;background:#0a1514;padding:11px 13px;font-size:12.5px;color:var(--muted)}
 .reasons b{color:var(--ink);font-weight:600;display:block;margin-bottom:2px}
 
-.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,12px);z-index:150;max-width:360px;padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:#10211e;box-shadow:var(--shadow);font-size:12.5px;opacity:0;pointer-events:none;transition:.2s}
+.drawer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:10px;margin-top:12px}
+.drawer-app{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;align-items:center;border:1px solid var(--line2);border-radius:13px;background:var(--panel);padding:11px 12px}
+.drawer-app .emoji{grid-row:span 2;font-size:22px;line-height:1}
+.drawer-app b{grid-column:2;min-width:0;font-size:12.5px;font-weight:600;line-height:1.25}
+.drawer-app button{grid-column:2;justify-self:start;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:5px 10px;font-size:11px;cursor:pointer;white-space:nowrap}
+.drawer-app button:hover{border-color:#77e3ba88}
+.drawer-app button:disabled{opacity:.4;cursor:default}
+.folder-apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px;margin-top:10px}
+.folder-app{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;color:var(--ink);cursor:pointer}
+.folder-app .emoji{font-size:26px}
+.folder-app span{font-size:11px;color:var(--muted);text-align:center}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,12px);z-index:180;max-width:360px;padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:#10211e;box-shadow:var(--shadow);font-size:12.5px;opacity:0;pointer-events:none;transition:.2s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media(max-width:820px){
@@ -123,14 +155,15 @@ h2.head{font-size:24px;font-weight:700;margin:8px 0 10px}
 </header>
 
 <main class="desktop" id="desktop">
-  <button class="tree" id="tree" type="button" aria-label="Open Memory Tree">
+  <div id="bubbles"></div>
+  <button class="centre" id="tree" type="button" aria-label="Open Memory Tree">
     <span class="tree-globe">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-6"/><path d="M12 16c-3 0-5-2-5-4 0-1 .5-1.8 1.2-2.4C8 8.7 7.7 8 7.7 7.2 7.7 5.4 9.6 4 12 4s4.3 1.4 4.3 3.2c0 .8-.3 1.5-.5 2.4C16.5 10.2 17 11 17 12c0 2-2 4-5 4Z"/><path d="M9.5 19.5 12 17l2.5 2.5"/></svg>
     </span>
     <span class="tree-label">Memory Tree</span>
     <span class="tree-sub">Everything stored on this machine</span>
   </button>
-  <p class="desktop-hint">Your desktop is empty. App bubbles and windows arrive in the next builds.</p>
+  <p class="desktop-hint">Drag bubbles to move them · drop one on another to make a folder · right-click for options</p>
 </main>
 
 <section class="panel" id="panel" aria-label="Memory Tree" aria-hidden="true">
@@ -142,6 +175,29 @@ h2.head{font-size:24px;font-weight:700;margin:8px 0 10px}
   <div class="panel-body" id="panel-body"></div>
 </section>
 
+<section class="panel" id="drawer" aria-label="App drawer" aria-hidden="true">
+  <div class="panel-head">
+    <h2>App drawer</h2>
+    <div class="spacer"></div>
+    <button class="btn small" id="drawer-close" type="button">Close</button>
+  </div>
+  <div class="panel-body" id="drawer-body"></div>
+</section>
+
+<section class="panel" id="folderview" aria-label="Folder" aria-hidden="true">
+  <div class="panel-head">
+    <h2 id="folder-title">Folder</h2>
+    <div class="spacer"></div>
+    <button class="btn small" id="folder-close" type="button">Close</button>
+  </div>
+  <div class="panel-body" id="folder-body"></div>
+</section>
+
+<div class="ctx" id="ctx" hidden>
+  <button type="button" data-act="open">Open</button>
+  <button type="button" data-act="remove">Remove from desktop</button>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -149,11 +205,62 @@ h2.head{font-size:24px;font-weight:700;margin:8px 0 10px}
 'use strict';
 
 var REMOTE = 'https://app.tenari.world/localhub/';
+var REMOTE_BASE = 'https://app.tenari.world';
 var SIDECAR = 'http://localhost:5984';
 var POLL_MS = 15000;
+var LAYOUT_KEY = 'shell_desktop_layout_v1';
 
-// Workspaces the local canvas cannot serve on its own. Kept so the panel can
-// say plainly what is missing and why, cloud reach and local build apart.
+// Local mirror of public/js/app-catalog.js so the desktop is populated with no
+// connection. The admin-only Dev group is left out. Keeping this in sync with the
+// live catalog is a later refinement; step 5 moves the saved layout to the sidecar.
+var CATALOG = [
+  { cat: 'Personal', emoji: '🌿', apps: [
+    { id:'fitness', label:'Fitness', emoji:'💪', url:'/fitness.html' },
+    { id:'taste-buds', label:'Taste Buds', emoji:'🍳', url:'/taste-buds.html' },
+    { id:'flora', label:'Flora', emoji:'🌱', url:'/flora.html' },
+    { id:'habits', label:'Habits', emoji:'🔄', url:'/habits.html' },
+    { id:'dream-tree', label:'Dream Cacher', emoji:'🌙', url:'/dream-tree.html' },
+    { id:'journal', label:'Daily Journal', emoji:'📓', url:'/journal.html' },
+    { id:'follow-up-studio', label:'Follow Up Studio', emoji:'✍️', url:'/follow-up-studio.html' }
+  ] },
+  { cat: 'Documents', emoji: '📄', apps: [
+    { id:'notes', label:'Notes', emoji:'📝', url:'/notes.html' },
+    { id:'scribble', label:'Scribble', emoji:'✏️', url:'/scribble/' },
+    { id:'canvas', label:'Canvas', emoji:'🖼️', url:'/canvas/' },
+    { id:'collage', label:'Binders', emoji:'📔', url:'/collage.html' },
+    { id:'memory', label:'Memory Tree', emoji:'🧠', url:'/memory/' },
+    { id:'today', label:'Daily Brief', emoji:'☀️', url:'/today.html' },
+    { id:'tasks', label:'Tasks', emoji:'✅', url:'/tasks.html' },
+    { id:'studio', label:'Contained Evolution Studios', emoji:'🎛️', url:'/studio.html' },
+    { id:'templates', label:'Templates', emoji:'🧩', url:'/templates.html' }
+  ] },
+  { cat: 'Work', emoji: '💼', apps: [
+    { id:'projects', label:'Projects', emoji:'🎯', url:'/projects/' },
+    { id:'contractors', label:'Contractors', emoji:'📚', url:'/contractors.html' },
+    { id:'boards', label:'Boards', emoji:'🗂️', url:'/boards.html' },
+    { id:'ledger', label:'Ledger', emoji:'💰', url:'/ledger/' }
+  ] },
+  { cat: 'Tools', emoji: '🧰', apps: [
+    { id:'automations', label:'Automations', emoji:'⚙️', url:'/settings/automations.html' },
+    { id:'files', label:'Storage', emoji:'🗄️', url:'/files.html' },
+    { id:'fetch', label:'Fetch', emoji:'🔭', url:'/fetch.html' },
+    { id:'mapit', label:'Map It', emoji:'🗺️', url:'/mapit.html' },
+    { id:'northstar', label:'Navigation', emoji:'🧭', url:'/northstar.html' },
+    { id:'flow', label:'Flow', emoji:'🎙️', url:'/flow.html' }
+  ] },
+  { cat: 'Creative', emoji: '🎨', apps: [
+    { id:'music', label:'Music Maker', emoji:'🎵', url:'/beatmkr.html' },
+    { id:'image-studio', label:'Media Lab', emoji:'🎨', url:'/image-studio.html' },
+    { id:'comedy-club', label:'Bit by Bit', emoji:'🎤', url:'/comedy-club.html' },
+    { id:'inspire', label:'Inspire', emoji:'✦', url:'/inspire.html' }
+  ] },
+  { cat: 'Games', emoji: '🎮', apps: [
+    { id:'games', label:'Games', emoji:'🎮', url:'/games.html' }
+  ] }
+];
+
+// Workspaces the local canvas cannot serve on its own. Kept so the panel can say
+// plainly what is missing and why, cloud reach and local build apart.
 var PAGES = [
   { id: 'overview', icon: '⌂', label: 'Overview' },
   { id: 'memory', icon: '◇', label: 'Memory' },
@@ -179,7 +286,7 @@ var TYPE_LABELS = {
   file: 'File', files: 'File'
 };
 
-var state = { open: false, docs: null, loadError: null, reachable: false, reading: null, query: '', filter: 'all' };
+var state = { open: null, docs: null, loadError: null, reachable: false, reading: null, query: '', filter: 'all', layout: null };
 var $ = function (id) { return document.getElementById(id); };
 var toastTimer = null;
 
@@ -203,11 +310,267 @@ function withTimeout(ms) {
   return c.signal;
 }
 
-function appReachable() {
-  return fetch(REMOTE, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: withTimeout(3500) })
-    .then(function () { return true; })
-    .catch(function () { return false; });
+// -- app catalog helpers ------------------------------------------------------
+
+function roster() {
+  var out = [];
+  CATALOG.forEach(function (group) { group.apps.forEach(function (app) { out.push(app); }); });
+  return out;
 }
+
+function appById(id) {
+  return roster().filter(function (a) { return a.id === id; })[0] || null;
+}
+
+function onDesktop(appId) {
+  return (state.layout.bubbles || []).some(function (b) {
+    return b.appId === appId || (b.apps && b.apps.indexOf(appId) >= 0);
+  });
+}
+
+// -- desktop layout ---------------------------------------------------------
+
+function seedLayout() {
+  var bubbles = CATALOG.map(function (group, i) {
+    var angle = (-90 + i * (360 / CATALOG.length)) * Math.PI / 180;
+    return {
+      uid: 'cat-' + group.cat.toLowerCase(),
+      kind: 'folder',
+      label: group.cat,
+      emoji: group.emoji,
+      x: Math.round(50 + 31 * Math.cos(angle)),
+      y: Math.round(50 + 33 * Math.sin(angle)),
+      apps: group.apps.map(function (a) { return a.id; })
+    };
+  });
+  return { v: 1, bubbles: bubbles };
+}
+
+function loadLayout() {
+  try {
+    var raw = localStorage.getItem(LAYOUT_KEY);
+    var parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && Array.isArray(parsed.bubbles) && parsed.bubbles.length) return parsed;
+  } catch (_) {}
+  return seedLayout();
+}
+
+// TODO(step 5): persist the desktop layout through the sidecar /local/docs path
+// so it syncs to Tenari instead of living only in this webview's localStorage.
+function persist() {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(state.layout)); } catch (_) {}
+}
+
+function bubbleByUid(uid) {
+  return (state.layout.bubbles || []).filter(function (b) { return b.uid === uid; })[0] || null;
+}
+
+function renderBubbles() {
+  var host = $('bubbles');
+  host.innerHTML = '';
+  (state.layout.bubbles || []).forEach(function (b) {
+    var node = document.createElement('div');
+    node.className = 'bubble';
+    node.dataset.uid = b.uid;
+    node.style.left = b.x + '%';
+    node.style.top = b.y + '%';
+    var count = b.kind === 'folder' && b.apps.length > 1
+      ? '<span class="count">' + b.apps.length + '</span>' : '';
+    node.innerHTML =
+      '<span class="globe"><span class="emoji">' + esc(b.emoji || '📦') + '</span>' + count + '</span>' +
+      '<span class="bubble-label' + (b.labelHidden ? ' hidden' : '') + '">' + esc(b.label) + '</span>';
+    bindBubble(node, b);
+    host.appendChild(node);
+  });
+}
+
+function openBubble(b) {
+  if (b.kind === 'app') { openApp(appById(b.appId)); return; }
+  if (b.apps.length === 1) { openApp(appById(b.apps[0])); return; }
+  openFolder(b);
+}
+
+function openApp(app) {
+  if (!app) return;
+  if (app.id === 'memory') { openTree(); return; }
+  if (!state.reachable) { toast(app.label + ' needs a connection.'); return; }
+  // step 4 replaces this whole-canvas handoff with an in-canvas window + tab orb.
+  location.assign(REMOTE_BASE + app.url);
+}
+
+function openFolder(b) {
+  setOpen('folderview');
+  $('folder-title').textContent = b.label;
+  var apps = b.apps.map(appById).filter(Boolean);
+  $('folder-body').innerHTML = '<div class="page"><div class="folder-apps">' + apps.map(function (a) {
+    return '<button class="folder-app" type="button" data-app="' + esc(a.id) + '">' +
+      '<span class="emoji">' + esc(a.emoji) + '</span><span>' + esc(a.label) + '</span></button>';
+  }).join('') + '</div></div>';
+  Array.prototype.forEach.call($('folder-body').querySelectorAll('[data-app]'), function (el) {
+    el.addEventListener('click', function () { openApp(appById(el.getAttribute('data-app'))); });
+  });
+}
+
+function removeBubble(uid) {
+  state.layout.bubbles = state.layout.bubbles.filter(function (b) { return b.uid !== uid; });
+  persist();
+  renderBubbles();
+}
+
+function mergeBubbles(dragUid, targetUid) {
+  var drag = bubbleByUid(dragUid);
+  var target = bubbleByUid(targetUid);
+  if (!drag || !target || drag === target) return;
+  var incoming = drag.kind === 'folder' ? drag.apps.slice() : [drag.appId];
+  if (target.kind === 'app') {
+    target.kind = 'folder';
+    target.label = 'Folder';
+    target.apps = [target.appId];
+    delete target.appId;
+  }
+  incoming.forEach(function (id) { if (target.apps.indexOf(id) < 0) target.apps.push(id); });
+  state.layout.bubbles = state.layout.bubbles.filter(function (b) { return b.uid !== dragUid; });
+  persist();
+  renderBubbles();
+  toast('Combined into "' + target.label + '".');
+}
+
+function addAppToDesktop(app) {
+  if (!app) return;
+  if (onDesktop(app.id)) { toast(app.label + ' is already on the desktop.'); return; }
+  state.layout.bubbles.push({
+    uid: 'b' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+    kind: 'app', appId: app.id, label: app.label, emoji: app.emoji,
+    x: 50 + Math.floor(Math.random() * 20 - 10), y: 44 + Math.floor(Math.random() * 16 - 8)
+  });
+  persist();
+  renderBubbles();
+  renderDrawer();
+  toast(app.label + ' added to the desktop.');
+}
+
+// -- pointer drag + merge -------------------------------------------------------
+
+function bindBubble(node, b) {
+  var start = null;
+
+  node.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+    showCtx(e.clientX, e.clientY, b.uid);
+  });
+
+  node.addEventListener('pointerdown', function (e) {
+    if (e.button === 2) return;
+    hideCtx();
+    var host = $('bubbles').getBoundingClientRect();
+    start = { px: e.clientX, py: e.clientY, ox: b.x, oy: b.y, w: host.width, h: host.height, moved: false };
+    node.setPointerCapture(e.pointerId);
+  });
+
+  node.addEventListener('pointermove', function (e) {
+    if (!start) return;
+    var dx = e.clientX - start.px, dy = e.clientY - start.py;
+    if (!start.moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+    start.moved = true;
+    node.classList.add('dragging');
+    b.x = Math.min(96, Math.max(4, start.ox + dx / start.w * 100));
+    b.y = Math.min(95, Math.max(5, start.oy + dy / start.h * 100));
+    node.style.left = b.x + '%';
+    node.style.top = b.y + '%';
+    markMergeTarget(node, e.clientX, e.clientY);
+  });
+
+  node.addEventListener('pointerup', function (e) {
+    if (!start) return;
+    try { node.releasePointerCapture(e.pointerId); } catch (_) {}
+    node.classList.remove('dragging');
+    if (!start.moved) { start = null; openBubble(b); return; }
+    var over = mergeTargetAt(node, e.clientX, e.clientY);
+    clearMergeTargets();
+    if (over) { start = null; mergeBubbles(b.uid, over); return; }
+    b.x = Math.round(b.x); b.y = Math.round(b.y);
+    persist();
+    start = null;
+  });
+}
+
+function otherBubbles(selfNode) {
+  return Array.prototype.filter.call($('bubbles').children, function (n) { return n !== selfNode; });
+}
+
+function mergeTargetAt(selfNode, cx, cy) {
+  var hit = null;
+  otherBubbles(selfNode).forEach(function (n) {
+    var r = n.querySelector('.globe').getBoundingClientRect();
+    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) hit = n.dataset.uid;
+  });
+  return hit;
+}
+
+function markMergeTarget(selfNode, cx, cy) {
+  var uid = mergeTargetAt(selfNode, cx, cy);
+  otherBubbles(selfNode).forEach(function (n) {
+    n.classList.toggle('merge-target', n.dataset.uid === uid);
+  });
+}
+
+function clearMergeTargets() {
+  Array.prototype.forEach.call($('bubbles').children, function (n) { n.classList.remove('merge-target'); });
+}
+
+// -- context menu -------------------------------------------------------------
+
+function showCtx(x, y, uid) {
+  var ctx = $('ctx');
+  ctx.dataset.uid = uid;
+  ctx.style.left = Math.min(x, window.innerWidth - 190) + 'px';
+  ctx.style.top = Math.min(y, window.innerHeight - 90) + 'px';
+  ctx.hidden = false;
+}
+
+function hideCtx() { $('ctx').hidden = true; }
+
+// -- drawer -----------------------------------------------------------------
+
+function renderDrawer() {
+  $('drawer-body').innerHTML = '<div class="page">' +
+    '<div class="eyebrow">Every app</div><h2 class="head">App drawer</h2>' +
+    '<p class="lede">Everything SHELL can open. Add an app to the desktop as its own bubble, then drag bubbles ' +
+    'together to make folders.</p>' +
+    CATALOG.map(function (group) {
+      return '<h3 style="margin:22px 0 0;font-size:13px;letter-spacing:.08em;color:var(--muted)">' + esc(group.cat) + '</h3>' +
+        '<div class="drawer-grid">' + group.apps.map(function (a) {
+          var here = onDesktop(a.id);
+          return '<div class="drawer-app"><span class="emoji">' + esc(a.emoji) + '</span><b>' + esc(a.label) + '</b>' +
+            '<button type="button" data-add="' + esc(a.id) + '"' + (here ? ' disabled' : '') + '>' +
+            (here ? 'On desktop' : 'Add to desktop') + '</button></div>';
+        }).join('') + '</div>';
+    }).join('') + '</div>';
+  Array.prototype.forEach.call($('drawer-body').querySelectorAll('[data-add]'), function (el) {
+    el.addEventListener('click', function () { addAppToDesktop(appById(el.getAttribute('data-add'))); });
+  });
+}
+
+// -- overlays ---------------------------------------------------------------
+
+function setOpen(id) {
+  ['panel', 'drawer', 'folderview'].forEach(function (p) {
+    var on = p === id;
+    $(p).classList.toggle('show', on);
+    $(p).setAttribute('aria-hidden', on ? 'false' : 'true');
+  });
+  state.open = id;
+}
+
+function closeOverlays() {
+  ['panel', 'drawer', 'folderview'].forEach(function (p) {
+    $(p).classList.remove('show');
+    $(p).setAttribute('aria-hidden', 'true');
+  });
+  state.open = null;
+}
+
+// -- Memory Tree (local documents) ------------------------------------------
 
 function loadLocalDocs(tries) {
   tries = tries || 0;
@@ -261,7 +624,7 @@ function allDocs() {
   return (state.docs && state.docs.docs) || [];
 }
 
-function shown() {
+function shownDocs() {
   var q = state.query.toLowerCase();
   return allDocs().filter(function (d) {
     if (state.filter === 'memory' && !isMemory(d)) return false;
@@ -298,7 +661,7 @@ function panelHtml() {
     body = '<div class="empty">No local store has been created on this computer yet. Sign in to Tenari once while ' +
       'connected and your local-only items will be kept here.</div>';
   } else {
-    var list = shown();
+    var list = shownDocs();
     var filters = '<div class="filters">' +
       ['all', 'memory', 'documents'].map(function (f) {
         return '<button type="button" data-filter="' + f + '"' + (state.filter === f ? ' class="active"' : '') + '>' +
@@ -399,22 +762,37 @@ function refreshDocs() {
   return loadLocalDocs()
     .then(function (data) { state.docs = data; })
     .catch(function (e) { state.loadError = e.message || 'Unknown error.'; })
-    .then(function () { if (state.open) renderPanel(); });
+    .then(function () { if (state.open === 'panel') renderPanel(); });
 }
 
 function openTree() {
-  state.open = true;
   state.reading = null;
-  $('panel').classList.add('show');
-  $('panel').setAttribute('aria-hidden', 'false');
+  setOpen('panel');
   renderPanel();
   if (!state.docs && !state.loadError) refreshDocs();
 }
 
-function closeTree() {
-  state.open = false;
-  $('panel').classList.remove('show');
-  $('panel').setAttribute('aria-hidden', 'true');
+// -- network + boot -------------------------------------------------------------
+
+function appReachable() {
+  return fetch(REMOTE, { method: 'HEAD', mode: 'no-cors', cache: 'no-store', signal: withTimeout(3500) })
+    .then(function () { return true; })
+    .catch(function () { return false; });
+}
+
+function paintReach(ok) {
+  state.reachable = ok;
+  var pill = $('net-pill');
+  pill.className = 'pill' + (ok ? ' ok' : '');
+  pill.querySelector('span').textContent = ok ? 'Tenari reachable' : 'Tenari unreachable';
+  $('live-btn').disabled = !ok;
+  if (state.open === 'panel') renderPanel();
+}
+
+function watchNetwork() {
+  setInterval(function () {
+    appReachable().then(function (ok) { if (ok !== state.reachable) paintReach(ok); });
+  }, POLL_MS);
 }
 
 function openLiveApp() {
@@ -422,36 +800,44 @@ function openLiveApp() {
   location.assign(REMOTE);
 }
 
-function watchNetwork() {
-  setInterval(function () {
-    appReachable().then(function (ok) {
-      if (ok === state.reachable) return;
-      state.reachable = ok;
-      var pill = $('net-pill');
-      pill.className = 'pill' + (ok ? ' ok' : '');
-      pill.querySelector('span').textContent = ok ? 'Tenari reachable' : 'Tenari unreachable';
-      $('live-btn').disabled = !ok;
-      if (state.open) renderPanel();
-    });
-  }, POLL_MS);
-}
-
 function showShell() {
   $('boot').classList.add('hide');
+
+  state.layout = loadLayout();
+  renderBubbles();
+  renderDrawer();
+
   $('tree').addEventListener('click', openTree);
-  $('panel-close').addEventListener('click', closeTree);
+  $('panel-close').addEventListener('click', closeOverlays);
+  $('drawer-close').addEventListener('click', closeOverlays);
+  $('folder-close').addEventListener('click', closeOverlays);
   $('live-btn').addEventListener('click', openLiveApp);
-  $('drawer-btn').addEventListener('click', function () { toast('The app drawer arrives in the next build.'); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.open) closeTree(); });
-  watchNetwork();
-  // First reachability check now, so the pill and live-app button are honest at once.
-  appReachable().then(function (ok) {
-    state.reachable = ok;
-    var pill = $('net-pill');
-    pill.className = 'pill' + (ok ? ' ok' : '');
-    pill.querySelector('span').textContent = ok ? 'Tenari reachable' : 'Tenari unreachable';
-    $('live-btn').disabled = !ok;
+  $('drawer-btn').addEventListener('click', function () {
+    if (state.open === 'drawer') { closeOverlays(); return; }
+    renderDrawer();
+    setOpen('drawer');
   });
+
+  $('ctx').addEventListener('click', function (e) {
+    var act = e.target.getAttribute('data-act');
+    var uid = $('ctx').dataset.uid;
+    hideCtx();
+    if (!uid || !act) return;
+    if (act === 'open') { var b = bubbleByUid(uid); if (b) openBubble(b); }
+    if (act === 'remove') removeBubble(uid);
+  });
+  document.addEventListener('pointerdown', function (e) {
+    if (!$('ctx').hidden && !$('ctx').contains(e.target)) hideCtx();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!$('ctx').hidden) { hideCtx(); return; }
+    if (state.open) closeOverlays();
+  });
+  window.addEventListener('resize', function () { hideCtx(); });
+
+  watchNetwork();
+  appReachable().then(paintReach);
 }
 
 // The canvas is the home. It always renders locally and never navigates away on
