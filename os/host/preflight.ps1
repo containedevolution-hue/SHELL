@@ -10,7 +10,11 @@ $system = Get-CimInstance Win32_ComputerSystem
 $bios = Get-CimInstance Win32_BIOS
 $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
 $tools = [ordered]@{
-    qemu = Find-Command 'qemu-system-x86_64'
+    qemu = if (Test-Path -LiteralPath 'C:\Program Files\qemu\qemu-system-x86_64.exe') {
+        'C:\Program Files\qemu\qemu-system-x86_64.exe'
+    } else {
+        Find-Command 'qemu-system-x86_64'
+    }
     virtualbox = Find-Command 'VBoxManage'
     vmware = Find-Command 'vmrun'
     wsl = Find-Command 'wsl'

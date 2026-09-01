@@ -16,6 +16,17 @@ Run the read-only host inspection from PowerShell:
 powershell -ExecutionPolicy Bypass -File os/host/preflight.ps1
 ```
 
+On the MSI Windows host, download and verify the pinned official installer, then
+start the disposable VM:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File os/host/download-arch-installer.ps1
+powershell -ExecutionPolicy Bypass -File os/host/start-msi-vm.ps1 -Mode Installer
+```
+
+The ISO, UEFI variable store, and virtual disk live under ignored `.artifacts/`.
+After Linux is installed, use `-Mode Disk` to boot without the installer ISO.
+
 The first VM should use UEFI, 4 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
 allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.

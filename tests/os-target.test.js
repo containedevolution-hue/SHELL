@@ -28,3 +28,11 @@ test('physical install stays behind the full device proof gate', () => {
   const required = ['boot-and-recovery', 'intel-graphics', 'nvidia-graphics', 'wifi', 'audio', 'suspend-resume', 'secure-boot', 'update-rollback'];
   for (const gate of required) assert.ok(target.physicalProofRequired.includes(gate), gate);
 });
+
+test('Windows VM launcher is disposable, accelerated, and repo-contained', () => {
+  const launcher = fs.readFileSync(path.join(root, 'os', 'host', 'start-msi-vm.ps1'), 'utf8');
+  assert.match(launcher, /q35,accel=whpx:tcg/);
+  assert.match(launcher, /shell-os\.qcow2/);
+  assert.match(launcher, /\.artifacts/);
+  assert.doesNotMatch(launcher, /(?:Clear-Disk|Format-Volume|Remove-Partition|diskpart)/i);
+});

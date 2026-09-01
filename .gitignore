@@ -8,3 +8,4 @@
 /src-tauri/binaries/
 /whisper/
 *.log
+/.artifacts/
