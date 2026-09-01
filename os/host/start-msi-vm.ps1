@@ -31,18 +31,17 @@ if (-not (Test-Path -LiteralPath $diskPath)) {
 if (-not (Test-Path -LiteralPath $varsPath)) {
     Copy-Item -LiteralPath $uefiVarsTemplate -Destination $varsPath
 }
-
 $qemuArgs = @(
     '-name', 'SHELL OS - MSI development VM',
-    '-machine', 'q35,accel=whpx:tcg',
+    '-machine', 'q35,accel=tcg',
     '-cpu', 'max',
     '-smp', '4',
     '-m', '8192',
     '-drive', "if=pflash,format=raw,readonly=on,file=$uefiCode",
     '-drive', "if=pflash,format=raw,file=$varsPath",
     '-drive', "file=$diskPath,if=virtio,format=qcow2",
-    '-device', 'virtio-vga-gl',
-    '-display', 'sdl,gl=on',
+    '-vga', 'std',
+    '-display', 'sdl',
     '-device', 'virtio-net-pci,netdev=net0',
     '-netdev', 'user,id=net0',
     '-device', 'qemu-xhci',
