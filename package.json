@@ -1,12 +1,14 @@
 {
-  "name": "localhub",
+  "name": "shell",
   "version": "0.1.1",
-  "private": true,
-  "description": "Tenari Command Center desktop host",
+  "private": false,
+  "description": "SHELL — a free, local-first operating environment by Contained Evolution",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "test": "node --test \"tests/*.test.js\" \"node-sidecar/lib/*.test.js\" \"node-sidecar/mcp/*.test.js\"",
+    "check:rust": "cargo check --manifest-path dedup-engine/Cargo.toml && cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

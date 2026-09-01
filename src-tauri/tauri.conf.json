@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tenari Command Center",
+  "productName": "SHELL",
   "version": "0.1.1",
   "identifier": "com.containedevolution.localhub",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Tenari Command Center",
+        "title": "SHELL",
         "url": "index.html",
         "width": 1280,
         "height": 800,
@@ -23,7 +23,7 @@
       },
       {
         "label": "dedup",
-        "title": "Tenari — Photo Duplicates",
+        "title": "SHELL — Photo Duplicates",
         "url": "dedup.html",
         "width": 1100,
         "height": 820,
@@ -35,7 +35,7 @@
       },
       {
         "label": "typing-trainer",
-        "title": "Tenari — Typing Trainer",
+        "title": "SHELL — Typing Trainer",
         "url": "typing-trainer.html",
         "width": 1220,
         "height": 860,
@@ -87,12 +87,11 @@
       }
     },
     "category": "Utility",
-    "shortDescription": "Tenari Command Center — your machine's private layer",
-    "longDescription": "Tenari Command Center runs Tenari on your own computer. It keeps your local-only Memory safe, gives your Companion the file and browser access you approve, and works when Tenari cannot be reached.",
+    "shortDescription": "SHELL — a free, local-first operating environment",
+    "longDescription": "SHELL provides a local-first desktop, core apps, files, browser capabilities, and optional integrations without requiring an account or Tenari.",
     "externalBin": ["binaries/node"],
     "resources": {
-      "../node-sidecar": "node-sidecar",
-      "../../lib/flow-prompts.js": "lib/flow-prompts.js"
+      "../node-sidecar": "node-sidecar"
     },
     "icon": [
       "icons/32x32.png",

@@ -1,105 +1,71 @@
-# Tenari Command Center
+# SHELL
 
-The desktop half of [Cyclone](../memory/command-center/Tenari-Command-Center.md). A
-Tenari Command Center is a Tauri (Rust shell) Windows app that:
+SHELL is Contained Evolution's free, local-first operating environment. It owns its desktop, core apps, FETCH browser and Research Labs, files, local data, optional cloud storage and sync, devices, settings, and integration permissions. It works without Tenari, an assistant, or an account.
 
-1. **Loads the live CE PWA** in a desktop window (so the desktop is a full
-   counterpart to the mobile app from day one — same codebase, same features).
-2. **Hosts a CouchDB-compatible engine** as a Node sidecar (`express-pouchdb` —
-   the v1 host engine), so the user's devices on the LAN sync to *their own
-   machine*. **[C2b — not yet built.]**
-3. **Runs the cron jobs** locally when Command Center is open. **[Later.]**
-4. **Maintains a persistent agent tunnel** to Railway (paid tier) so the phone
-   can command + sync from anywhere. **[C6 — paid feature, not yet built.]**
+This repository was extracted from Tenari with the complete history of the former `localhub/` subtree. Compatibility identifiers such as `localhub`, `hub_*`, `com.containedevolution.localhub`, and `localhub://` remain only where changing them requires a deliberate migration.
 
-5. **Runs bundled offline tools** from the native Tools menu: Photo Duplicates
-   and Typing Trainer. Typing progress and custom physical-key profiles remain
-   local to the trainer WebView and require no account, AI, or sidecar.
+## Current state
 
-## C2 slicing
+- `web/` contains the always-on local canvas, draggable app bubbles and folders, drawer, local document browser, and offline recovery surface.
+- `node-sidecar/` is the current local agent: data host, permission jail, audited file/browser tools, local Flow seam, and legacy Tenari pairing adapters.
+- `src-tauri/` packages the Windows bridge and owns sidecar lifecycle, native commands, global shortcuts, and deep links.
+- `dedup-engine/` is the Rust image-deduplication engine.
+- `scripts/` provisions pinned build dependencies.
+- `tests/` plus the sidecar tests cover the independent behavior that already exists.
 
-- ✅ **C2a — Tauri shell.** Opens a desktop window pointing at
-  `https://app.tenari.world/`. Bundling is OFF (`bundle.active: false`)
-  so dev mode works without icons; C2c adds icons + the Windows installer config.
-- ✅ **C2b — Node sidecar + express-pouchdb.** See [`node-sidecar/`](./node-sidecar).
-  Tauri's `src-tauri/src/main.rs` spawns it at startup and kills it on
-  `ExitRequested`. Bind defaults to `127.0.0.1`; set `LOCALHUB_HOST=0.0.0.0`
-  for headless appliance deployments (Pi).
-- ✅ **C3a — Same-machine sync inside the Tauri webview.** PWA loaded in the
-  Tauri window auto-starts `PouchDB.sync(local ⇄ http://localhost:5984/ce-memories-{id})`.
-- ❌ **C2c — Windows installer + icons + marketing download stub.** Tauri MSI
-  bundling, real icons (32/128/256/256@2x + Windows ICO), `app/download` page.
-- ✅ **C3b — LAN sync (phone ⇄ desktop over Wi-Fi).** BUILT + verified live
-  2026-05-25. HTTPS-on-sidecar (port 8443) with a real Let's Encrypt cert per
-  `{slug}.hub.containedevolution.com` (provisioned via `routes/hub-cert.js` +
-  `lib/hub-acme.js`); pairing/beacon/claim in `routes/hub-pair.js`; the PWA
-  switches PouchDB sync to the HTTPS LAN url from prefs (`hub_lan_url`). Details:
-  `memory/command-center/Tenari-Command-Center.md` (Cyclone sync engine).
+The current code still contains legacy Tenari origins and pairing behavior. Those are extraction seams, not SHELL foundations. New work must place optional products behind versioned integrations and keep local features functional when every integration is absent.
 
-## Bundled-Node artifacts (DA1 — provision once before dev/build)
+## Product boundaries
 
-The sidecar launches via the bundled Node externalBin (`app.shell().sidecar("node")`),
-so the app runs on a machine with no system Node. Three artifacts are fetched/built,
-NOT committed (see `.gitignore`), and must ship as ONE atomic set matched to `NODE_VERSION`:
+- Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
+- FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
+- SEED is a sealed, developer-only local corpus and never enters cloud sync or integration reach.
+- Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
+- Brics is a separate product with a first-class SHELL device, diagnostics, input, and snap-in display seam.
+
+## MSI-first OS path
+
+The first OS target is an MSI GF63 Thin 11UC with an Intel i5-11400H, 32 GB RAM, Intel/NVIDIA hybrid graphics, and UEFI Secure Boot. Development advances through:
+
+1. A Linux virtual machine on the existing Windows installation.
+2. A live USB hardware pass.
+3. An isolated second internal or external SSD.
+4. Primary-machine installation only after update, rollback, recovery, graphics, networking, audio, suspend, camera, and input are proven.
+
+The Windows/Tauri build remains the recoverable bridge while the Linux session matures.
+
+## Development
 
 ```powershell
-cd localhub
-node scripts/fetch-node-binary.mjs        # → src-tauri/binaries/node-x86_64-pc-windows-msvc.exe
-cd node-sidecar && npm ci --omit=dev      # → node-sidecar/node_modules (native leveldown built for that node)
-cd ..
-# whisper/  → whisper-cli[.exe] + no model (the ggml model self-downloads into the data dir on first Flow use).
-#   Provision the whisper.cpp CLI build into localhub/whisper/ (Flow's NO-API engine). TODO: add a
-#   fetch/build step; until then Flow dictation is absent but the app otherwise runs.
+npm ci
+npm --prefix node-sidecar ci
+npm test
 ```
 
-## Dev (requires the prerequisites below + the artifacts above)
+Rust checks:
 
 ```powershell
-cd localhub
-npm run dev          # == tauri dev
-# A desktop window opens onto https://app.tenari.world/
+cargo check --manifest-path dedup-engine/Cargo.toml
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-## Build
+Run the Windows bridge after provisioning the bundled Node artifacts described in `scripts/fetch-node-binary.mjs`:
 
 ```powershell
-cd localhub
-npm run build                       # == tauri build → MSI (DA3 switches to NSIS)
-npm run build -- --features consumer  # consumer build: excludes Media-Lab asset-forge
-# Bundles binaries/node + node-sidecar/ + whisper/ as resources. Needs the artifacts above present.
+npm run dev
 ```
 
-## Prerequisites (Windows)
+## Near-term order
 
-- **Node** (already on this dev machine).
-- **Tauri CLI 2.x** (already installed globally via npm; `npx @tauri-apps/cli --version` confirms).
-- **Rust** — `winget install Rustlang.Rustup -e` then a fresh shell + `rustup default stable-x86_64-pc-windows-msvc`.
-- **MSVC Build Tools** — `winget install Microsoft.VisualStudio.2022.BuildTools -e --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"`. WebView2 is pre-installed on Win11.
+1. Freeze and version the capability interface.
+2. Separate legacy Tenari pairing/cloud behavior into an optional adapter.
+3. Replace local-document and desktop-layout stand-ins with the authoritative SQLite data layer.
+4. Establish the MSI VM image and boot-to-SHELL Linux session.
+5. Build FETCH Browser on an embedded engine boundary.
+6. Add independent SHELL Cloud storage and sync.
 
-## Layout
+See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 
-```
-localhub/
-├── README.md            (this file)
-├── package.json         (npm scripts wrap the Tauri CLI)
-├── web/
-│   └── index.html       (frontendDist target — never actually shown; the window
-│                         opens straight at the remote PWA URL. Tauri needs *some*
-│                         frontendDist to point at.)
-└── src-tauri/
-    ├── Cargo.toml
-    ├── build.rs
-    ├── tauri.conf.json  (window opens https://app.tenari.world/)
-    ├── capabilities/
-    │   └── default.json (Tauri 2 capability — main window, core defaults)
-    └── src/
-        └── main.rs      (thin: `tauri::Builder::default().run(...)`)
-```
+## License
 
-## Why a separate folder, same repo
-
-Tenari remains one repository. Command Center lives in a
-subfolder so it can share types/protocol code with the server when C3+ wires
-the sync layer, without the cross-repo pain we hit with `beta-team`. Split out
-to its own repo *only* if the desktop toolchain ever genuinely fights the
-server build — which it doesn't today.
+MIT. See [LICENSE](LICENSE).

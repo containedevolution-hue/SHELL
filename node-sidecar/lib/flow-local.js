@@ -8,19 +8,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { Readable } = require('stream');
 
-function loadFlowPrompts() {
-  const candidates = [
-    path.join(__dirname, '..', '..', 'lib', 'flow-prompts'),
-    path.join(__dirname, '..', '..', '..', 'lib', 'flow-prompts'),
-  ];
-  const promptModule = candidates.find(candidate => fs.existsSync(candidate + '.js'));
-  if (!promptModule) {
-    throw new Error('Flow prompt module is missing from the Command Center resources.');
-  }
-  return require(promptModule);
-}
-
-const { cleanupSystem, commandSystem, commandUser } = loadFlowPrompts();
+const { cleanupSystem, commandSystem, commandUser } = require('./flow-prompts');
 
 const OLLAMA_BASE   = process.env.OLLAMA_BASE || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL  = process.env.OLLAMA_MODEL || 'llama3.2';
