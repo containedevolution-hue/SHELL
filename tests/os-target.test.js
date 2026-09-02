@@ -35,5 +35,7 @@ test('Windows VM launcher is disposable, accelerated, and repo-contained', () =>
   assert.match(launcher, /'-vga', 'std'/);
   assert.match(launcher, /shell-os\.qcow2/);
   assert.match(launcher, /\.artifacts/);
+  assert.match(launcher, /Start-Process -FilePath \$qemu/);
+  assert.match(launcher, /This PowerShell window may now be closed/);
   assert.doesNotMatch(launcher, /(?:Clear-Disk|Format-Volume|Remove-Partition|diskpart)/i);
 });

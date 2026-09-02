@@ -10,6 +10,8 @@ $vmRoot = Join-Path $artifactRoot 'vm\msi-gf63-11uc'
 $isoPath = Join-Path $artifactRoot 'isos\archlinux-2026.09.01-x86_64.iso'
 $diskPath = Join-Path $vmRoot 'shell-os.qcow2'
 $varsPath = Join-Path $vmRoot 'uefi-vars.fd'
+$stdoutLog = Join-Path $vmRoot 'qemu.stdout.log'
+$stderrLog = Join-Path $vmRoot 'qemu.stderr.log'
 $qemuRoot = 'C:\Program Files\qemu'
 $qemu = Join-Path $qemuRoot 'qemu-system-x86_64.exe'
 $qemuImg = Join-Path $qemuRoot 'qemu-img.exe'
@@ -21,6 +23,9 @@ foreach ($required in @($qemu, $qemuImg, $uefiCode, $uefiVarsTemplate)) {
 }
 if ($Mode -eq 'Installer' -and -not (Test-Path -LiteralPath $isoPath)) {
     throw "Verified Arch installer is missing: $isoPath"
+}
+if (Get-Process qemu-system-x86_64 -ErrorAction SilentlyContinue) {
+    throw 'A QEMU VM is already running. Close it before starting another SHELL VM.'
 }
 
 New-Item -ItemType Directory -Force -Path $vmRoot | Out-Null
@@ -56,6 +61,20 @@ if ($Mode -eq 'Installer') {
     $qemuArgs += @('-boot', 'order=c,menu=on')
 }
 
-Write-Host "Starting disposable SHELL VM in $Mode mode. Close the VM window to stop it."
-& $qemu @qemuArgs
-exit $LASTEXITCODE
+$argumentLine = ($qemuArgs | ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
+$process = Start-Process -FilePath $qemu `
+    -ArgumentList $argumentLine `
+    -WorkingDirectory $repoRoot `
+    -RedirectStandardOutput $stdoutLog `
+    -RedirectStandardError $stderrLog `
+    -PassThru
+
+Start-Sleep -Seconds 2
+if ($process.HasExited) {
+    $detail = if (Test-Path -LiteralPath $stderrLog) { (Get-Content -LiteralPath $stderrLog -Raw).Trim() } else { '' }
+    throw "QEMU exited during startup with code $($process.ExitCode). $detail"
+}
+
+Write-Host "Started disposable SHELL VM in $Mode mode (process $($process.Id))."
+Write-Host 'This PowerShell window may now be closed; close the QEMU window to stop the VM.'
+Write-Host "QEMU logs: $stderrLog"
