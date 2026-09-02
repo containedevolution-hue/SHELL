@@ -3,7 +3,7 @@ param(
     [string]$Mode = 'Installer',
 
     [ValidateSet('Tcg', 'Whpx')]
-    [string]$Accelerator = 'Tcg'
+    [string]$Accelerator = 'Whpx'
 )
 
 $ErrorActionPreference = 'Stop'

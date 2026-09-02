@@ -30,11 +30,10 @@ After Linux is installed, use `-Mode Disk` to boot without the installer ISO.
 The first VM should use UEFI, 2 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
 allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.
-The launcher defaults to the slower but currently proven TCG software emulator
-with standard VGA. `-Accelerator Whpx` remains an explicit experiment using
-Windows Hypervisor Platform, a conservative virtual CPU, standard VGA, and
-QEMU's software interrupt controller. It is not the default until this
-MSI/Windows/QEMU combination produces a usable installed-guest display.
+The launcher defaults to the proven WHPX profile: Windows Hypervisor Platform,
+a conservative virtual CPU, standard VGA, and QEMU's software interrupt
+controller. This combination boots the installed Arch/KDE guest responsively on
+the MSI. `-Accelerator Tcg` remains the slower recovery path when WHPX cannot run.
 
 ## Boot contract
 
