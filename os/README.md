@@ -30,6 +30,8 @@ After Linux is installed, use `-Mode Disk` to boot without the installer ISO.
 The first VM should use UEFI, 4 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
 allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.
+The launcher prefers Windows Hypervisor Platform acceleration and falls back to
+QEMU software emulation when hardware acceleration is unavailable.
 
 ## Boot contract
 

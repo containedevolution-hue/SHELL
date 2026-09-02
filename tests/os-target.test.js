@@ -31,7 +31,7 @@ test('physical install stays behind the full device proof gate', () => {
 
 test('Windows VM launcher is disposable, accelerated, and repo-contained', () => {
   const launcher = fs.readFileSync(path.join(root, 'os', 'host', 'start-msi-vm.ps1'), 'utf8');
-  assert.match(launcher, /q35,accel=tcg/);
+  assert.match(launcher, /q35,accel=whpx:tcg/);
   assert.match(launcher, /'-vga', 'std'/);
   assert.match(launcher, /shell-os\.qcow2/);
   assert.match(launcher, /\.artifacts/);
