@@ -60,14 +60,16 @@ npm run dev
 1. Freeze and version the capability interface.
 2. Separate legacy Tenari pairing/cloud behavior into an optional adapter.
 3. Replace local-document and desktop-layout stand-ins with the authoritative SQLite data layer.
-4. Establish the MSI VM image and boot-to-SHELL Linux session.
-5. Build FETCH Browser on an embedded engine boundary.
-6. Add independent SHELL Cloud storage and sync.
+4. Establish the local [security and system-health service](docs/security-and-health-foundation.md).
+5. Establish the MSI VM image and boot-to-SHELL Linux session.
+6. Build FETCH Browser on an embedded engine boundary.
+7. Add independent SHELL Cloud storage and sync.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),
 served locally at `GET /v1/capabilities`. The safe MSI VM and recovery path starts in
-[SHELL OS](os/README.md).
+[SHELL OS](os/README.md). Security and performance observations use the versioned
+[health-event contract](contracts/v1/health-event.schema.json).
 
 ## License
 
