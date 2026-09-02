@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $varsPath)) {
 }
 $qemuArgs = @(
     '-name', 'SHELL OS - MSI development VM',
-    '-machine', 'q35,accel=whpx:tcg',
+    '-machine', 'q35,accel=whpx:tcg,pic=off',
     '-cpu', 'max',
     '-smp', '4',
     '-m', '8192',

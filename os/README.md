@@ -32,7 +32,8 @@ allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.
 The launcher prefers Windows Hypervisor Platform acceleration, uses VirtIO
 graphics for the Linux guest, and falls back to QEMU software emulation when
-hardware acceleration is unavailable.
+hardware acceleration is unavailable. Its UEFI/Q35 profile disables the legacy
+PIC so WHPX cannot strand the guest while injecting obsolete PIC interrupts.
 
 ## Boot contract
 
