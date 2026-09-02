@@ -36,6 +36,7 @@ test('Windows VM launcher is disposable, accelerated, and repo-contained', () =>
   assert.match(launcher, /q35,accel=whpx,kernel-irqchip=off/);
   assert.match(launcher, /if \(\$Accelerator -eq 'Whpx'\) \{ 'qemu64' \}/);
   assert.match(launcher, /'-vga', 'std'/);
+  assert.match(launcher, /gtk,grab-on-hover=off,show-cursor=on,zoom-to-fit=on/);
   assert.match(launcher, /'-smp', '2'/);
   assert.match(launcher, /shell-os\.qcow2/);
   assert.match(launcher, /\.artifacts/);

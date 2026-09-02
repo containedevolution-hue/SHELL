@@ -34,6 +34,8 @@ The launcher defaults to the proven WHPX profile: Windows Hypervisor Platform,
 a conservative virtual CPU, standard VGA, and QEMU's software interrupt
 controller. This combination boots the installed Arch/KDE guest responsively on
 the MSI. `-Accelerator Tcg` remains the slower recovery path when WHPX cannot run.
+The GTK display keeps hover capture disabled; `Ctrl+Alt+G` releases an explicit
+keyboard or pointer grab when one is active.
 
 ## Boot contract
 

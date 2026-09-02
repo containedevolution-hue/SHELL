@@ -51,7 +51,7 @@ $qemuArgs = @(
     '-drive', "if=pflash,format=raw,file=$varsPath",
     '-drive', "file=$diskPath,if=virtio,format=qcow2",
     '-vga', 'std',
-    '-display', 'sdl',
+    '-display', 'gtk,grab-on-hover=off,show-cursor=on,zoom-to-fit=on',
     '-device', 'virtio-net-pci,netdev=net0',
     '-netdev', 'user,id=net0',
     '-device', 'qemu-xhci',
