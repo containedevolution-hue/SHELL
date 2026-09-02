@@ -4,6 +4,10 @@ SHELL OS is the Linux delivery of the same SHELL capability contract used by the
 Windows bridge. The MSI GF63 remains a Windows daily driver while this path is
 proved in a virtual machine, then a live USB, then an isolated SSD.
 
+The ordered ownership and desktop-replacement gates are defined in the
+[SHELL OS build plan](BUILD-PLAN.md). KDE is the current recovery scaffold, not
+the intended product surface.
+
 ## First target
 
 `targets/msi-gf63-11uc.json` is the checked-in machine profile. It records known
@@ -39,6 +43,16 @@ keyboard or pointer grab when one is active.
 The VM exposes a clipboard-only vdagent channel. Install and run
 `spice-vdagent` in the Arch guest to exchange clipboard text with Windows; the
 channel disables agent mouse control and does not enable file transfer.
+
+Inside the guest, the current read-only system probe can be run without root:
+
+```bash
+/opt/shell/os/guest/bin/shell-health-inventory
+```
+
+It emits newline-delimited health-event v1 records. Missing tools or inaccessible
+facts are reported as unavailable; the probe does not install packages, alter
+networking, or change system state.
 
 ## Boot contract
 

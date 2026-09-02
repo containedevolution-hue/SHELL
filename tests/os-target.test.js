@@ -46,3 +46,14 @@ test('Windows VM launcher is disposable, accelerated, and repo-contained', () =>
   assert.match(launcher, /This PowerShell window may now be closed/);
   assert.doesNotMatch(launcher, /(?:Clear-Disk|Format-Volume|Remove-Partition|diskpart)/i);
 });
+
+test('guest inventory is read-only and reports unavailable dependencies', () => {
+  const inventory = fs.readFileSync(path.join(root, 'os', 'guest', 'bin', 'shell-health-inventory'), 'utf8');
+  assert.match(inventory, /com\.containedevolution\.shell\.health-event\/1/);
+  assert.match(inventory, /\/proc\/meminfo/);
+  assert.match(inventory, /nmcli/);
+  assert.match(inventory, /checkupdates/);
+  assert.match(inventory, /nft list ruleset/);
+  assert.match(inventory, /unavailable/);
+  assert.doesNotMatch(inventory, /(?:sudo|pacman\s+-S|systemctl\s+(?:enable|start|stop)|nft\s+(?:add|delete|flush))/);
+});

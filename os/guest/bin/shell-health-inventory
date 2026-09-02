@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -u
+
+contract='com.containedevolution.shell.health-event/1'
+recorded_at="$(date --utc +'%Y-%m-%dT%H:%M:%SZ')"
+
+json_string() {
+  local value=${1-}
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  printf '"%s"' "$value"
+}
+
+event() {
+  local id=$1 domain=$2 summary=$3 adapter=$4 authority=$5 label=$6 value=$7
+  printf '{"contract":"%s","id":' "$contract"
+  json_string "$id"
+  printf ',"recordedAt":"%s","kind":"observation","domain":"%s","severity":"info","summary":' "$recorded_at" "$domain"
+  json_string "$summary"
+  printf ',"source":{"adapter":'
+  json_string "$adapter"
+  printf ',"authority":'
+  json_string "$authority"
+  printf '},"evidence":[{"label":'
+  json_string "$label"
+  printf ',"value":'
+  json_string "$value"
+  printf '}],"retention":{"class":"event"}}\n'
+}
+
+unavailable() {
+  local id=$1 domain=$2 summary=$3 adapter=$4 authority=$5 reason=$6
+  event "$id" "$domain" "$summary" "$adapter" "$authority" 'availability' "$reason"
+}
+
+event 'system.kernel' 'service' 'Linux kernel identified' 'uname' 'kernel release' 'release' "$(uname -r)"
+event 'system.uptime' 'service' 'System uptime observed' 'procfs' '/proc/uptime' 'seconds' "$(awk '{print int($1)}' /proc/uptime)"
+event 'cpu.load' 'cpu' 'One-minute CPU load observed' 'procfs' '/proc/loadavg' 'load1' "$(awk '{print $1}' /proc/loadavg)"
+
+if [[ -r /proc/meminfo ]]; then
+  memory_summary=$(awk '
+    /^MemTotal:/ { total=$2 }
+    /^MemAvailable:/ { available=$2 }
+    END { if (total > 0) printf "total_kib=%d available_kib=%d used_percent=%.1f", total, available, (total-available)*100/total }
+  ' /proc/meminfo)
+  event 'memory.summary' 'memory' 'Memory capacity observed' 'procfs' '/proc/meminfo' 'summary' "$memory_summary"
+else
+  unavailable 'memory.summary' 'memory' 'Memory information unavailable' 'procfs' '/proc/meminfo' 'not-readable'
+fi
+
+root_summary=$(df -Pk / 2>/dev/null | awk 'NR==2 { printf "total_kib=%s available_kib=%s used_percent=%s", $2, $4, $5 }')
+if [[ -n "$root_summary" ]]; then
+  event 'storage.root' 'storage' 'Root filesystem capacity observed' 'df' 'mounted root filesystem' 'summary' "$root_summary"
+else
+  unavailable 'storage.root' 'storage' 'Root filesystem information unavailable' 'df' 'mounted root filesystem' 'command-failed'
+fi
+
+if command -v nmcli >/dev/null 2>&1; then
+  nm_state=$(nmcli -t -f STATE general 2>/dev/null || true)
+  event 'network.manager' 'network' 'NetworkManager state observed' 'nmcli' 'NetworkManager D-Bus API' 'state' "${nm_state:-unavailable}"
+  vpn_names=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2 == "vpn" || $2 == "wireguard" {print $1}' | paste -sd, -)
+  event 'network.vpn' 'vpn' 'Active private connections observed' 'nmcli' 'NetworkManager active connections' 'active_profiles' "${vpn_names:-none}"
+else
+  unavailable 'network.manager' 'network' 'NetworkManager state unavailable' 'nmcli' 'NetworkManager D-Bus API' 'nmcli-not-installed'
+  unavailable 'network.vpn' 'vpn' 'Private connection state unavailable' 'nmcli' 'NetworkManager active connections' 'nmcli-not-installed'
+fi
+
+if command -v checkupdates >/dev/null 2>&1; then
+  update_count=$(checkupdates 2>/dev/null | awk 'END {print NR+0}')
+  event 'updates.available' 'update' 'Available package updates checked safely' 'checkupdates' 'pacman-contrib checkupdates database' 'count' "$update_count"
+else
+  unavailable 'updates.available' 'update' 'Safe package update check unavailable' 'checkupdates' 'pacman-contrib checkupdates database' 'pacman-contrib-not-installed'
+fi
+
+if command -v nft >/dev/null 2>&1; then
+  if nft list ruleset >/dev/null 2>&1; then
+    event 'firewall.ruleset' 'firewall' 'Firewall ruleset is readable' 'nft' 'kernel netfilter ruleset' 'readable' 'true'
+  else
+    unavailable 'firewall.ruleset' 'firewall' 'Firewall ruleset requires additional access' 'nft' 'kernel netfilter ruleset' 'permission-denied-or-unavailable'
+  fi
+else
+  unavailable 'firewall.ruleset' 'firewall' 'Firewall tooling unavailable' 'nft' 'kernel netfilter ruleset' 'nft-not-installed'
+fi
+
