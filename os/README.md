@@ -27,13 +27,14 @@ powershell -ExecutionPolicy Bypass -File os/host/start-msi-vm.ps1 -Mode Installe
 The ISO, UEFI variable store, and virtual disk live under ignored `.artifacts/`.
 After Linux is installed, use `-Mode Disk` to boot without the installer ISO.
 
-The first VM should use UEFI, 4 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
+The first VM should use UEFI, 2 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
 allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.
-The launcher prefers Windows Hypervisor Platform acceleration, uses VirtIO
-graphics for the Linux guest, and falls back to QEMU software emulation when
-hardware acceleration is unavailable. Its UEFI/Q35 profile disables the legacy
-PIC so WHPX cannot strand the guest while injecting obsolete PIC interrupts.
+The launcher defaults to the slower but currently proven TCG software emulator
+with standard VGA. `-Accelerator Whpx` remains an explicit experiment using
+Windows Hypervisor Platform, VirtIO graphics, and a legacy-PIC-free Q35 profile;
+it is not the default because this MSI/Windows/QEMU combination has not yet
+produced a usable installed-guest display with WHPX.
 
 ## Boot contract
 
