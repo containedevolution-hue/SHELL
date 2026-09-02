@@ -32,9 +32,9 @@ allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.
 The launcher defaults to the slower but currently proven TCG software emulator
 with standard VGA. `-Accelerator Whpx` remains an explicit experiment using
-Windows Hypervisor Platform, VirtIO graphics, and a legacy-PIC-free Q35 profile;
-it is not the default because this MSI/Windows/QEMU combination has not yet
-produced a usable installed-guest display with WHPX.
+Windows Hypervisor Platform, a conservative virtual CPU, standard VGA, and
+QEMU's software interrupt controller. It is not the default until this
+MSI/Windows/QEMU combination produces a usable installed-guest display.
 
 ## Boot contract
 

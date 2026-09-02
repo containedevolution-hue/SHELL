@@ -39,17 +39,18 @@ if (-not (Test-Path -LiteralPath $diskPath)) {
 if (-not (Test-Path -LiteralPath $varsPath)) {
     Copy-Item -LiteralPath $uefiVarsTemplate -Destination $varsPath
 }
-$machine = if ($Accelerator -eq 'Whpx') { 'q35,accel=whpx,pic=off' } else { 'q35,accel=tcg' }
-$videoArgs = if ($Accelerator -eq 'Whpx') { @('-vga', 'none', '-device', 'virtio-gpu-pci') } else { @('-vga', 'std') }
+$machine = if ($Accelerator -eq 'Whpx') { 'q35,accel=whpx,kernel-irqchip=off' } else { 'q35,accel=tcg' }
+$cpuModel = if ($Accelerator -eq 'Whpx') { 'qemu64' } else { 'max' }
 $qemuArgs = @(
     '-name', 'SHELL OS - MSI development VM',
     '-machine', $machine,
-    '-cpu', 'max',
+    '-cpu', $cpuModel,
     '-smp', '2',
     '-m', '8192',
     '-drive', "if=pflash,format=raw,readonly=on,file=$uefiCode",
     '-drive', "if=pflash,format=raw,file=$varsPath",
     '-drive', "file=$diskPath,if=virtio,format=qcow2",
+    '-vga', 'std',
     '-display', 'sdl',
     '-device', 'virtio-net-pci,netdev=net0',
     '-netdev', 'user,id=net0',
@@ -59,7 +60,6 @@ $qemuArgs = @(
     '-device', 'intel-hda',
     '-device', 'hda-duplex,audiodev=audio0'
 )
-$qemuArgs += $videoArgs
 if ($Mode -eq 'Installer') {
     $qemuArgs += @('-boot', 'order=d,menu=on', '-cdrom', $isoPath)
 } else {

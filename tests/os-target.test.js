@@ -33,9 +33,9 @@ test('Windows VM launcher is disposable, accelerated, and repo-contained', () =>
   const launcher = fs.readFileSync(path.join(root, 'os', 'host', 'start-msi-vm.ps1'), 'utf8');
   assert.match(launcher, /\[string\]\$Accelerator = 'Tcg'/);
   assert.match(launcher, /q35,accel=tcg/);
-  assert.match(launcher, /q35,accel=whpx,pic=off/);
+  assert.match(launcher, /q35,accel=whpx,kernel-irqchip=off/);
+  assert.match(launcher, /if \(\$Accelerator -eq 'Whpx'\) \{ 'qemu64' \}/);
   assert.match(launcher, /'-vga', 'std'/);
-  assert.match(launcher, /virtio-gpu-pci/);
   assert.match(launcher, /'-smp', '2'/);
   assert.match(launcher, /shell-os\.qcow2/);
   assert.match(launcher, /\.artifacts/);
