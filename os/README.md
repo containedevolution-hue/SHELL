@@ -36,6 +36,9 @@ controller. This combination boots the installed Arch/KDE guest responsively on
 the MSI. `-Accelerator Tcg` remains the slower recovery path when WHPX cannot run.
 The GTK display keeps hover capture disabled; `Ctrl+Alt+G` releases an explicit
 keyboard or pointer grab when one is active.
+The VM exposes a clipboard-only vdagent channel. Install and run
+`spice-vdagent` in the Arch guest to exchange clipboard text with Windows; the
+channel disables agent mouse control and does not enable file transfer.
 
 ## Boot contract
 
