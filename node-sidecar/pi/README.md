@@ -1,6 +1,6 @@
-# Command Center — Pi bring-up
+# SHELL — Pi bring-up
 
-Plug-and-play setup for the Tier 0 Pi 5 Command Center. Takes ~5 min from sealed
+Plug-and-play setup for the Tier 0 Pi 5 SHELL appliance. Takes ~5 min from sealed
 box to live appliance (excluding the OS flash itself).
 
 ## 1 — Flash Pi OS (64-bit)
@@ -11,7 +11,7 @@ Use **Raspberry Pi Imager** on your laptop. Two OS variants are both valid:
   default for a shelf-sitting headless appliance. Phone PWA is the only UI.
 - **Raspberry Pi OS Full (64-bit)** — full desktop + Chromium pre-installed.
   ~1.9 GB. Pick this if you want to attach an HDMI screen and use the deployed
-  PWA from the Pi itself (see `memory/command-center/Tenari-Command-Center.md`).
+  PWA from the Pi itself (see [`../../README.md`](../../README.md)).
   Slower boot, ~1 GB more RAM in
   use — still fine on Pi 5 4GB. Same `setup.sh` works on both.
 

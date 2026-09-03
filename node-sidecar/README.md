@@ -1,7 +1,7 @@
-# Command Center Node Sidecar
+# SHELL Node Sidecar
 
 The CouchDB-protocol-compatible HTTP host that runs alongside the Tauri shell.
-Cyclone C2b deliverable — see [`../../memory/command-center/Tenari-Command-Center.md`](../../memory/command-center/Tenari-Command-Center.md).
+Part of the SHELL local agent — see [`../docs/extraction-manifest.md`](../docs/extraction-manifest.md).
 
 ## What it is
 
