@@ -31,6 +31,17 @@ powershell -ExecutionPolicy Bypass -File os/host/start-msi-vm.ps1 -Mode Installe
 The ISO, UEFI variable store, and virtual disk live under ignored `.artifacts/`.
 After Linux is installed, use `-Mode Disk` to boot without the installer ISO.
 
+Before a security, update, boot, or service change, shut down the guest and make
+an offline checkpoint of both its qcow2 disk and UEFI variable state:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File os/host/manage-msi-vm-checkpoint.ps1 -Action Create -Name pre-security-baseline
+```
+
+List available checkpoints with `-Action List`. Restore is deliberately guarded:
+it requires the exact checkpoint name, `-Action Restore`, and `-ConfirmRestore`.
+The VM must be stopped for every checkpoint operation.
+
 The first VM should use UEFI, 2 virtual CPUs, 8 GiB RAM, a 64 GiB dynamically
 allocated disk, NAT networking, and a 1920x1080 display. Those settings leave
 Windows enough room on the 32 GiB MSI while exercising SHELL at realistic scale.

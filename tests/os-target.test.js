@@ -59,3 +59,14 @@ test('guest inventory is read-only and reports unavailable dependencies', () => 
   assert.match(inventory, /unavailable/);
   assert.doesNotMatch(inventory, /(?:sudo|pacman\s+-S|systemctl\s+(?:enable|start|stop)|nft\s+(?:add|delete|flush))/);
 });
+
+test('VM checkpoints include disk and UEFI state and guard restore', () => {
+  const checkpoint = fs.readFileSync(path.join(root, 'os', 'host', 'manage-msi-vm-checkpoint.ps1'), 'utf8');
+  assert.match(checkpoint, /Get-Process qemu-system-x86_64/);
+  assert.match(checkpoint, /snapshot -c \$Name \$diskPath/);
+  assert.match(checkpoint, /Copy-Item -LiteralPath \$varsPath -Destination \$savedVarsPath/);
+  assert.match(checkpoint, /snapshot -a \$Name \$diskPath/);
+  assert.match(checkpoint, /if \(-not \$ConfirmRestore\)/);
+  assert.match(checkpoint, /Copy-Item -LiteralPath \$savedVarsPath -Destination \$varsPath -Force/);
+  assert.doesNotMatch(checkpoint, /Remove-Item -LiteralPath \$vmRoot/);
+});
