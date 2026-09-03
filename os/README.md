@@ -54,6 +54,10 @@ It emits newline-delimited health-event v1 records. Missing tools or inaccessibl
 facts are reported as unavailable; the probe does not install packages, alter
 networking, or change system state.
 
+Konsole follows terminal shortcut conventions: `Ctrl+Shift+C` copies and
+`Ctrl+Shift+V` pastes. Plain `Ctrl+C` sends an interrupt to the running command,
+so it is intentionally not the copy shortcut.
+
 ## Boot contract
 
 The guest image must install the SHELL bundle at `/opt/shell`, enable the user

@@ -54,6 +54,8 @@ test('guest inventory is read-only and reports unavailable dependencies', () => 
   assert.match(inventory, /nmcli/);
   assert.match(inventory, /checkupdates/);
   assert.match(inventory, /nft list ruleset/);
+  assert.match(inventory, /systemctl is-enabled nftables\.service/);
+  assert.match(inventory, /systemctl is-active nftables\.service/);
   assert.match(inventory, /unavailable/);
   assert.doesNotMatch(inventory, /(?:sudo|pacman\s+-S|systemctl\s+(?:enable|start|stop)|nft\s+(?:add|delete|flush))/);
 });

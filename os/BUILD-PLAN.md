@@ -103,3 +103,11 @@ O0 is active. `guest/bin/shell-health-inventory` is the first read-only probe.
 It is intentionally small: prove facts and their unavailable states before
 adding sampling, baselines, storage, privileges, or UI.
 
+First Arch runtime proof on 2026-09-03 established that the installed guest can
+execute the checked-in probe and read kernel, uptime, CPU load, memory, root
+storage, NetworkManager, and active VPN state. NetworkManager reported connected
+and no private connection was active. `checkupdates` reported unavailable because
+`pacman-contrib` was not installed. nftables tooling existed, while complete rule
+inspection correctly reported that the unprivileged process lacked access. This
+proves probe execution and unavailable-state behavior, not firewall enforcement,
+update safety, VPN routing, continuous collection, or physical MSI behavior.

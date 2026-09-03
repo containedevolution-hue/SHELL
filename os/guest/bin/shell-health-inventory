@@ -75,12 +75,19 @@ else
 fi
 
 if command -v nft >/dev/null 2>&1; then
+  if command -v systemctl >/dev/null 2>&1; then
+    nftables_enabled=$(systemctl is-enabled nftables.service 2>/dev/null || true)
+    nftables_active=$(systemctl is-active nftables.service 2>/dev/null || true)
+    event 'firewall.service' 'firewall' 'Firewall service state observed' 'systemctl' 'nftables.service' 'state' "enabled=${nftables_enabled:-unknown} active=${nftables_active:-unknown}"
+  else
+    unavailable 'firewall.service' 'firewall' 'Firewall service state unavailable' 'systemctl' 'nftables.service' 'systemctl-not-installed'
+  fi
   if nft list ruleset >/dev/null 2>&1; then
     event 'firewall.ruleset' 'firewall' 'Firewall ruleset is readable' 'nft' 'kernel netfilter ruleset' 'readable' 'true'
   else
     unavailable 'firewall.ruleset' 'firewall' 'Firewall ruleset requires additional access' 'nft' 'kernel netfilter ruleset' 'permission-denied-or-unavailable'
   fi
 else
+  unavailable 'firewall.service' 'firewall' 'Firewall service state unavailable' 'systemctl' 'nftables.service' 'nft-not-installed'
   unavailable 'firewall.ruleset' 'firewall' 'Firewall tooling unavailable' 'nft' 'kernel netfilter ruleset' 'nft-not-installed'
 fi
-
