@@ -1,6 +1,6 @@
 # SHELL
 
-SHELL — Secured, Home, Exported, Life, Logs — is Contained Evolution's free, local-first operating environment. It owns its desktop, core apps, FETCH browser and Research Labs, files, local data, optional cloud storage and sync, devices, settings, and integration permissions. It works without Tenari, an assistant, or an account.
+SHELL — Secured, Home, Exported, Life, Logs — is Contained Evolution's free, local-first operating environment. It owns its desktop, FETCH browser and Research Labs, files, local data, optional cloud storage and sync, devices, settings, and integration permissions. It bundles cross-platform Contained Evolution Apps without owning or forking their canonical implementations. It works without Tenari, an assistant, or an account.
 
 This repository was extracted from Tenari with the complete history of the former `localhub/` subtree. Compatibility identifiers such as `localhub`, `hub_*`, `com.containedevolution.localhub`, and `localhub://` remain only where changing them requires a deliberate migration.
 
@@ -18,6 +18,7 @@ The current code still contains legacy Tenari origins and pairing behavior. Thos
 ## Product boundaries
 
 - Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
+- General-purpose utilities are Contained Evolution Apps. SHELL discovers released app manifests and supplies a local host adapter; app behavior, portable data models, and releases stay with each app.
 - FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
 - SEED — Secured Environment Educated Development — is a sealed, developer-only local corpus that never enters cloud sync or integration reach.
 - Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
@@ -64,6 +65,7 @@ npm run dev
 5. Establish the MSI VM image and boot-to-SHELL Linux session.
 6. Build FETCH Browser on an embedded engine boundary.
 7. Add independent SHELL Cloud storage and sync.
+8. Host the Scribble reference release through the shared Contained Evolution app manifest and local capability adapter.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),

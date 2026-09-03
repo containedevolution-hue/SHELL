@@ -27,6 +27,7 @@ These remain temporarily so the extracted baseline is runnable, but they must mo
 
 - Tenari Companion identity, autobiographical Memory, Stardust billing, OpenRouter funding policy, Tenari World, Moon Rocks, or campaign economy.
 - Tenari server authentication, Postgres schemas, Stripe, membership, or account-portal implementation.
+- Canonical Contained Evolution utility-app implementations. SHELL hosts released apps through versioned manifests and capabilities; it does not fork their UI, product behavior, or portable data model.
 - A copied private source dependency on the Tenari repository.
 
 ## Test ownership
@@ -43,3 +44,4 @@ These remain temporarily so the extracted baseline is runnable, but they must mo
 3. Separate local identity and permissions from Tenari account pairing.
 4. Replace remote catalog assumptions with a SHELL app registry.
 5. Publish versioned schemas for data, files, browser, devices, windows, sync, assistant providers, and integrations.
+6. Implement the Contained Evolution app-manifest and host-adapter boundary, with Scribble as the first external app.
