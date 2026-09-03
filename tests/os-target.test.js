@@ -79,6 +79,18 @@ test('SHELL firewall defaults to outbound access and recovery-safe inbound denia
   assert.doesNotMatch(installer, /flush ruleset/);
 });
 
+test('firewall verifier proves service, policy, DNS, and outbound state without mutation', () => {
+  const verifier = fs.readFileSync(path.join(root, 'os', 'guest', 'bin', 'verify-shell-firewall'), 'utf8');
+  assert.match(verifier, /systemctl is-enabled --quiet shell-firewall\.service/);
+  assert.match(verifier, /systemctl is-active --quiet shell-firewall\.service/);
+  assert.match(verifier, /nft list table inet shell_filter/);
+  assert.match(verifier, /hook input\.\*policy drop/);
+  assert.match(verifier, /hook output\.\*policy accept/);
+  assert.match(verifier, /getent ahosts archlinux\.org/);
+  assert.match(verifier, /ping -c 1 -W 3 archlinux\.org/);
+  assert.doesNotMatch(verifier, /(?:systemctl\s+(?:enable|disable|start|stop|restart)|nft\s+(?:add|delete|flush)|pacman)/);
+});
+
 test('VM checkpoints include disk and UEFI state and guard restore', () => {
   const checkpoint = fs.readFileSync(path.join(root, 'os', 'host', 'manage-msi-vm-checkpoint.ps1'), 'utf8');
   assert.match(checkpoint, /Get-Process qemu-system-x86_64/);

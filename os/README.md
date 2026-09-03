@@ -85,6 +85,12 @@ development, LAN discovery, or Brics ports. Recovery affects only SHELL's table:
 sudo systemctl disable --now shell-firewall.service
 ```
 
+Verify the installed service, active policy, DNS, and outbound connectivity with:
+
+```bash
+sudo ./os/guest/bin/verify-shell-firewall
+```
+
 ## Boot contract
 
 The guest image must install the SHELL bundle at `/opt/shell`, enable the user

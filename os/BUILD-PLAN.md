@@ -120,3 +120,9 @@ boot, connected NetworkManager state, a working `checkupdates` result with zero
 pending packages, and the expected disabled/inactive firewall. This proves the
 package update and post-update guest boot; accelerated in-place reboot remains a
 known launcher defect to reproduce and resolve.
+
+The first live SHELL firewall activation then proved the service active and
+enabled, the `inet shell_filter` table readable with elevation, input and forward
+default-drop policies, output default-accept, required recovery traffic rules,
+working DNS, and three successful outbound probes with zero packet loss. Startup
+persistence remains unproved until the next guest boot.
