@@ -111,3 +111,12 @@ and no private connection was active. `checkupdates` reported unavailable becaus
 inspection correctly reported that the unprivileged process lacked access. This
 proves probe execution and unavailable-state behavior, not firewall enforcement,
 update safety, VPN routing, continuous collection, or physical MSI behavior.
+
+The first complete `pacman -Syu` transaction and installation of
+`pacman-contrib` subsequently completed. The guest encountered one WHPX pause
+during the requested reboot (`Unexpected VP exit code 4`), then booted normally
+after QEMU was closed and relaunched. The post-update inventory proved a fresh
+boot, connected NetworkManager state, a working `checkupdates` result with zero
+pending packages, and the expected disabled/inactive firewall. This proves the
+package update and post-update guest boot; accelerated in-place reboot remains a
+known launcher defect to reproduce and resolve.

@@ -54,10 +54,29 @@ test('guest inventory is read-only and reports unavailable dependencies', () => 
   assert.match(inventory, /nmcli/);
   assert.match(inventory, /checkupdates/);
   assert.match(inventory, /nft list ruleset/);
-  assert.match(inventory, /systemctl is-enabled nftables\.service/);
-  assert.match(inventory, /systemctl is-active nftables\.service/);
+  assert.match(inventory, /systemctl is-enabled "\$firewall_unit"/);
+  assert.match(inventory, /systemctl is-active "\$firewall_unit"/);
   assert.match(inventory, /unavailable/);
   assert.doesNotMatch(inventory, /(?:sudo|pacman\s+-S|systemctl\s+(?:enable|start|stop)|nft\s+(?:add|delete|flush))/);
+});
+
+test('SHELL firewall defaults to outbound access and recovery-safe inbound denial', () => {
+  const rules = fs.readFileSync(path.join(root, 'os', 'guest', 'security', 'shell-base.nft'), 'utf8');
+  const unit = fs.readFileSync(path.join(root, 'os', 'guest', 'systemd', 'shell-firewall.service'), 'utf8');
+  const installer = fs.readFileSync(path.join(root, 'os', 'guest', 'bin', 'install-shell-firewall'), 'utf8');
+  assert.match(rules, /chain input[\s\S]*policy drop/);
+  assert.match(rules, /ct state established,related accept/);
+  assert.match(rules, /iifname "lo" accept/);
+  assert.match(rules, /meta l4proto ipv6-icmp accept/);
+  assert.match(rules, /chain forward[\s\S]*policy drop/);
+  assert.match(rules, /chain output[\s\S]*policy accept/);
+  assert.match(unit, /CapabilityBoundingSet=CAP_NET_ADMIN/);
+  assert.match(unit, /ProtectSystem=strict/);
+  assert.match(unit, /ExecStop=-\/usr\/bin\/nft delete table inet shell_filter/);
+  assert.match(installer, /nft -c -f "\$rules_source"/);
+  assert.match(installer, /systemctl enable --now shell-firewall\.service/);
+  assert.match(installer, /systemctl disable --now shell-firewall\.service/);
+  assert.doesNotMatch(installer, /flush ruleset/);
 });
 
 test('VM checkpoints include disk and UEFI state and guard restore', () => {

@@ -69,6 +69,22 @@ Konsole follows terminal shortcut conventions: `Ctrl+Shift+C` copies and
 `Ctrl+Shift+V` pastes. Plain `Ctrl+C` sends an interrupt to the running command,
 so it is intentionally not the copy shortcut.
 
+After creating an offline checkpoint, install the SHELL base firewall from the
+guest checkout:
+
+```bash
+sudo ./os/guest/bin/install-shell-firewall
+```
+
+The base policy allows outbound connections and their replies while rejecting
+unsolicited inbound and forwarded traffic. It retains loopback, ICMP/IPv6 control
+traffic, and DHCP. It does not implement the later VPN-required policy or open
+development, LAN discovery, or Brics ports. Recovery affects only SHELL's table:
+
+```bash
+sudo systemctl disable --now shell-firewall.service
+```
+
 ## Boot contract
 
 The guest image must install the SHELL bundle at `/opt/shell`, enable the user
