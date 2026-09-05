@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SHELL — Pi bring-up script.
 #
-# Run on a fresh Pi OS Lite install AFTER you've cloned the Tenari repo:
-#   git clone <repo-url> ~/Tenari
-#   cd ~/Tenari/localhub/node-sidecar/pi
+# Run on a fresh Pi OS Lite install AFTER you've cloned the SHELL repo:
+#   git clone <repo-url> ~/SHELL
+#   cd ~/SHELL/node-sidecar/pi
 #   ./setup.sh
 #   sudo reboot
 #

@@ -57,8 +57,8 @@ because no key juggling.)
 ## 4 — Clone + run setup
 
 ```
-gh repo clone containedevolution-hue/Tenari ~/Tenari
-cd ~/Tenari/localhub/node-sidecar/pi
+gh repo clone containedevolution-hue/SHELL ~/SHELL
+cd ~/SHELL/node-sidecar/pi
 ./setup.sh
 ```
 

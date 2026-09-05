@@ -4,7 +4,7 @@ This order establishes SHELL as an independent local-first operating environment
 
 ## Current implementation seam
 
-The public standalone repository is `https://github.com/containedevolution-hue/SHELL`. It preserves the former `localhub/` history and owns the canvas, sidecar/local agent, Tauri wrapper, dedup engine, Flow prompts, Pi work, independent tests, licence, and CI. The extracted Node/security suite and Rust/Tauri checks run from that checkout. SHELL now publishes capability discovery contract v1 at its loopback-only `/v1/capabilities` endpoint and owns an MSI-targeted, runner-neutral VM profile, read-only host preflight, Linux user-service seam, and recovery gates. These are foundation contracts, not a built Linux image or hardware proof. Tenari still carries `localhub/` as a temporary integration copy while its routes and tests are changed to consume released SHELL contracts and artifacts. The implementation still embeds Tenari origins, account pairing, cloud registration, app-catalog assumptions, and compatibility names; there is no SHELL-owned sync service, FETCH browser runtime, native window manager, SEED store, or bootable Linux image yet.
+The public standalone repository is `https://github.com/containedevolution-hue/SHELL`. It preserves the former `localhub/` history and owns the canvas, sidecar/local agent, Tauri wrapper, dedup engine, Flow prompts, Pi work, independent tests, licence, and CI. The extracted Node/security suite and Rust/Tauri checks run from that checkout. SHELL now publishes capability discovery contract v1 at its loopback-only `/v1/capabilities` endpoint and owns an MSI-targeted, runner-neutral VM profile, read-only host preflight, Linux user-service seam, and recovery gates. These are foundation contracts, not a built Linux image or hardware proof. Tenari's source-level copy has been removed. SHELL still contains recovered Tenari origins, account pairing, cloud registration, app-catalog assumptions, and compatibility names that must become an optional adapter or be retired; there is no SHELL-owned sync service, FETCH browser runtime, native window manager, SEED store, or bootable Linux image yet.
 
 ## Foundation contracts
 
@@ -27,7 +27,7 @@ The public standalone repository is `https://github.com/containedevolution-hue/S
 ## Build order
 
 1. **Complete the capability interface.** Discovery schema v1 and default-deny feature reporting are built. Add error semantics, permission receipts, compatibility policy, and independent Tauri and Linux-daemon adapters.
-2. **Remove the source-level integration copy.** Publish SHELL contracts and frontend artifacts, move remaining SHELL-owned tests, point Tenari at released versions, and delete `localhub/` only after callers, routes, downloads, and compatibility checks pass. The rename and de-duplication sequence, including the "SHELL" and "Cyclone" name retirement, is owned by `memory/ledger/build-orders/SHELL-Naming-Consolidation.md`.
+2. **Replace the recovered remote launcher.** Remove the hard-coded Tenari catalog and origin from the live canvas, discover released app manifests locally, and isolate optional Tenari pairing behind a versioned adapter. Recovered files under `legacy-tenari/` are evidence only and never a runtime dependency.
 3. **Build the authoritative local data layer.** Replace the temporary local-doc and browser-local layout seams with SQLite namespaces, migrations, backup/restore, encryption boundaries, and an append-only SEED namespace.
 4. **Build SHELL Cloud independently.** Add optional account, sync, encrypted object storage, detach, conflict, deletion, quota, and recovery behavior with no Tenari dependency.
 5. **Build FETCH Browser.** Ship tabs, navigation, profiles, permissions, history, bookmarks, downloads, engine updates, sandboxing, and Research Labs over the shared browser/evidence boundary.
@@ -40,14 +40,14 @@ The public standalone repository is `https://github.com/containedevolution-hue/S
 12. **Finish the spatial desktop and Memory Tree.** Complete persisted bubbles, storage altitudes, artwork, custody views, offline behavior, and accessible desktop/phone layouts.
 13. **Verify release layers honestly.** Automated tests, Tauri builds, Linux image builds, browser-engine security updates, real-browser screenshots, real MSI hardware exercises, cloud attach/detach, Tenari integration, Brics devices, and recovery are separate signals.
 
-## Repository extraction boundary
+## Repository recovery boundary
 
-- Move the complete `localhub/` history, not a copied snapshot.
-- Move SHELL-owned tests or reproduce them against public contracts; leave Tenari account, payment, World, and Companion implementation behind.
+- Preserve the complete extracted `localhub/` history in Git; do not recreate a source-level copy in Tenari.
+- Keep SHELL-owned tests against public contracts; leave Tenari account, payment, World, and Companion implementation behind.
 - Treat hard-coded Tenari origins, `/api/hub/*`, account pairing, tunnel registration, and the live Tenari catalog as adapters to separate, not foundational SHELL behavior.
 - Publish frontend and protocol artifacts with explicit versions. Tenari may consume those artifacts but never reaches into the SHELL checkout.
 - Do not claim the OS, browser, cloud, or hardware layers complete until their real layer has been exercised.
 
 ## Completion
 
-Delete this order when the standalone repository owns all remaining work and the Tenari repository contains only its integration obligations. Active MSI/device/cloud proof that cannot be deterministic belongs in Acceptance; completed attempts remain in Git.
+Delete this order when the recovered remote launcher is gone, the standalone repository owns all remaining work, and Tenari contains only its integration obligations. Active MSI/device/cloud proof that cannot be deterministic belongs in Acceptance; completed attempts remain in Git.
