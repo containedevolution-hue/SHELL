@@ -6,13 +6,12 @@ Photos is its sibling SHELL system surface and owns album-specific catalog and t
 
 ## Contract
 
-Storage has three user-facing places:
+Storage has two user-facing places:
 
 - **Cloud** — optional SHELL Cloud files and generated media subject to its account, encryption, and quota contract.
 - **This device** — browser/local or paired-SHELL data that has not been promoted to cloud.
-- **Memory Tree** — a doorway into canonical User Memory, not a file folder or duplicate memory store.
 
-App-owned records remain canonical in their owning apps. Storage exposes a typed manifest, location, availability, and open/download actions rather than copying app truth into a second database.
+Storage holds files only. Canonical autobiographical Memory belongs to Tenari's Memory Grove and is never a place inside Storage. App-owned records remain canonical in their owning apps. Storage exposes a typed manifest, location, availability, and open/download actions rather than copying app truth into a second database.
 
 External uploads retain provenance. Reading or analyzing an upload does not create User Memory. When the user explicitly asks to remember something from a file, extracted claims enter the normal Memory evidence/Ripening/admission path with file provenance.
 

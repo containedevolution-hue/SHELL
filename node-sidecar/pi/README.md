@@ -3,6 +3,11 @@
 Plug-and-play setup for the Tier 0 Pi 5 SHELL appliance. Takes ~5 min from sealed
 box to live appliance (excluding the OS flash itself).
 
+The Pi's intended role is a lightweight SHELL node that runs SEED only — a local
+capture, curation, and backup corpus with no desktop, Companion, or cloud path.
+The full SHELL environment can be pulled from the Contained Evolution monorepo at
+any time; the appliance stays SEED-scoped on purpose.
+
 ## 1 — Flash Pi OS (64-bit)
 
 Use **Raspberry Pi Imager** on your laptop. Two OS variants are both valid:

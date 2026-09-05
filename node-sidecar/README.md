@@ -25,7 +25,7 @@ Part of the SHELL local agent — see [`../docs/extraction-manifest.md`](../docs
 ## Run standalone (dev / verify)
 
 ```powershell
-cd localhub/node-sidecar
+cd node-sidecar
 npm install     # one-time; pulls express + express-pouchdb + pouchdb-node
 node index.js
 ```

@@ -20,7 +20,7 @@ Legacy Tenari pairing code remains as a disabled adapter seam. It performs no re
 - Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
 - General-purpose utilities are Contained Evolution Apps. SHELL discovers released app manifests and supplies a local host adapter; app behavior, portable data models, and releases stay with each app.
 - FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
-- SEED — Secured Environment Educated Development — is an opt-in plugin for SHELL's Memory Tree: a sealed local corpus, curation, retrieval, dataset, backup, and restore feature for real users. It remains off by default, permission-gated, and outside cloud sync or implicit integration reach.
+- SEED — Secured Environment Educated Development — is an opt-in plugin nested in Memory Box inside SHELL's Core: a sealed local corpus, curation, retrieval, dataset, backup, and restore feature for real users. It remains off by default, permission-gated, and outside cloud sync or implicit integration reach.
 - Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
 - Brics is a separate product with a first-class SHELL device, diagnostics, input, and snap-in display seam.
 

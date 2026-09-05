@@ -37,7 +37,7 @@ The public standalone repository is `https://github.com/containedevolution-hue/S
 9. **Stand up SEED.** Build its local corpus, capture, curation, datasets, lenses, feedback, and sealed operator surface under its own order.
 10. **Integrate Brics.** Ship configuration and diagnostics first, then the snap-in display/robot-face contract against real hardware.
 11. **Build the MSI development image.** Automate the Linux base, boot-to-SHELL session, drivers, updates, rollback, recovery, encryption, and developer tools. Prove the VM and live USB before installing to an isolated SSD.
-12. **Finish the spatial desktop and Memory Tree.** Complete persisted bubbles, storage altitudes, artwork, custody views, offline behavior, and accessible desktop/phone layouts.
+12. **Finish SHELL's Core.** Complete the Box, Trunk, Canopy, persisted globe layout, custody views, the gauge layer, offline behavior, and accessible desktop/phone layouts. Sequence in [SHELL's Core](SHELLs-Core.md).
 13. **Verify release layers honestly.** Automated tests, Tauri builds, Linux image builds, browser-engine security updates, real-browser screenshots, real MSI hardware exercises, cloud attach/detach, Tenari integration, Brics devices, and recovery are separate signals.
 
 ## Repository recovery boundary

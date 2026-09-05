@@ -2,7 +2,7 @@
 
 This order publishes the SHELL contract for local assistant-specific memory slots. SHELL owns the store and permission model; each assistant conforms to the contract, and Tenari's Companion uses the same path natively.
 
-The slots appear in Core Box's Memory Box but remain isolated stores. A project README or other boot instruction may guide an assistant after connection; it never grants access or widens a slot.
+The slots live in Memory Box inside SHELL's Core but remain isolated stores. A project README or other boot instruction may guide an assistant after connection; it never grants access or widens a slot.
 
 ## Contract shape
 
