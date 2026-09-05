@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tenari Command Center — Pi bring-up script.
+# SHELL — Pi bring-up script.
 #
 # Run on a fresh Pi OS Lite install AFTER you've cloned the Tenari repo:
 #   git clone <repo-url> ~/Tenari
@@ -55,7 +55,7 @@ npm install --omit=dev
 echo "==> [6/9] systemd unit → /etc/systemd/system/cehub.service"
 sudo tee /etc/systemd/system/cehub.service >/dev/null <<EOF
 [Unit]
-Description=Tenari Command Center — Node sidecar (PouchDB + MCP)
+Description=SHELL — Node sidecar (PouchDB + MCP)
 After=network-online.target
 Wants=network-online.target
 
@@ -102,7 +102,7 @@ if [[ -f "$HOME/.cloudflared/config.yml" ]] && grep -q '^tunnel:' "$HOME/.cloudf
 else
   sudo tee /etc/systemd/system/cehub-tunnel.service >/dev/null <<EOF
 [Unit]
-Description=Tenari Command Center — cloudflared quick tunnel (rotates URL on restart; upgrade via setup-cyclone6-tunnel.sh)
+Description=SHELL — cloudflared quick tunnel (rotates URL on restart; upgrade via setup-cyclone6-tunnel.sh)
 After=cehub.service
 Requires=cehub.service
 

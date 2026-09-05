@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0c">
+<title>Storage · Tenari</title>
+<script src="/js/appearance-apply.js"></script>
+<link rel="stylesheet" href="/css/app-theme.css">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{min-height:100%;margin:0;background:#0b0b0c;color:#f2f2f3;font-family:'DM Sans',system-ui,sans-serif}
+  body{padding:0 0 calc(28px + env(safe-area-inset-bottom))}
+  body::before{display:none}
+  [hidden]{display:none!important}
+  button,input,select,textarea{font:inherit}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid #f2f2f3;outline-offset:2px}
+  main{width:min(100%,880px);margin:0 auto;padding:0 14px 0 46px}
+
+  .st-head{padding:calc(18px + env(safe-area-inset-top)) 2px 14px}
+  .st-head h1{margin:0;font-size:clamp(26px,7vw,34px);line-height:1;letter-spacing:-.03em}
+  .st-head p{margin:6px 0 0;color:rgba(242,242,243,.5);font-size:12px;line-height:1.45}
+
+  .doors{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
+  .door{display:grid;grid-template-columns:minmax(0,1fr) auto 12px;align-items:center;gap:12px;
+    min-height:74px;padding:15px 16px;border:1px solid rgba(255,255,255,.12);border-radius:12px;
+    background:#141416;color:#f2f2f3;text-align:left;text-decoration:none;cursor:pointer;
+    transition:background .14s,border-color .14s}
+  .door:hover{background:#1b1b1f;border-color:rgba(255,255,255,.26)}
+  .door::after{content:'\203A';grid-column:3;grid-row:1/3;align-self:center;color:rgba(242,242,243,.4);font-size:20px;line-height:1}
+  .place-name{grid-column:1;font-size:17px;font-weight:800;letter-spacing:-.02em}
+  .door-note{grid-column:1;grid-row:2;margin-top:3px;color:rgba(242,242,243,.5);font-size:11px;line-height:1.4}
+  .place-count{grid-column:2;grid-row:1/3;align-self:center;color:rgba(242,242,243,.62);font-size:12px;font-weight:700;
+    text-align:right;font-variant-numeric:tabular-nums}
+  .up{display:inline-flex;align-items:center;gap:5px;margin:0 0 10px;padding:6px 11px 6px 8px;
+    border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#141416;color:rgba(242,242,243,.72);
+    font:700 11px/1 'DM Sans',sans-serif;cursor:pointer}
+  .up:hover{background:#1b1b1f;color:#f2f2f3}
+  .up::before{content:'\2039';font-size:16px;line-height:1;margin-top:-2px}
+
+  .facts{display:grid;gap:0;margin:0 0 14px;border:1px solid rgba(255,255,255,.10);border-radius:12px;overflow:hidden;background:#141416}
+  .fact{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 14px;
+    border-bottom:1px solid rgba(255,255,255,.07)}
+  .fact:last-child{border-bottom:0}
+  .fact-k{color:rgba(242,242,243,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+  .fact-v{color:#f2f2f3;font-size:13px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+  .fact-sub{margin:0;padding:10px 14px;color:rgba(242,242,243,.5);font-size:11px;line-height:1.55;border-bottom:1px solid rgba(255,255,255,.07)}
+  .fact-sub:last-child{border-bottom:0}
+  .meter{height:4px;background:rgba(255,255,255,.10)}
+  .meter i{display:block;width:0;height:100%;background:#f2f2f3;transition:width .25s ease}
+
+  .acts{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px}
+  .button{border:1px solid rgba(255,255,255,.16);border-radius:9px;background:#141416;color:#f2f2f3;
+    padding:9px 13px;font:700 12px/1 'DM Sans',sans-serif;cursor:pointer;white-space:nowrap}
+  .button:hover{background:#1b1b1f;border-color:rgba(255,255,255,.28)}
+  .button:disabled{opacity:.45;cursor:not-allowed}
+  .button.primary{background:#f2f2f3;border-color:#f2f2f3;color:#0b0b0c}
+  .button.primary:hover{background:#fff}
+  .button.icon{width:38px;padding:0;font-size:15px}
+  .button.is-active{background:#f2f2f3;border-color:#f2f2f3;color:#0b0b0c}
+  .button.danger{color:#ff4d6a}
+
+  .toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin:0 0 9px}
+  .search,.field,select{width:100%;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:#141416;
+    color:#f2f2f3;padding:10px 12px;font:inherit;outline:none}
+  .search:focus,.field:focus,select:focus{border-color:rgba(255,255,255,.36)}
+  .search::placeholder{color:rgba(242,242,243,.38)}
+
+  .type-pick select{width:auto;max-width:150px;padding:6px 8px;border-radius:8px;
+    font:700 11px/1.2 'DM Sans',sans-serif;color:rgba(242,242,243,.72)}
+
+  .summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px;
+    color:rgba(242,242,243,.5);font-size:11px;font-weight:600}
+
+  .documents{display:flex;flex-direction:column;gap:6px}
+  .documents.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:8px}
+  .doc{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;align-items:center;gap:10px;
+    min-height:56px;padding:9px 12px;border:1px solid rgba(255,255,255,.09);border-radius:10px;
+    background:#141416;color:#f2f2f3;cursor:pointer;text-align:left}
+  .doc:hover{background:#1b1b1f;border-color:rgba(255,255,255,.20)}
+  .doc-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;
+    background:rgba(255,255,255,.07);font-size:17px}
+  .doc-copy{display:block;min-width:0}
+  .doc-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700}
+  .doc-date{display:block;margin-top:2px;color:rgba(242,242,243,.45);font-size:10px}
+  .badge{font-size:12px}.device{font-size:12px}
+  .documents.grid .doc{display:flex;min-height:120px;flex-direction:column;align-items:flex-start;justify-content:center}
+  .documents.grid .doc-icon{width:42px;height:42px;font-size:21px}
+  .documents.grid .doc-copy{width:100%}
+  .documents.grid .doc-name{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  .documents.grid .badge{margin-top:auto}
+
+  .empty,.loading{padding:34px 20px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;
+    color:rgba(242,242,243,.5);text-align:center;font-size:13px}
+  .loading::before{content:'';display:block;width:20px;height:20px;margin:0 auto 10px;
+    border:2px solid rgba(255,255,255,.14);border-top-color:#f2f2f3;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(1turn)}}
+
+  .tree-card{padding:22px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:#141416}
+  .tree-card h2{margin:0 0 8px;font-size:19px;letter-spacing:-.02em}
+  .tree-card p{margin:0 0 16px;color:rgba(242,242,243,.6);font-size:12px;line-height:1.6}
+  .tree-link{display:inline-block;padding:10px 15px;border-radius:9px;background:#f2f2f3;color:#0b0b0c;
+    font-size:12px;font-weight:800;text-decoration:none}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px}
+  .section-head h2{margin:0;color:rgba(242,242,243,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .folder-list{display:flex;flex-direction:column;gap:5px;margin:0 0 18px}
+  .folder-card{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:11px;
+    min-height:46px;padding:7px 12px;border:1px solid rgba(255,255,255,.09);border-radius:10px;
+    background:#141416;color:#f2f2f3;text-align:left;cursor:pointer}
+  .folder-card:hover{background:#1b1b1f;border-color:rgba(255,255,255,.20)}
+  .folder-card.is-active{border-color:#f2f2f3}
+  .folder-cover{display:block;width:26px;height:26px;border-radius:7px;object-fit:cover;background:rgba(255,255,255,.07)}
+  .folder-glyph{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;
+    background:rgba(255,255,255,.07);font-size:13px}
+  .folder-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700}
+  .folder-meta{display:block;color:rgba(242,242,243,.45);font-size:10px;font-variant-numeric:tabular-nums}
+
+  .drawer{margin:0 0 14px;border:1px solid rgba(255,255,255,.10);border-radius:12px;background:#141416;overflow:hidden}
+  .drawer-body{padding:14px}
+
+  .feature-card{padding:16px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#0f0f11}
+  .feature-copy h2{margin:0;font-size:16px;letter-spacing:-.02em}
+  .feature-eyebrow{margin:0 0 5px;color:rgba(242,242,243,.45);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .feature-card p{margin:7px 0 0;color:rgba(242,242,243,.6);font-size:12px;line-height:1.55}
+  .action-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+  .scan-note{display:flex;align-items:flex-start;gap:8px;margin-top:13px;padding:10px 11px;
+    border:1px solid rgba(255,255,255,.10);border-radius:9px;color:rgba(242,242,243,.55);font-size:10px;line-height:1.5}
+  .scan-pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}
+  .scan-step{min-height:56px;padding:9px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:#141416;
+    color:rgba(242,242,243,.5);font-size:9px;font-weight:800;line-height:1.35;text-align:center}
+  .scan-step strong{display:block;margin-bottom:4px;color:#f2f2f3;font-size:12px}
+  .scan-draft{display:grid;grid-template-columns:minmax(120px,210px) 1fr;gap:14px;margin-top:13px;padding:13px;
+    border:1px solid rgba(255,255,255,.14);border-radius:11px;background:#0f0f11}
+  .scan-preview-wrap{position:relative;width:100%;height:180px;border-radius:9px;overflow:hidden;background:#0b0b0c}
+  .scan-preview{display:block;width:100%;height:100%;object-fit:contain}
+  .scan-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .scan-overlay.is-editing{pointer-events:auto;touch-action:none;cursor:crosshair}
+  .draft-copy{align-self:center}
+  .draft-copy h3{margin:0 0 4px;font-size:14px}
+  .draft-copy p{margin:3px 0;color:rgba(242,242,243,.5);font-size:10px;line-height:1.45}
+  .draft-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .scan-status{min-height:15px;margin:9px 2px 0;color:rgba(242,242,243,.6);font-size:10px;line-height:1.45}
+  .scan-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px}
+  .scan-result{overflow:hidden;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#141416}
+  .scan-result.is-selected{border-color:#f2f2f3}
+  .scan-result-select{display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+  .scan-result-preview{display:block;width:100%;height:128px;object-fit:contain;background:#0b0b0c}
+  .scan-result-copy{display:block;padding:10px 11px}
+  .scan-result strong{display:block;font-size:12px}
+  .scan-result span{display:block;margin-top:3px;color:rgba(242,242,243,.45);font-size:9px;line-height:1.35}
+  .scan-result-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 8px 8px}
+  .scan-result-actions .button{padding:6px 4px;font-size:11px}
+  .scan-name-label{display:grid;gap:4px;padding:0 10px 8px;color:rgba(242,242,243,.45);font-size:9px}
+  .scan-name-label input{width:100%;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#0f0f11;color:#f2f2f3}
+  .scan-editor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 11px;
+    border:1px solid rgba(255,255,255,.10);border-radius:11px;background:#0f0f11}
+  .scan-selected-label{margin-right:auto;font-size:11px;font-weight:800}
+  .corner-picker{display:flex;align-items:center;gap:6px;color:rgba(242,242,243,.45);font-size:9px}
+  .corner-picker select{padding:6px 22px 6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#141416;color:#f2f2f3}
+  .nudge-group{display:flex;gap:4px}
+  .nudge-group .button{min-width:32px;padding:6px 9px}
+  .scan-cleanup-row{display:flex;align-items:end;gap:9px;flex-wrap:wrap;flex-basis:100%;padding-top:7px;border-top:1px solid rgba(255,255,255,.08)}
+  .scan-cleanup-row label{display:grid;gap:4px;color:rgba(242,242,243,.45);font-size:9px}
+  .scan-cleanup-row select{padding:6px 24px 6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#141416;color:#f2f2f3}
+  .scan-cleanup-row input[type=range]{width:118px;accent-color:#f2f2f3}
+  .scan-cleanup-row output{color:rgba(242,242,243,.6)}
+  .scan-editor-hint{flex-basis:100%;margin:0;color:rgba(242,242,243,.45);font-size:9px;line-height:1.4}
+  .scan-export{display:flex;align-items:end;gap:9px;flex-wrap:wrap;margin-top:12px;padding:12px;
+    border:1px solid rgba(255,255,255,.14);border-radius:11px;background:#0f0f11}
+  .scan-export label{display:grid;gap:5px;min-width:180px;color:rgba(242,242,243,.45);font-size:9px}
+  .scan-export select,.scan-export input{padding:8px 26px 8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:#141416;color:#f2f2f3}
+  .scan-destination{display:grid;gap:4px;padding:0 3px 8px;color:rgba(242,242,243,.45);font-size:9px}
+  .scan-destination strong{color:#f2f2f3;font-size:11px}
+  .scan-export-status{flex-basis:100%;min-height:13px;margin:0;color:rgba(242,242,243,.45);font-size:9px;line-height:1.4}
+
+  .sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .toast{position:fixed;z-index:60;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translate(-50%,12px);
+    max-width:min(86vw,420px);padding:10px 14px;border:1px solid rgba(255,255,255,.18);border-radius:9px;
+    background:#1b1b1f;box-shadow:0 14px 40px rgba(0,0,0,.5);color:#f2f2f3;font-size:12px;
+    opacity:0;pointer-events:none;transition:opacity .18s,transform .18s}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  dialog{width:min(92vw,500px);max-height:88vh;border:1px solid rgba(255,255,255,.18);border-radius:14px;
+    background:#141416;color:#f2f2f3;padding:0;box-shadow:0 28px 80px rgba(0,0,0,.7)}
+  dialog::backdrop{background:rgba(0,0,0,.72)}
+  .modal-head{display:flex;align-items:center;gap:10px;padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.09)}
+  .modal-head h2{margin:0;font-size:17px}
+  .modal-head button{margin-left:auto}
+  .modal-body{display:flex;flex-direction:column;gap:10px;padding:15px 17px}
+  .modal-body label{font-size:11px;color:rgba(242,242,243,.5);font-weight:700}
+  textarea.field{min-height:160px;resize:vertical;line-height:1.5}
+  .privacy-note{margin:0;color:rgba(242,242,243,.5);font-size:11px;line-height:1.5}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:0 17px 16px}
+  .modal-actions .danger{margin-right:auto}
+  .media-preview{display:block;width:100%;max-height:62vh;object-fit:contain;border-radius:10px;background:#0b0b0c}
+
+  @media(max-width:620px){
+    main{padding:0 10px 0 40px}
+    .scan-pipeline{grid-template-columns:repeat(3,1fr)}
+    .scan-draft{grid-template-columns:1fr}
+    .scan-preview-wrap{height:230px}
+    .scan-results{grid-template-columns:1fr}
+    .scan-result-preview{height:200px}
+    .scan-selected-label,.corner-picker{flex-basis:100%}
+    .corner-picker{justify-content:space-between}
+    .nudge-group{flex:1}
+  }
+  @media(max-width:420px){.scan-pipeline{grid-template-columns:1fr 1fr}}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="st-head">
+    <button class="up" id="upOne" type="button" hidden>Storage</button>
+    <h1 id="screenTitle">Storage</h1>
+    <p id="screenNote">Everything Tenari keeps for you, in the place it actually lives.</p>
+  </div>
+
+  <nav class="doors" id="doors" aria-label="Storage places">
+    <button class="door" type="button" data-workspace="cloud">
+      <span class="place-name door-name">Cloud</span>
+      <span class="door-note">Kept in your account and synced to every signed-in device.</span>
+      <span class="place-count" id="placeCountCloud">—</span>
+    </button>
+    <button class="door" type="button" data-workspace="device">
+      <span class="place-name door-name">This device</span>
+      <span class="door-note">Private to the phone or computer in your hand.</span>
+      <span class="place-count" id="placeCountDevice">—</span>
+    </button>
+    <a class="door" href="/memory/" data-workspace="memorytree">
+      <span class="place-name door-name">Memory Tree</span>
+      <span class="door-note">What Tenari understands about you.</span>
+      <span class="place-count" id="placeCountMemory">Open</span>
+    </a>
+  </nav>
+  <span class="sr-only" id="workspaceStatus" aria-live="polite"></span>
+
+  <section id="panel-cloud" data-panel="cloud" hidden>
+    <div class="facts">
+      <div class="fact"><span class="fact-k">Space used</span><span class="fact-v" id="storageCloudUsed">Loading…</span></div>
+      <div class="meter"><i id="storageCloudBar"></i></div>
+      <p class="fact-sub" id="storageCloudBreakdown"></p>
+      <div class="fact"><span class="fact-k">Generated media</span><span class="fact-v" id="storageMediaCount">Loading…</span></div>
+      <p class="fact-sub" id="storageMediaBreakdown"></p>
+    </div>
+    <div class="acts">
+      <button class="button primary" id="uploadOpen" type="button">Upload a file</button>
+    </div>
+  </section>
+
+  <section id="panel-device" data-panel="device" hidden>
+    <div class="facts">
+      <div class="fact"><span class="fact-k" id="storageDeviceName">This device</span><span class="fact-v" id="storageLocalCount">Loading…</span></div>
+      <p class="fact-sub" id="storageLocalBreakdown"></p>
+      <div class="fact"><span class="fact-k">SHELL</span><span class="fact-v" id="storageHubStatus">Checking…</span></div>
+      <p class="fact-sub" id="storageHubBreakdown"></p>
+    </div>
+    <div class="acts">
+      <button class="button primary" id="newLocal" type="button">New document</button>
+      <button class="button" id="scanOpen" type="button" aria-expanded="false" aria-controls="scannerDrawer">Scan a document</button>
+    </div>
+    <div class="drawer" id="scannerDrawer" hidden>
+      <div class="drawer-body">
+<div class="feature-card">
+      <div class="feature-copy">
+        <p class="feature-eyebrow">Private capture workspace</p>
+        <h2>Turn one photo into organized documents.</h2>
+        <p>Start with the camera or an image already on this device. Your original stays on this device while you work.</p>
+      </div>
+      <div class="action-row">
+        <button class="button primary" id="scanCamera" type="button">Take a photo</button>
+        <button class="button" id="scanChoose" type="button">Choose a photo</button>
+      </div>
+      <div class="scan-note"><span aria-hidden="true">◎</span><span>Detection, per-page retakes, correction, cleanup, naming, and PDF/JPG/PNG output run on this device without uploading your images.</span></div>
+    </div>
+    <input id="scanCameraInput" type="file" accept="image/*" capture="environment" hidden>
+    <input id="scanChooseInput" type="file" accept="image/*" hidden>
+    <input id="scanRetakeInput" type="file" accept="image/*" capture="environment" hidden>
+    <div class="scan-draft" id="scanDraft" hidden>
+      <div class="scan-preview-wrap">
+        <img class="scan-preview" id="scanPreview" alt="Selected scan source">
+        <canvas class="scan-overlay" id="scanOverlay" aria-hidden="true"></canvas>
+      </div>
+      <div class="draft-copy">
+        <h3>Source image ready</h3>
+        <p id="scanFileName"></p>
+        <p id="scanFileMeta"></p>
+        <div class="draft-actions">
+          <button class="button primary" id="scanDetect" type="button" disabled>Detect documents</button>
+          <button class="button" id="scanRemove" type="button">Remove draft</button>
+        </div>
+      </div>
+    </div>
+    <p class="scan-status" id="scanStatus" role="status" aria-live="polite"></p>
+    <div class="scan-editor-tools" id="scanEditorTools" hidden>
+      <span class="scan-selected-label" id="scanSelectedLabel">Document 1 selected</span>
+      <label class="corner-picker" for="scanCornerSelect"><span>Corner</span>
+        <select id="scanCornerSelect">
+          <option value="0">Top left</option>
+          <option value="1">Top right</option>
+          <option value="2">Bottom right</option>
+          <option value="3">Bottom left</option>
+        </select>
+      </label>
+      <div class="nudge-group" aria-label="Nudge selected corner">
+        <button class="button" type="button" data-corner-dx="-1" data-corner-dy="0" aria-label="Move corner left">←</button>
+        <button class="button" type="button" data-corner-dx="0" data-corner-dy="-1" aria-label="Move corner up">↑</button>
+        <button class="button" type="button" data-corner-dx="0" data-corner-dy="1" aria-label="Move corner down">↓</button>
+        <button class="button" type="button" data-corner-dx="1" data-corner-dy="0" aria-label="Move corner right">→</button>
+      </div>
+      <button class="button" id="scanResetCorners" type="button">Reset corners</button>
+      <div class="scan-cleanup-row" aria-label="Selected document cleanup">
+        <label for="scanCleanupMode"><span>Color mode</span>
+          <select id="scanCleanupMode">
+            <option value="color">Color</option>
+            <option value="grayscale">Grayscale</option>
+            <option value="bw">Black &amp; white</option>
+          </select>
+        </label>
+        <label for="scanBrightness"><span>Brightness <output id="scanBrightnessValue">0</output></span>
+          <input id="scanBrightness" type="range" min="-50" max="50" step="1" value="0">
+        </label>
+        <label for="scanContrast"><span>Contrast <output id="scanContrastValue">100%</output></span>
+          <input id="scanContrast" type="range" min="50" max="150" step="1" value="100">
+        </label>
+        <button class="button" id="scanResetCleanup" type="button">Reset cleanup</button>
+      </div>
+      <p class="scan-editor-hint">Drag the four white handles on the source, or choose a corner and use the arrow controls. Corrected previews update without changing the original photo.</p>
+    </div>
+    <div class="scan-results" id="scanResults" aria-label="Detected documents" hidden></div>
+    <div class="scan-export" id="scanExport" hidden>
+      <label for="scanExportName"><span>Output name</span>
+        <input id="scanExportName" type="text" maxlength="90" value="Scanned Documents">
+      </label>
+      <label for="scanExportFormat"><span>Local output</span>
+        <select id="scanExportFormat">
+          <option value="pdf">One combined PDF</option>
+          <option value="pdf-pages">Separate one-page PDFs in ZIP</option>
+          <option value="jpg">Separate JPG files in ZIP</option>
+          <option value="png">Separate PNG files in ZIP</option>
+        </select>
+      </label>
+      <div class="scan-destination"><span>Destination</span><strong>Device Downloads</strong></div>
+      <button class="button primary" id="scanExportSave" type="button">Save to this device</button>
+      <p class="scan-export-status" id="scanExportStatus" role="status" aria-live="polite"></p>
+    </div>
+    <div class="scan-pipeline" aria-label="Scan workflow">
+      <div class="scan-step"><strong>1</strong>Capture</div>
+      <div class="scan-step"><strong>2</strong>Detect</div>
+      <div class="scan-step"><strong>3</strong>Correct</div>
+      <div class="scan-step"><strong>4</strong>Review</div>
+      <div class="scan-step"><strong>5</strong>Export</div>
+    </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="browse" data-browse hidden>
+    <div class="acts" id="folderActs" hidden>
+      <button class="button primary" id="uploadHere" type="button">Upload into this folder</button>
+    </div>
+    <div class="section-head" id="folderHead">
+      <h2>Folders</h2>
+      <button class="button" id="createFolder" type="button">New folder</button>
+    </div>
+    <div class="folder-list" id="folderGrid" aria-live="polite"></div>
+    <div class="toolbar">
+      <input class="search" id="filesSearch" type="search" placeholder="Search everything you keep…" autocomplete="off">
+      <button class="button icon" id="viewToggle" type="button" title="Switch to grid view" aria-label="Switch to grid view">▦</button>
+    </div>
+    <div class="summary">
+      <span id="fileCount">Loading…</span>
+      <label class="type-pick"><span class="sr-only">Show only</span>
+        <select id="typeFilter">
+          <option value="all">All types</option>
+          <option value="document">Docs</option>
+          <option value="pdf">PDFs</option>
+          <option value="image">Images</option>
+          <option value="gif">GIFs</option>
+          <option value="audio">Audio</option>
+          <option value="video">Video</option>
+          <option value="3d">3D</option>
+          <option value="archive">Archives</option>
+          <option value="data">Data &amp; code</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+    </div>
+    <section class="documents" id="documents" aria-live="polite"><div class="loading">Loading your files…</div></section>
+  </section>
+
+</main>
+
+<dialog id="uploadDialog">
+  <form method="dialog">
+    <div class="modal-head"><h2>Upload a file</h2><button class="button icon" value="cancel" aria-label="Close">&times;</button></div>
+  </form>
+  <div class="modal-body">
+    <label for="uploadFile">File</label><input class="field" id="uploadFile" type="file">
+    <label for="uploadDescription">Description</label><input class="field" id="uploadDescription" placeholder="Optional">
+    <label for="uploadFolder">Put it in</label><select id="uploadFolder"></select>
+    <p class="privacy-note">Uploads land in <strong>Cloud Storage › Uploads Inbox</strong> unless you choose another folder. Original bytes and filename stay intact for later Companion reading or organization. Maximum size: 10 MB.</p>
+  </div>
+  <div class="modal-actions"><button class="button" id="uploadCancel" type="button">Cancel</button>
+    <button class="button primary" id="uploadSave" type="button">Upload</button></div>
+</dialog>
+
+<dialog id="localDialog">
+  <form method="dialog">
+    <div class="modal-head"><h2 id="localTitle">New local document</h2><button class="button icon" value="cancel" aria-label="Close">&times;</button></div>
+  </form>
+  <div class="modal-body">
+    <label for="localType">Type</label>
+    <select id="localType"><option value="note">📝 Note</option><option value="brain_dump">🧠 Brain Dump</option>
+      <option value="scribble">✍️ Scribble</option><option value="task">✅ Task</option></select>
+    <label for="localName">Title</label><input class="field" id="localName" placeholder="Untitled">
+    <label for="localBody">Contents</label><textarea class="field" id="localBody" placeholder="Write…"></textarea>
+    <p class="privacy-note">💾 Local documents stay on this device and your paired SHELL. They never enter Tenari's cloud unless you move them there.</p>
+  </div>
+  <div class="modal-actions"><button class="button danger" id="localDelete" type="button" hidden>Delete</button>
+    <button class="button" id="localToCloud" type="button" hidden>☁️ Move to cloud</button>
+    <button class="button" id="localCancel" type="button">Cancel</button>
+    <button class="button primary" id="localSave" type="button">Save</button></div>
+</dialog>
+
+<dialog id="mediaDialog">
+  <form method="dialog">
+    <div class="modal-head"><h2 id="mediaTitle">Generated media</h2><button class="button icon" value="cancel" aria-label="Close">&times;</button></div>
+  </form>
+  <div class="modal-body" id="mediaPreview"></div>
+  <div class="modal-actions">
+    <button class="button" id="mediaClose" type="button">Close</button>
+    <button class="button primary" id="mediaDownload" type="button">Save to this device</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="/js/ce-screen-stack.js"></script>
+<script src="/js/ce-auth.js"></script>
+<script src="/memory/vendor/pouchdb-9.0.0.min.js"></script>
+<script src="/js/doc-store.js"></script>
+<script src="/memory/js/cyclone-sync.js"></script>
+<script src="/js/document-scanner.js"></script>
+<script src="/js/document-export.js"></script>
+<script src="/js/files-app.js"></script>
+<script src="/js/ce-back-button.js" defer></script>
+</body>
+</html>

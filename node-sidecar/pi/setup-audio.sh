@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Tenari Command Center — Pi audio bring-up (legacy Hub 7 root path).
+# SHELL — Pi audio bring-up (legacy Hub 7 root path).
 #
-# Single source of truth for Command Center audio. Six concerns,
+# Single source of truth for SHELL audio. Six concerns,
 # each addressed once at the system level so every audio path (Chromium
 # kiosk browser TTS, the hub_speak MCP via Piper, future ElevenLabs)
 # reaches the speakers without per-path config:

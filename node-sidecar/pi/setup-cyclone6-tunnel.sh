@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tenari Command Center — Cyclone 6: persistent named cloudflared tunnel.
+# SHELL — Cyclone 6: persistent named cloudflared tunnel.
 #
 # Replaces the quick tunnel (URL rotates per restart, tunnels die every few
 # minutes on UDP-buffer-constrained Pis) with a Cloudflare named tunnel —
@@ -91,7 +91,7 @@ EOF
 echo "==> [6/6] Replace cehub-tunnel.service with named-tunnel unit"
 sudo tee /etc/systemd/system/cehub-tunnel.service >/dev/null <<EOF
 [Unit]
-Description=Tenari Command Center — cloudflared named tunnel (Cyclone 6, persistent URL)
+Description=SHELL — cloudflared named tunnel (Cyclone 6, persistent URL)
 After=cehub.service
 Requires=cehub.service
 

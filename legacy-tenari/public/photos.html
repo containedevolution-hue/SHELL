@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000">
+<title>Photo Viewer — CE</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;background:#000;overflow:hidden;font-family:'DM Sans',system-ui,sans-serif;color:#fff}
+
+.viewer-topbar{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  padding:12px 16px;padding-top:max(12px,var(--safe-top));
+  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.85) 0%,transparent 100%);
+  pointer-events:none;
+}
+.viewer-topbar a,.viewer-topbar button{pointer-events:auto}
+#viewer-title{flex:1;padding-left:52px;font-size:13px;font-weight:500;color:rgba(255,255,255,.7);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.viewer-stage{
+  position:fixed;inset:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:none;
+}
+.viewer-stage.is-dragging{cursor:grabbing}
+#viewer-img{
+  max-width:none;max-height:none;display:block;
+  transform-origin:0 0;
+  user-select:none;-webkit-user-drag:none;
+}
+#viewer-loading{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.5);font-size:14px;
+}
+
+.viewer-controls{
+  position:fixed;bottom:0;left:0;right:0;z-index:20;
+  padding:14px 20px;padding-bottom:max(14px,var(--safe-bottom));
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 100%);
+}
+.zoom-btn{
+  width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.25);
+  background:rgba(0,0,0,.55);color:#fff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.zoom-btn:active{transform:scale(.92)}
+#zoom-reset{
+  font-size:12px;font-weight:600;padding:0 14px;width:auto;border-radius:20px;
+  color:rgba(255,255,255,.7)
+}
+</style>
+<script src="/js/ce-screen-stack.js"></script>
+<style>.viewer-controls{bottom:calc(env(safe-area-inset-bottom,0px));background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 100%);}</style>
+</head>
+<body>
+
+<div id="viewer-loading">Loading…</div>
+
+<div class="viewer-topbar">
+  <span id="viewer-title"></span>
+</div>
+
+<div class="viewer-stage" id="viewer-stage">
+  <img id="viewer-img" alt="Photo" style="display:none">
+</div>
+
+<div class="viewer-controls">
+  <button class="zoom-btn" id="btn-zoom-out" title="Zoom out">−</button>
+  <button class="zoom-btn" id="zoom-reset" title="Reset zoom">1×</button>
+  <button class="zoom-btn" id="btn-zoom-in"  title="Zoom in">+</button>
+</div>
+
+<script src="/js/ce-auth.js"></script>
+<script>
+(function(){
+  if (!CEAuth.requireLogin('/')) return;
+
+  const params    = new URLSearchParams(location.search);
+  const fileId    = params.get('file_id');
+
+  if (!fileId) {
+    document.getElementById('viewer-loading').textContent = 'No file specified.';
+    return;
+  }
+
+  const stage = document.getElementById('viewer-stage');
+  const img   = document.getElementById('viewer-img');
+
+  // ── Pan/zoom state ──────────────────────────────────────────────────────────
+  let V = null; // { tx, ty, s, minS, maxS, natW, natH, stW, stH }
+
+  function applyTransform() {
+    if (!V) return;
+    img.style.transform = `translate(${V.tx}px,${V.ty}px) scale(${V.s})`;
+    document.getElementById('zoom-reset').textContent = Math.round(V.s * 100) + '%';
+  }
+
+  function clamp() {
+    if (!V) return;
+    const iw = V.natW * V.s, ih = V.natH * V.s;
+    const margin = 60;
+    V.tx = Math.max(-(iw - margin), Math.min(V.stW - margin, V.tx));
+    V.ty = Math.max(-(ih - margin), Math.min(V.stH - margin, V.ty));
+  }
+
+  function setScale(s2, fx, fy) {
+    if (!V) return;
+    s2 = Math.max(V.minS, Math.min(V.maxS, s2));
+    if (s2 === V.s) return;
+    const ratio = s2 / V.s;
+    V.tx = fx - (fx - V.tx) * ratio;
+    V.ty = fy - (fy - V.ty) * ratio;
+    V.s  = s2;
+    clamp();
+    applyTransform();
+  }
+
+  function resetView() {
+    if (!V) return;
+    V.s = V.fitS;
+    V.tx = (V.stW - V.natW * V.s) / 2;
+    V.ty = (V.stH - V.natH * V.s) / 2;
+    applyTransform();
+  }
+
+  // Pointer events
+  const ptrs = new Map();
+  let pan = null, pinch = null;
+
+  function stageXY(e) {
+    const r = stage.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  stage.addEventListener('pointerdown', e => {
+    if (!V) return;
+    try { stage.setPointerCapture(e.pointerId); } catch(_){}
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) {
+      const [a, b] = Array.from(ptrs.values());
+      const mid = stageXY({ clientX: (a.x+b.x)/2, clientY: (a.y+b.y)/2 });
+      pinch = { dist: Math.hypot(b.x-a.x, b.y-a.y) || 1, s0: V.s, mid };
+      pan = null;
+    } else {
+      pan = { sx: e.clientX, sy: e.clientY, tx0: V.tx, ty0: V.ty };
+      stage.classList.add('is-dragging');
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  stage.addEventListener('pointermove', e => {
+    if (!V || !ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = Array.from(ptrs.values());
+      const d = Math.hypot(b.x-a.x, b.y-a.y) || 1;
+      setScale(pinch.s0 * d / pinch.dist, pinch.mid.x, pinch.mid.y);
+    } else if (pan && ptrs.size === 1) {
+      V.tx = pan.tx0 + e.clientX - pan.sx;
+      V.ty = pan.ty0 + e.clientY - pan.sy;
+      clamp(); applyTransform();
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  function endPtr(e) {
+    ptrs.delete(e.pointerId);
+    try { stage.releasePointerCapture(e.pointerId); } catch(_){}
+    if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 0) { pan = null; stage.classList.remove('is-dragging'); }
+  }
+  stage.addEventListener('pointerup', endPtr);
+  stage.addEventListener('pointercancel', endPtr);
+
+  stage.addEventListener('wheel', e => {
+    if (!V) return;
+    e.preventDefault();
+    const xy = stageXY(e);
+    setScale(V.s * (e.deltaY < 0 ? 1.12 : 1/1.12), xy.x, xy.y);
+  }, { passive: false });
+
+  document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    if (!V) return;
+    setScale(V.s * 1.25, V.stW/2, V.stH/2);
+  });
+  document.getElementById('btn-zoom-out').addEventListener('click', () => {
+    if (!V) return;
+    setScale(V.s / 1.25, V.stW/2, V.stH/2);
+  });
+  document.getElementById('zoom-reset').addEventListener('click', resetView);
+
+  // ── Load image ─────────────────────────────────────────────────────────────
+  async function loadPhoto() {
+    try {
+      const token = CEAuth.getToken ? CEAuth.getToken() : localStorage.getItem('ce_team_token');
+      const res = await fetch('/api/files/' + fileId + '/download', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      if (!res.ok) throw new Error('File not found');
+      const { content, mime_type, filename } = await res.json();
+      document.getElementById('viewer-loading').style.display = 'none';
+      document.getElementById('viewer-title').textContent = filename || '';
+      img.style.display = 'block';
+      img.src = 'data:' + mime_type + ';base64,' + content;
+      img.onload = () => {
+        const stW = stage.clientWidth, stH = stage.clientHeight;
+        const fitS = Math.min(stW / img.naturalWidth, stH / img.naturalHeight, 1);
+        V = {
+          natW: img.naturalWidth, natH: img.naturalHeight,
+          stW, stH,
+          s: fitS, fitS,
+          minS: fitS * 0.5, maxS: 8,
+          tx: (stW - img.naturalWidth * fitS) / 2,
+          ty: (stH - img.naturalHeight * fitS) / 2,
+        };
+        img.style.transformOrigin = '0 0';
+        applyTransform();
+      };
+    } catch (err) {
+      document.getElementById('viewer-loading').textContent = 'Could not load photo.';
+    }
+  }
+
+  loadPhoto();
+})();
+</script>
+  <script src="/js/ce-back-button.js"></script>
+</body>
+</html>

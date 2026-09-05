@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Command Center — Photo Duplicates</title>
+  <title>SHELL — Photo Duplicates</title>
   <!--
     Local LocalHub tool window (label "dedup", see ../src-tauri/tauri.conf.json).
     Loaded from the bundle, NOT the remote PWA, so it can call the app's own
@@ -163,7 +163,7 @@
     function infoOf(path) { return INFO.get(path) || { size_bytes: 0, meta: {} }; }
 
     if (!tauri || !tauri.core) {
-      statusEl.textContent = 'Open this from Command Center (Tools → Photo Duplicates) — Tauri APIs unavailable here.';
+      statusEl.textContent = 'Open this from SHELL (Tools → Photo Duplicates) — Tauri APIs unavailable here.';
     }
 
     async function scan() {

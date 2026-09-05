@@ -11,7 +11,7 @@ module.exports = {
     function: {
       name: 'speak',
       description:
-        'Speak text aloud through the Command Center speakers. Use when the user asks Command Center itself to say something, or when a proactive notification (alarm, alert, brief) should be voiced in the room. Cancels any in-progress speech so calls do not pile up. Local TTS today; sounds robotic but clear. Keep utterances under 600 characters.',
+        'Speak text aloud through the SHELL speakers. Use when the user asks SHELL itself to say something, or when a proactive notification (alarm, alert, brief) should be voiced in the room. Cancels any in-progress speech so calls do not pile up. Local TTS today; sounds robotic but clear. Keep utterances under 600 characters.',
       parameters: {
         type: 'object',
         properties: {

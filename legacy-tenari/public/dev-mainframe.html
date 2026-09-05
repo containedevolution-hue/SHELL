@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>Dev Mainframe</title>
+<link rel="stylesheet" href="/css/app-theme.css">
+<link rel="stylesheet" href="/css/settings-page.css">
+<script src="/js/appearance-apply.js"></script>
+<style>
+  .mf-star {
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+    color: #f5c542;
+  }
+  .gate-card {
+    display: none;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+  body[data-gated="1"] .gate-card { display: block; }
+  body[data-gated="1"] main { display: none; }
+  body[data-loading="1"] main { visibility: hidden; }
+</style>
+<link rel="stylesheet" href="/css/fonts.css">
+</head>
+<body data-loading="1">
+
+<div class="gate-card">
+  <p>This surface is master-only.</p>
+  <p style="margin-top:10px;font-size:.85rem">Returning home&hellip;</p>
+</div>
+
+<main>
+
+  <section class="settings-band">
+    <nav class="settings-list">
+
+      <a class="settings-item" href="/dev-mainframe/test-control-room.html">
+        <span class="settings-item-icon" aria-hidden="true">&#129514;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">Test Control Room</span>
+          <span class="settings-item-sub">Boards-style ownership, failures, proof status, risk, and review disposition for the test suite.</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+      <a class="settings-item" href="/settings/usage-llm-calls.html">
+        <span class="settings-item-icon" aria-hidden="true">&#128202;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">LLM Calls (OpenRouter)</span>
+          <span class="settings-item-sub">Every model call CE sends through OpenRouter &mdash; model used, tokens, and the real billed cost. The in-app mirror of openrouter.ai/activity.</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+      <a class="settings-item" href="/dev-mainframe/workshop.html">
+        <span class="settings-item-icon" aria-hidden="true">&#128736;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">Worker Bots</span>
+          <span class="settings-item-sub">See the background bots at work.</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+      <a class="settings-item" href="/dev-mainframe/boot-folder.html">
+        <span class="settings-item-icon" aria-hidden="true">&#128218;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">Boot Folder</span>
+          <span class="settings-item-sub">The personal assistant&rsquo;s hard-coded operating layer. Read-only.</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+      <a class="settings-item" href="/dev-mainframe/resort-memories.html">
+        <span class="settings-item-icon" aria-hidden="true">&#128260;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">Re-sort filed memories</span>
+          <span class="settings-item-sub">Re-file every memory on your account under the current librarian.</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+      <a class="settings-item" href="/admin/users.html">
+        <span class="settings-item-icon" aria-hidden="true">&#128101;</span>
+        <span class="settings-item-text">
+          <span class="settings-item-title">Users (roster)</span>
+          <span class="settings-item-sub">Everyone registered &mdash; count, who&rsquo;s admin. Moved here from Settings (admin-only).</span>
+        </span>
+        <span class="settings-item-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+
+    </nav>
+  </section>
+
+</main>
+
+<script src="/js/ce-auth.js"></script>
+<script>
+'use strict';
+
+(async () => {
+  try {
+    const r = await fetch('/api/auth/me', { credentials: 'include', headers: CEAuth.authHeaders() });
+    if (!r.ok) { redirectHome(); return; }
+    const data = await r.json();
+    const u = (data && data.user) || data || {};
+    if (!u.is_admin) { redirectHome(); return; }
+    document.body.removeAttribute('data-loading');
+  } catch (_) { redirectHome(); }
+})();
+
+function redirectHome(){
+  document.body.setAttribute('data-gated', '1');
+  document.body.removeAttribute('data-loading');
+  setTimeout(() => { location.href = '/'; }, 1200);
+}
+</script>
+<script src="/js/ce-screen-stack.js"></script>
+<script src="/js/ce-back.js"></script>
+  <script src="/js/ce-back-button.js"></script>
+</body>
+</html>

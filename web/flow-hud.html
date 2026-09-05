@@ -189,7 +189,7 @@
 
     // idle → begin. Local needs neither a token nor a Groq key (loopback sidecar).
     if (!isLocal()) {
-      if (!session.token) { flash('Sign in to Command Center'); hideSoon(); return; }
+      if (!session.token) { flash('Sign in to SHELL'); hideSoon(); return; }
       if (!session.groqKey) { flash('Add your Groq key in Flow'); hideSoon(); return; }
     }
 

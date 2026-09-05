@@ -344,7 +344,7 @@ async function autoBeacon() {
     return;
   }
 
-  console.log(`[localhub-pairing] Command Center not paired — open Settings → Command Center`);
+  console.log(`[localhub-pairing] SHELL not paired — open Settings → SHELL`);
   let printedCode = null;
 
   async function sendBeacon() {

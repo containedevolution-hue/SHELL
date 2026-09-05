@@ -17,7 +17,7 @@ LABWC_DIR="$USER_HOME/.config/labwc"
 KIOSK_OUTPUT="${KIOSK_OUTPUT:-DSI-1}"
 
 if [[ ! -f "$PAIRING_JSON" ]]; then
-  echo "ERROR: $PAIRING_JSON not found. Pair the Command Center first."
+  echo "ERROR: $PAIRING_JSON not found. Pair the SHELL first."
   exit 1
 fi
 
@@ -35,14 +35,14 @@ echo "==> [2/5] Fetch display session"
 RESPONSE="$(curl -sf -X POST "$RAILWAY_BASE/api/hub/display-token" -H "Authorization: Bearer $PAIRING_TOKEN" -H "Content-Type: application/json")"
 DISPLAY_TOKEN="$(printf '%s' "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['display_token'])")"
 if [[ -z "$DISPLAY_TOKEN" ]]; then
-  echo "ERROR: display token missing. Re-pair the Command Center and retry."
+  echo "ERROR: display token missing. Re-pair the SHELL and retry."
   exit 1
 fi
 mkdir -p "$DATA_DIR"
 printf '{"display_token":"%s"}\n' "$DISPLAY_TOKEN" > "$DISPLAY_TOKEN_JSON"
 chmod 600 "$DISPLAY_TOKEN_JSON"
 
-echo "==> [3/5] Install Command Center launcher"
+echo "==> [3/5] Install SHELL launcher"
 sudo tee /usr/local/bin/ce-hub-display-start >/dev/null <<LAUNCH
 #!/usr/bin/env bash
 set -euo pipefail
@@ -103,6 +103,6 @@ if systemctl list-unit-files 2>/dev/null | grep -q '^cehub-display.service'; the
   sudo systemctl daemon-reload
 fi
 
-echo "==> [5/5] Command Center display ready"
+echo "==> [5/5] SHELL display ready"
 echo "URL: ${RAILWAY_BASE}/localhub/"
 echo "Run sudo reboot to validate startup."
