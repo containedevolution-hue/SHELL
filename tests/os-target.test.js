@@ -14,6 +14,7 @@ test('MSI VM profile is bounded and cannot authorize host disk mutation', () => 
   assert.equal(target.host.cpu, 'Intel Core i5-11400H');
   assert.equal(target.host.memoryGiB, 32);
   assert.equal(target.hostDiskMutationAllowed, false);
+  assert.equal(target.vm.vcpus, 2);
   assert.deepEqual(target.stages, ['vm', 'live-usb', 'isolated-disk', 'primary-install']);
 });
 

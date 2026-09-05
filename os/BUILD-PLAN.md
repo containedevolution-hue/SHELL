@@ -126,3 +126,29 @@ enabled, the `inet shell_filter` table readable with elevation, input and forwar
 default-drop policies, output default-accept, required recovery traffic rules,
 working DNS, and three successful outbound probes with zero packet loss. Startup
 persistence remains unproved until the next guest boot.
+
+## Resume here
+
+The VM was stopped and an offline `firewall-live-verified` checkpoint was created
+on 2026-09-05. It includes both the qcow2 disk snapshot and saved UEFI variable
+state. The earlier `pre-security-baseline` checkpoint also remains available.
+
+The next session must prove firewall startup persistence before adding another
+security control:
+
+1. Start the stopped guest with `start-msi-vm.ps1 -Mode Disk`.
+2. In `~/SHELL`, run `git pull --ff-only`.
+3. Run `sudo ./os/guest/bin/verify-shell-firewall`.
+4. Record whether all five checks pass after boot: enabled, active, policy,
+   DNS, and outbound networking.
+
+If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
+the recurrence, and continue the same firewall verification. Do not restore a
+checkpoint unless the guest or network actually fails. Clipboard paste has also
+occasionally exposed the bracketed-paste prefix `^[[200~`; type short diagnostic
+commands manually when that occurs. Neither defect is evidence about firewall
+state.
+
+After startup persistence passes, the next O1 build is the narrow privileged
+action broker and receipt contract. Do not add VPN-required policy, automatic
+blocking, or further firewall grants before that authorization boundary exists.

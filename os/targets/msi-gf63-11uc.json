@@ -16,7 +16,7 @@
   },
   "vm": {
     "firmware": "UEFI",
-    "vcpus": 4,
+    "vcpus": 2,
     "memoryMiB": 8192,
     "diskGiB": 64,
     "network": "nat",
