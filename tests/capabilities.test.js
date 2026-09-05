@@ -36,6 +36,13 @@ test('optional integrations are disabled and privileged surfaces require grants'
   }
 });
 
+test('Tenari network registration requires an explicit Shell integration flag', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'node-sidecar', 'index.js'), 'utf8');
+  assert.match(source, /SHELL_TENARI_INTEGRATION === 'enabled'/);
+  assert.match(source, /TENARI_INTEGRATION_ENABLED && pairing\.isPaired\(\)/);
+  assert.match(source, /if \(!TENARI_INTEGRATION_ENABLED\) return;/);
+});
+
 test('published schema and implementation stay on capability contract v1', () => {
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'contracts', 'v1', 'capabilities.schema.json'), 'utf8'));
   assert.equal(schema.properties.contract.const, snapshot().contract);

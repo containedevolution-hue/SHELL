@@ -10,7 +10,8 @@ const CONTRACT = Object.freeze({
   accountRequired: false,
   defaultPolicy: 'deny',
   capabilities: Object.freeze([
-    { id: 'apps.launch', category: 'apps', state: 'available', transport: 'tauri' },
+    { id: 'apps.discover', category: 'apps', state: 'available', transport: 'loopback-http', endpoint: '/v1/apps' },
+    { id: 'apps.launch', category: 'apps', state: 'available', transport: 'loopback-http', endpoint: '/v1/apps/{id}/{entrypoint}' },
     { id: 'windows.manage', category: 'windows', state: 'available', transport: 'tauri' },
     { id: 'data.local.documents.read', category: 'data', state: 'available', transport: 'loopback-http', endpoint: '/local/docs' },
     { id: 'data.local.pouchdb', category: 'data', state: 'legacy', transport: 'loopback-http', note: 'Scheduled for replacement by SHELL SQLite.' },

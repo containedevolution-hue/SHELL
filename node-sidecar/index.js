@@ -28,6 +28,7 @@ const parentWatch = require('./lib/parent-watch');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
 const capabilities = require('./lib/capabilities');
+const { createRegistry } = require('./lib/app-registry');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -35,6 +36,8 @@ const CERT_FILE  = path.join(dataDir(), 'hub-cert.json');
 
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = dataDir();
+const APPS_DIR = process.env.SHELL_APPS_DIR || path.join(DATA_DIR, 'apps');
+const TENARI_INTEGRATION_ENABLED = process.env.SHELL_TENARI_INTEGRATION === 'enabled';
 
 migrateIfNeeded(DATA_DIR, SIDECAR_ROOT);
 
@@ -119,7 +122,9 @@ pairingRouter.post('/confirm', (req, res) => {
     mcp_token: pairing.getMcpToken(),
   });
   
-  certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
+  if (TENARI_INTEGRATION_ENABLED) {
+    certify().catch(e => console.error('[hub-cert] certify after pair/confirm:', e.message));
+  }
 });
 
 app.use('/pair', pairingRouter);
@@ -161,6 +166,7 @@ function loopbackOnly(req, res, next) {
 }
 app.use('/access', loopbackOnly, accessControl.router());
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
+app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {
@@ -197,8 +203,9 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (shared folders: ${require('./mcp/jail').allowedRoots().length})`);
   console.log(`[localhub-pairing] credential v${pairing.CREDENTIAL_VERSION}; paired: ${pairing.isPaired()}`);
   
-  if (pairing.isPaired()) autoRegister().then(() => certify());
-  else autoBeacon();
+  if (TENARI_INTEGRATION_ENABLED && pairing.isPaired()) autoRegister().then(() => certify());
+  else if (TENARI_INTEGRATION_ENABLED) autoBeacon();
+  else console.log('[shell-integrations] Tenari disabled; no remote registration or beacon will run');
 });
 
 const RAILWAY_BASE = 'https://app.tenari.world';
@@ -289,6 +296,7 @@ async function registerLanUrl(subdomain) {
 }
 
 async function certify() {
+  if (!TENARI_INTEGRATION_ENABLED) return;
   if (HOST === '127.0.0.1') return; 
   let certData = loadCachedCert();
   if (!certData) certData = await provisionCert();

@@ -6,14 +6,14 @@ This repository was extracted from Tenari with the complete history of the forme
 
 ## Current state
 
-- `web/` contains the always-on local canvas, draggable app bubbles and folders, drawer, local document browser, and offline recovery surface.
+- `web/` contains the local home and renders only apps discovered from installed versioned manifests.
 - `node-sidecar/` is the current local agent: data host, permission jail, audited file/browser tools, local Flow seam, and legacy Tenari pairing adapters.
 - `src-tauri/` packages the Windows bridge and owns sidecar lifecycle, native commands, global shortcuts, and deep links.
 - `dedup-engine/` is the Rust image-deduplication engine.
 - `scripts/` provisions pinned build dependencies.
 - `tests/` plus the sidecar tests cover the independent behavior that already exists.
 
-The current code still contains legacy Tenari origins and pairing behavior. Those are extraction seams, not SHELL foundations. New work must place optional products behind versioned integrations and keep local features functional when every integration is absent.
+Legacy Tenari pairing code remains as a disabled adapter seam. It performs no registration, beacon, or certificate work unless `SHELL_TENARI_INTEGRATION=enabled` is set explicitly. Local app discovery and launch work while every integration is absent.
 
 ## Product boundaries
 
@@ -59,13 +59,13 @@ npm run dev
 ## Near-term order
 
 1. Freeze and version the capability interface.
-2. Separate legacy Tenari pairing/cloud behavior into an optional adapter.
+2. Finish separating legacy Tenari pairing/cloud behavior into its own optional adapter module.
 3. Replace local-document and desktop-layout stand-ins with the authoritative SQLite data layer.
 4. Establish the local [security and system-health service](docs/security-and-health-foundation.md).
 5. Establish the MSI VM image and boot-to-SHELL Linux session.
 6. Build FETCH Browser on an embedded engine boundary.
 7. Add independent SHELL Cloud storage and sync.
-8. Host the Scribble reference release through the shared Contained Evolution app manifest and local capability adapter.
+8. Expand the proven Scribble manifest host into signed package installation, update, rollback, and removal.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),

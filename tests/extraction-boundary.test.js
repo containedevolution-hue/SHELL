@@ -31,3 +31,9 @@ test('Pi installation uses the standalone SHELL repository', () => {
   assert.doesNotMatch(readme, /Tenari\/localhub/);
   assert.doesNotMatch(setup, /Tenari\/localhub/);
 });
+
+test('the live Shell home discovers local manifests instead of embedding the Tenari catalog', () => {
+  const home = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8');
+  assert.match(home, /\/v1\/apps/);
+  assert.doesNotMatch(home, /app\.tenari\.world|Tenari unreachable|CE_APP_CATALOG/);
+});
