@@ -135,6 +135,16 @@ resolution, and outbound networking. This closes the VM firewall startup gate;
 it does not prove physical hardware behavior or the separate WHPX in-place
 reboot defect resolved.
 
+The 2026-09-06 app-prerequisite update also passed a cold-start check. Before
+the update, the stopped guest was saved as `firewall-startup-verified`, including
+its disk snapshot and UEFI variables. The user completed the full package
+transaction and cold-started the guest. Screenshot
+`codex-clipboard-fee48c9b-753e-498a-a6c5-4ac2c65a8c11.png` proves kernel
+`7.2.3-arch1-3`, Node `v22.23.2`, npm `12.0.2`, GitHub CLI `2.100.0`, and
+Chromium `152.0.7977.82`, followed by all five firewall checks passing. This
+establishes the guest prerequisites and post-update firewall persistence; app
+catalog execution and native Linux SHELL packaging remain unverified.
+
 ## Resume here
 
 The VM was stopped and an offline `firewall-live-verified` checkpoint was created
@@ -144,8 +154,8 @@ state. The earlier `pre-security-baseline` checkpoint also remains available.
 The guest is running following the successful startup-persistence verification.
 Before the next security, update, boot, or service change, shut it down and create
 a fresh offline checkpoint including both disk and UEFI state. For app delivery,
-the next live proof is the three-app catalog on Linux: establish the guest's Node,
-package-access, browser, and SHELL runtime prerequisites, then exercise install,
+the next live proof is the three-app catalog on Linux: establish private release
+access and the SHELL app host dependencies, then exercise install,
 launch, save/reopen, and portable transfer. Windows browser and installer proof
 does not satisfy this Linux guest gate.
 
