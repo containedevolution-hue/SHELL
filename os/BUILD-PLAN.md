@@ -124,8 +124,16 @@ known launcher defect to reproduce and resolve.
 The first live SHELL firewall activation then proved the service active and
 enabled, the `inet shell_filter` table readable with elevation, input and forward
 default-drop policies, output default-accept, required recovery traffic rules,
-working DNS, and three successful outbound probes with zero packet loss. Startup
-persistence remains unproved until the next guest boot.
+working DNS, and three successful outbound probes with zero packet loss.
+
+Startup persistence passed on 2026-09-06 after the stopped guest was launched in
+Disk mode. The guest fast-forwarded SHELL to `83a49416`; the user then ran
+`sudo ./os/guest/bin/verify-shell-firewall`. The supplied screenshot
+`Screenshot 2026-09-06 141643.png` shows all five checks passing: enabled for
+startup, service active, rule policies and recovery traffic verified, DNS
+resolution, and outbound networking. This closes the VM firewall startup gate;
+it does not prove physical hardware behavior or the separate WHPX in-place
+reboot defect resolved.
 
 ## Resume here
 
@@ -133,14 +141,13 @@ The VM was stopped and an offline `firewall-live-verified` checkpoint was create
 on 2026-09-05. It includes both the qcow2 disk snapshot and saved UEFI variable
 state. The earlier `pre-security-baseline` checkpoint also remains available.
 
-The next session must prove firewall startup persistence before adding another
-security control:
-
-1. Start the stopped guest with `start-msi-vm.ps1 -Mode Disk`.
-2. In `~/SHELL`, run `git pull --ff-only`.
-3. Run `sudo ./os/guest/bin/verify-shell-firewall`.
-4. Record whether all five checks pass after boot: enabled, active, policy,
-   DNS, and outbound networking.
+The guest is running following the successful startup-persistence verification.
+Before the next security, update, boot, or service change, shut it down and create
+a fresh offline checkpoint including both disk and UEFI state. For app delivery,
+the next live proof is the three-app catalog on Linux: establish the guest's Node,
+package-access, browser, and SHELL runtime prerequisites, then exercise install,
+launch, save/reopen, and portable transfer. Windows browser and installer proof
+does not satisfy this Linux guest gate.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a
@@ -149,6 +156,6 @@ occasionally exposed the bracketed-paste prefix `^[[200~`; type short diagnostic
 commands manually when that occurs. Neither defect is evidence about firewall
 state.
 
-After startup persistence passes, the next O1 build is the narrow privileged
+With startup persistence passed, the next O1 build is the narrow privileged
 action broker and receipt contract. Do not add VPN-required policy, automatic
 blocking, or further firewall grants before that authorization boundary exists.
