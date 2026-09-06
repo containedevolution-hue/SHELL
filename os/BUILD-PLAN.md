@@ -186,10 +186,13 @@ The VM was stopped and an offline `firewall-live-verified` checkpoint was create
 on 2026-09-05. It includes both the qcow2 disk snapshot and saved UEFI variable
 state. The earlier `pre-security-baseline` checkpoint also remains available.
 
-The guest is running following the successful Linux browser catalog verification.
+The guest was cleanly shut down after manual persistence verification on
+2026-09-06. Offline checkpoint `three-apps-persistence-verified` was created and
+confirmed in the qcow2 snapshot list (id 4). Its saved UEFI variables match the
+active UEFI file by SHA-256. The VM is stopped, with the working app setup saved.
 Before the next security, update, boot, or service change, shut it down and create
-a fresh offline checkpoint including both disk and UEFI state. Preserve the
-working app setup in a new checkpoint, then investigate the full sidecar native
+a fresh offline checkpoint including both disk and UEFI state if the guest has
+changed since this checkpoint. Next investigate the full sidecar native
 dependencies. Native Linux packaging
 and Tenari mobile verification remain separate work.
 
