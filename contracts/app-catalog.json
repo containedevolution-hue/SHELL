@@ -9,5 +9,23 @@
     "sha256": "18dcc4b7d79f3fc591a2898b358535cabdc52da1fc9e1b72155817fc8a2781dc",
     "repository": "containedevolution-hue/Contained-Evolution-Apps",
     "tag": "scribble-v0.2.0"
+  }, {
+    "id": "notes",
+    "name": "Notes",
+    "version": "0.1.0",
+    "description": "Capture notes, checklists, Brain Dumps, and Thought Bubbles locally, with portable import and export.",
+    "file": "notes-0.1.0.ceapp.json",
+    "sha256": "5ce845dec08ffdba7d70083b0ce6f1898e7b46bf4e0dd24063a8e47c29455582",
+    "repository": "containedevolution-hue/Contained-Evolution-Apps",
+    "tag": "notes-v0.1.0"
+  }, {
+    "id": "canvas",
+    "name": "Canvas",
+    "version": "0.1.0",
+    "description": "Draw and arrange ideas on a local canvas, save presentation frames, and export complete scenes.",
+    "file": "canvas-0.1.0.ceapp.json",
+    "sha256": "10aba47d3919b93f9d552be557e53ed2ed8f02cbfa84e876b6016a697527396f",
+    "repository": "containedevolution-hue/Contained-Evolution-Apps",
+    "tag": "canvas-v0.1.0"
   }]
 }

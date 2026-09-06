@@ -37,7 +37,7 @@ The Windows/Tauri build remains the recoverable bridge while the Linux session m
 
 ## App delivery
 
-Contained Evolution Apps in SHELL currently offers Scribble 0.2.0 from the pinned starter catalog in `contracts/app-catalog.json`. Install copies its verified release into the local app directory without an account or network request; My apps then opens the installed browser entrypoint. The general installer can also accept explicitly selected compatible artifacts. Adding an app to the Apps repository does not add it to this starter catalog automatically.
+Contained Evolution Apps in SHELL offers Scribble 0.2.0, Notes 0.1.0, and Canvas 0.1.0 from the pinned starter catalog in `contracts/app-catalog.json`. Install copies the selected verified release into the local app directory without an account or network request; My apps then opens the installed browser entrypoint. The general installer can also accept explicitly selected compatible artifacts. Adding an app to the Apps repository does not add it to this starter catalog automatically.
 
 `/v1/app-store` owns catalog discovery and installation. A browser installation requires a local SHELL/native origin and a per-process install token; only reviewed ids can be installed. `/v1/apps` owns installed discovery and launch. Existing versions are preserved, and a broken starter catalog does not disable installed apps. Updates, rollback, removal, publisher signatures, native document custody, and cloud sync remain unsupported by this delivery profile.
 
@@ -53,11 +53,11 @@ npm test
 npm run build
 ```
 
-`npm run dev` and `npm run build` prepare the catalog before Tauri starts. The build machine needs authenticated GitHub CLI access to the private Apps release, or `CE_APP_RELEASE_DIR` containing that downloaded artifact. The preparation script verifies the pinned digest and identity; end users need neither GitHub nor a source checkout.
+`npm run dev` and `npm run build` prepare the catalog before Tauri starts. The build machine needs authenticated GitHub CLI access to the private Apps releases, or `CE_APP_RELEASE_DIR` containing all selected release artifacts. The preparation script verifies the pinned digest and identity; end users need neither GitHub nor a source checkout.
 
 The Windows consumer build includes selected runtime resources and the verified catalog. Sidecar `data/`, user credentials, and arbitrary working-directory files are excluded. Development asset-forge tools are not loaded by the consumer profile. `npm run build` produces the NSIS installer under `src-tauri/target/release/bundle/nsis/`.
 
-`npm run test:app-store` verifies an empty installation through catalog, Install, Open, and document save in a disposable directory/browser profile. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
+`npm run test:app-store` verifies an empty installation through catalog, Install, Open, save, and reopen for all three apps in a disposable directory/browser profile. It also verifies Notes/Canvas export and reimport and preserves each app's data while switching apps, with external network requests blocked. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
 
 Rust-only checks use `cargo check --manifest-path dedup-engine/Cargo.toml` and `cargo check --manifest-path src-tauri/Cargo.toml`.
 
@@ -67,7 +67,7 @@ For direct installation of a reviewed artifact:
 node scripts/install-app.js PATH_TO_RELEASE.ceapp.json TRUSTED_SHA256
 ```
 
-The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a third directory argument selects an isolated destination. Installed Scribble uses browser-local storage. Apps `contracts/v1/app-release.md` owns the release format.
+The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a third directory argument selects an isolated destination. All three installed apps use browser-local storage. Apps `contracts/v1/app-release.md` owns the release format.
 
 ## Near-term order
 
