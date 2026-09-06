@@ -35,42 +35,39 @@ The first OS target is an MSI GF63 Thin 11UC with an Intel i5-11400H, 32 GB RAM,
 
 The Windows/Tauri build remains the recoverable bridge while the Linux session matures.
 
-## Development
+## App delivery
 
-`npm run dev` and `npm run build` prepare the pinned starter catalog before Tauri starts. The build machine uses authenticated GitHub CLI access to the private Apps release, or `CE_APP_RELEASE_DIR` containing the already downloaded release. Each artifact is checked against `contracts/app-catalog.json`. End users need neither GitHub nor a source checkout: the package is included in the SHELL installer and Install copies it into their app directory without a network request.
+Contained Evolution Apps in SHELL currently offers Scribble 0.2.0 from the pinned starter catalog in `contracts/app-catalog.json`. Install copies its verified release into the local app directory without an account or network request; My apps then opens the installed browser entrypoint. The general installer can also accept explicitly selected compatible artifacts. Adding an app to the Apps repository does not add it to this starter catalog automatically.
 
-The local `/v1/app-store` surface lists verified available releases. Installation requires the local SHELL/native origin and a per-process install token; only reviewed ids can be installed. Existing versions are preserved and updates remain unsupported. `/v1/apps` continues to own installed discovery and launch. Starter-catalog integrity failure does not disable existing apps.
+`/v1/app-store` owns catalog discovery and installation. A browser installation requires a local SHELL/native origin and a per-process install token; only reviewed ids can be installed. `/v1/apps` owns installed discovery and launch. Existing versions are preserved, and a broken starter catalog does not disable installed apps. Updates, rollback, removal, publisher signatures, native document custody, and cloud sync remain unsupported by this delivery profile.
 
-The installer includes explicitly selected runtime resources and the verified catalog, excluding sidecar `data/`, credentials, and arbitrary working-directory files. The default Rust feature is the consumer profile, which leaves development asset-forge tools out of packaged runtime startup.
+The prototype hosts trusted app packages on the sidecar origin. It does not establish a third-party app sandbox. Manifest capability checks describe compatibility, not isolation from every other same-origin sidecar endpoint.
 
-Run `npm run test:app-store` after Playwright browser setup for the empty-install-to-document flow; set `BROWSER_CHANNEL=msedge` to use installed Edge. Tests install into a disposable directory and use a fresh browser profile. The browser check proves the web surface and sidecar boundary, not a clean-machine Windows installer run or Linux release.
+## Build and verification
 
-Install a reviewed local web app from its published v1 release and independently obtained SHA-256:
+```powershell
+npm ci
+npm --prefix node-sidecar ci
+node scripts/fetch-node-binary.mjs
+npm test
+npm run build
+```
+
+`npm run dev` and `npm run build` prepare the catalog before Tauri starts. The build machine needs authenticated GitHub CLI access to the private Apps release, or `CE_APP_RELEASE_DIR` containing that downloaded artifact. The preparation script verifies the pinned digest and identity; end users need neither GitHub nor a source checkout.
+
+The Windows consumer build includes selected runtime resources and the verified catalog. Sidecar `data/`, user credentials, and arbitrary working-directory files are excluded. Development asset-forge tools are not loaded by the consumer profile. `npm run build` produces the NSIS installer under `src-tauri/target/release/bundle/nsis/`.
+
+`npm run test:app-store` verifies an empty installation through catalog, Install, Open, and document save in a disposable directory/browser profile. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
+
+Rust-only checks use `cargo check --manifest-path dedup-engine/Cargo.toml` and `cargo check --manifest-path src-tauri/Cargo.toml`.
+
+For direct installation of a reviewed artifact:
 
 ```powershell
 node scripts/install-app.js PATH_TO_RELEASE.ceapp.json TRUSTED_SHA256
 ```
 
-The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`. Pass a third directory argument for an isolated installation. Existing installations are preserved. The registry rejects unsupported required capabilities and launches app-owned browser assets. Scribble 0.2.0 uses browser-local storage; native document custody, automatic updates, and publisher signatures remain future contracts. The release format belongs to Apps `contracts/v1/app-release.md`.
-
-```powershell
-npm ci
-npm --prefix node-sidecar ci
-npm test
-```
-
-Rust checks:
-
-```powershell
-cargo check --manifest-path dedup-engine/Cargo.toml
-cargo check --manifest-path src-tauri/Cargo.toml
-```
-
-Run the Windows bridge after provisioning the bundled Node artifacts described in `scripts/fetch-node-binary.mjs`:
-
-```powershell
-npm run dev
-```
+The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a third directory argument selects an isolated destination. Installed Scribble uses browser-local storage. Apps `contracts/v1/app-release.md` owns the release format.
 
 ## Near-term order
 
