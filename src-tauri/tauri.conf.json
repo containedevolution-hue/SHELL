@@ -4,6 +4,8 @@
   "version": "0.1.1",
   "identifier": "com.containedevolution.localhub",
   "build": {
+    "beforeBuildCommand": "node scripts/prepare-app-catalog.js",
+    "beforeDevCommand": "node scripts/prepare-app-catalog.js",
     "frontendDist": "../web"
   },
   "app": {
@@ -91,7 +93,12 @@
     "longDescription": "SHELL provides a local-first desktop, core apps, files, browser capabilities, and optional integrations without requiring an account or Tenari.",
     "externalBin": ["binaries/node"],
     "resources": {
-      "../node-sidecar": "node-sidecar"
+      "../node-sidecar/index.js": "node-sidecar/index.js",
+      "../node-sidecar/package.json": "node-sidecar/package.json",
+      "../node-sidecar/lib": "node-sidecar/lib",
+      "../node-sidecar/mcp": "node-sidecar/mcp",
+      "../node-sidecar/node_modules": "node-sidecar/node_modules",
+      "../node-sidecar/catalog": "node-sidecar/catalog"
     },
     "icon": [
       "icons/32x32.png",

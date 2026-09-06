@@ -7,6 +7,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [features]
+default = ["consumer"]
 # Consumer desktop build (DA1): excludes Chris's Media-Lab asset-forge tooling.
 # `cargo`/`tauri build --features consumer` forwards CE_CONSUMER=1 to the sidecar
 # so it neither mounts nor requires /asset-forge.

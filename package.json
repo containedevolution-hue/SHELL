@@ -4,6 +4,7 @@
   "private": false,
   "description": "SHELL — a free, local-first operating environment by Contained Evolution",
   "scripts": {
+    "test:app-store": "node scripts/test-app-store-browser.js",
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
@@ -11,6 +12,7 @@
     "check:rust": "cargo check --manifest-path dedup-engine/Cargo.toml && cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "playwright": "1.62.1"
   }
 }

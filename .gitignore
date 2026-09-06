@@ -1,6 +1,7 @@
 /node_modules/
 /node-sidecar/node_modules/
 /node-sidecar/data/
+/node-sidecar/catalog/
 /src-tauri/target/
 /src-tauri/gen/
 /dedup-engine/target/

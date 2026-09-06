@@ -29,6 +29,7 @@ const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } =
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
 const capabilities = require('./lib/capabilities');
 const { createRegistry } = require('./lib/app-registry');
+const { createAppStore } = require('./lib/app-store');
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -167,6 +168,7 @@ function loopbackOnly(req, res, next) {
 app.use('/access', loopbackOnly, accessControl.router());
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
+app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR }));
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {

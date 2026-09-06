@@ -6,7 +6,7 @@ This repository was extracted from Tenari with the complete history of the forme
 
 ## Current state
 
-- `web/` contains the local home and renders only apps discovered from installed versioned manifests.
+- `web/` contains My apps and Contained Evolution Apps. Users install reviewed packages from the bundled starter collection, then open installed versioned apps.
 - `node-sidecar/` is the current local agent: data host, permission jail, audited file/browser tools, local Flow seam, and legacy Tenari pairing adapters.
 - `src-tauri/` packages the Windows bridge and owns sidecar lifecycle, native commands, global shortcuts, and deep links.
 - `dedup-engine/` is the Rust image-deduplication engine.
@@ -36,6 +36,14 @@ The first OS target is an MSI GF63 Thin 11UC with an Intel i5-11400H, 32 GB RAM,
 The Windows/Tauri build remains the recoverable bridge while the Linux session matures.
 
 ## Development
+
+`npm run dev` and `npm run build` prepare the pinned starter catalog before Tauri starts. The build machine uses authenticated GitHub CLI access to the private Apps release, or `CE_APP_RELEASE_DIR` containing the already downloaded release. Each artifact is checked against `contracts/app-catalog.json`. End users need neither GitHub nor a source checkout: the package is included in the SHELL installer and Install copies it into their app directory without a network request.
+
+The local `/v1/app-store` surface lists verified available releases. Installation requires the local SHELL/native origin and a per-process install token; only reviewed ids can be installed. Existing versions are preserved and updates remain unsupported. `/v1/apps` continues to own installed discovery and launch. Starter-catalog integrity failure does not disable existing apps.
+
+The installer includes explicitly selected runtime resources and the verified catalog, excluding sidecar `data/`, credentials, and arbitrary working-directory files. The default Rust feature is the consumer profile, which leaves development asset-forge tools out of packaged runtime startup.
+
+Run `npm run test:app-store` after Playwright browser setup for the empty-install-to-document flow; set `BROWSER_CHANNEL=msedge` to use installed Edge. Tests install into a disposable directory and use a fresh browser profile. The browser check proves the web surface and sidecar boundary, not a clean-machine Windows installer run or Linux release.
 
 Install a reviewed local web app from its published v1 release and independently obtained SHA-256:
 

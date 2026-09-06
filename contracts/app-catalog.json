@@ -1,0 +1,13 @@
+{
+  "contractVersion": 1,
+  "apps": [{
+    "id": "scribble",
+    "name": "Scribble",
+    "version": "0.2.0",
+    "description": "Write documents locally, restore versions, and import or export your writing.",
+    "file": "scribble-0.2.0.ceapp.json",
+    "sha256": "18dcc4b7d79f3fc591a2898b358535cabdc52da1fc9e1b72155817fc8a2781dc",
+    "repository": "containedevolution-hue/Contained-Evolution-Apps",
+    "tag": "scribble-v0.2.0"
+  }]
+}

@@ -9,9 +9,16 @@ const root = path.resolve(__dirname, '..');
 
 function filesUnder(relativeRoot) {
   const absoluteRoot = path.join(root, relativeRoot);
-  return fs.readdirSync(absoluteRoot, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(entry.parentPath, entry.name));
+  const files = [];
+  function walk(directory) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes:true})) {
+      const file = path.join(directory,entry.name);
+      if (entry.isDirectory() && !['node_modules','target','data','catalog','binaries','gen'].includes(entry.name)) walk(file);
+      else if (entry.isFile()) files.push(file);
+    }
+  }
+  walk(absoluteRoot);
+  return files;
 }
 
 test('recovered Tenari source is quarantined from SHELL runtime', () => {
@@ -33,7 +40,7 @@ test('Pi installation uses the standalone SHELL repository', () => {
 });
 
 test('the live Shell home discovers local manifests instead of embedding the Tenari catalog', () => {
-  const home = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8');
+  const home = fs.readFileSync(path.join(root, 'web', 'index.html'), 'utf8') + fs.readFileSync(path.join(root,'web','apps.js'),'utf8');
   assert.match(home, /\/v1\/apps/);
   assert.doesNotMatch(home, /app\.tenari\.world|Tenari unreachable|CE_APP_CATALOG/);
 });
