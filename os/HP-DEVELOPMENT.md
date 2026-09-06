@@ -42,6 +42,14 @@ its results do not qualify the MSI hardware.
 - User reported installing Scribble, Notes, and Canvas and exercising them.
   The Notes document "hello sky!" survived browser close/reopen and a separate
   app-host stop/restart, with screenshot evidence of the reopened document.
+- Final HP repository test screenshot shows 51 tests passed, zero failures,
+  zero skips, and a returned prompt. This followed instructions to run a full
+  pacman update, fast-forward the checkout, refresh locked npm dependencies,
+  and prepare the catalog. Individual update transaction output and the exact
+  HP commit were not captured; do not infer them from the test summary.
+- After a full KDE restart, the user restarted the app host and explicitly
+  confirmed all installed apps and "hello sky!" remained. Full-machine restart
+  persistence is user-verified. This is the accepted stopping milestone.
 
 ## Resume and stopping point
 
@@ -56,13 +64,24 @@ npm run start:apps
 Use the same Chromium profile and exact loopback URL for browser documents.
 Export important documents; browser storage is not a portable backup.
 
-Next: complete a full system update and fast-forward the checkout, refresh
-locked dependencies/catalog if needed, run npm test and the existing isolated
-sidecar verifier, then verify a full HP shutdown/startup and reopening the note.
-These update/check results and full-machine persistence are not yet evidenced.
-Before applying system security changes, establish a physical-machine recovery
+Resume directly from this record; no conversation handoff is needed. Do not
+repeat installation or erase the working HP. First inspect its current Git
+status/revision and pending system updates, preserving local work and data.
+Run the existing isolated ./os/guest/bin/verify-shell-sidecar on the HP; its VM
+pass is not HP runtime proof. Before applying system security changes, establish a physical-machine recovery
 checkpoint; the MSI VM checkpoints do not cover this HDD. Btrfs support alone
 does not establish automated snapshots or tested rollback.
+
+Then install and verify the existing SHELL base firewall, including verification
+after reboot and working DNS/outbound access. Continue native Linux packaging
+work only from the current owning build plan and with KDE recovery available.
+Remaining hardware checks include audio/microphone, camera, suspend/resume,
+Ethernet, battery and thermal behavior. Browser document export and a recovery
+procedure should be established before treating this as a daily-use machine.
+
+The user requested ending this session and resuming later. Normal shutdown was
+explained, but final power-off was not observed. Do not assume the HP is powered
+off or that its app host is still running when resuming.
 
 SHELL firewall installation on this HP is not yet verified. Native Linux
 packaging and independent session work follow BUILD-PLAN.md; do not infer that

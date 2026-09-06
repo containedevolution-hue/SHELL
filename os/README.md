@@ -8,6 +8,11 @@ The ordered ownership and desktop-replacement gates are defined in the
 [SHELL OS build plan](BUILD-PLAN.md). KDE is the current recovery scaffold, not
 the intended product surface.
 
+The separate physical HP development installation and its current resume point
+are recorded in [HP development](HP-DEVELOPMENT.md). It has passed browser-app
+persistence across a full machine restart; its next work is recovery and the
+HP firewall baseline, followed by the shared native packaging path.
+
 ## First target
 
 `targets/msi-gf63-11uc.json` is the checked-in machine profile. It records known

@@ -165,6 +165,12 @@ SHELL packaging, full sidecar operation, or the Tenari mobile WebView.
 
 ## Resume here
 
+For the physical HP laptop, resume from [HP development](HP-DEVELOPMENT.md).
+Its Arch/KDE installation, 51-test repository pass, touchscreen app use, and
+browser-app persistence across a full reboot were verified on 2026-09-06.
+HP recovery, firewall, and full-sidecar runtime checks remain separate from
+the MSI VM evidence below. The user has paused HP work at this milestone.
+
 The Linux guest repository suite also passed on 2026-09-06: screenshot
 `codex-clipboard-206c3c83-d3a6-4e72-8b87-8c8d0bc49dce.png` shows 45 tests passed,
 zero failures, zero skips, and the returned prompt. This does not exercise every
