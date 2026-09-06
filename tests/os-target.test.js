@@ -92,6 +92,26 @@ test('firewall verifier proves service, policy, DNS, and outbound state without 
   assert.doesNotMatch(verifier, /(?:systemctl\s+(?:enable|disable|start|stop|restart)|nft\s+(?:add|delete|flush)|pacman)/);
 });
 
+test('sidecar verifier proves native prebuilds and a full loopback boot without mutation', () => {
+  const verifier = fs.readFileSync(path.join(root, 'os', 'guest', 'bin', 'verify-shell-sidecar'), 'utf8');
+  // native chain: resolve shipped prebuilds for leveldown (both copies) with no compile
+  assert.match(verifier, /node-gyp-build'\)\.path\(pkgDir\)/);
+  assert.match(verifier, /segments\.indexOf\('prebuilds'\)/);
+  assert.match(verifier, /assertPrebuilt\('leveldown', req, 'leveldown'\)/);
+  assert.match(verifier, /assertPrebuilt\('level\/leveldown', levelReq, 'leveldown'\)/);
+  assert.match(verifier, /pouchdb-node/);
+  assert.match(verifier, /put\/get\/destroy/);
+  // full process boot on loopback, throwaway data dir, non-app-host port
+  assert.match(verifier, /probe_port=5985/);
+  assert.match(verifier, /\[\[ "\$probe_port" != "5984" \]\]/);
+  assert.match(verifier, /LOCALHUB_DATA_DIR="\$work_dir\/hub"/);
+  assert.match(verifier, /listening on http:\/\/127\.0\.0\.1:\$probe_port\//);
+  assert.match(verifier, /\/v1\/capabilities/);
+  assert.match(verifier, /find "\$sidecar_dir\/data" -newer "\$started_marker"/);
+  // read-only: never installs packages or writes system state
+  assert.doesNotMatch(verifier, /(?:npm\s+(?:i|ci|install)|pacman|systemctl\s+(?:enable|disable|start|stop)|sudo)/);
+});
+
 test('VM checkpoints include disk and UEFI state and guard restore', () => {
   const checkpoint = fs.readFileSync(path.join(root, 'os', 'host', 'manage-msi-vm-checkpoint.ps1'), 'utf8');
   assert.match(checkpoint, /Get-Process qemu-system-x86_64/);

@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Proves the full SHELL Node sidecar and its only native dependency chain
+# (leveldown, via pouchdb-node and level) run on the Arch guest using the
+# prebuilt linux-x64 binaries that ship in the packages. No build toolchain,
+# no package installs, no mutation of the working browser app host: every
+# database and HTTP surface it opens lives in a throwaway directory on a
+# port that is deliberately not 5984.
+
+script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(cd -- "$script_dir/../../.." && pwd)
+sidecar_dir="$repo_root/node-sidecar"
+probe_port=5985
+
+fail() {
+  printf 'FAIL  %s\n' "$1" >&2
+  exit 1
+}
+
+[[ "$probe_port" != "5984" ]] || fail 'Probe port must not collide with the app host on 5984.'
+
+command -v node >/dev/null 2>&1 || fail 'node is not installed.'
+printf 'PASS  node present (%s)\n' "$(node --version)"
+
+[[ -d "$sidecar_dir" ]] || fail "Sidecar checkout is missing at $sidecar_dir."
+[[ -d "$sidecar_dir/node_modules" ]] || fail "Sidecar dependencies are not installed; run: npm --prefix \"$sidecar_dir\" ci"
+printf 'PASS  sidecar node_modules present\n'
+
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/shell-sidecar-verify.XXXXXX")
+started_marker="$work_dir/.started"
+touch "$started_marker"
+sidecar_pid=""
+cleanup() {
+  [[ -n "$sidecar_pid" ]] && kill "$sidecar_pid" >/dev/null 2>&1 || true
+  [[ -n "$sidecar_pid" ]] && wait "$sidecar_pid" 2>/dev/null || true
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT
+
+# 1. Native chain resolves to shipped prebuilds and round-trips a database.
+if ! LOCALHUB_DATA_DIR="$work_dir/native" SIDECAR_DIR="$sidecar_dir" node - <<'NODE'
+const path = require('path');
+const fs = require('fs');
+const { createRequire } = require('module');
+
+const sidecar = process.env.SIDECAR_DIR;
+const req = createRequire(path.join(sidecar, 'index.js'));
+
+function assertPrebuilt(label, ownerReq, spec) {
+  const pkgDir = path.dirname(ownerReq.resolve(spec + '/package.json'));
+  const binary = ownerReq('node-gyp-build').path(pkgDir); // throws if a compile would be required
+  const segments = binary.split(path.sep);
+  const prebuildsAt = segments.indexOf('prebuilds');
+  if (prebuildsAt < 0) {
+    throw new Error(`${label} did not resolve to a shipped prebuild: ${binary}`);
+  }
+  const platformDir = segments[prebuildsAt + 1] || '';
+  if (!platformDir.startsWith(process.platform)) {
+    throw new Error(`${label} prebuild ${platformDir} does not match host platform ${process.platform}`);
+  }
+  ownerReq(spec); // actually dlopen the addon
+  console.error(`  ${label} -> ${path.relative(pkgDir, binary)} (${process.platform}-${process.arch})`);
+}
+
+// pouchdb-node's direct leveldown (6.x)
+assertPrebuilt('leveldown', req, 'leveldown');
+
+// the leveldown (5.x) bundled inside `level`, also pulled by pouchdb-node
+const levelDir = path.dirname(req.resolve('level/package.json'));
+const levelReq = createRequire(path.join(levelDir, 'index.js'));
+assertPrebuilt('level/leveldown', levelReq, 'leveldown');
+
+(async () => {
+  const PouchDB = req('pouchdb-node');
+  const Store = PouchDB.defaults({ prefix: process.env.LOCALHUB_DATA_DIR + path.sep });
+  fs.mkdirSync(process.env.LOCALHUB_DATA_DIR, { recursive: true });
+  const db = new Store('verify');
+  await db.put({ _id: 'probe', value: 42 });
+  const got = await db.get('probe');
+  if (got.value !== 42) throw new Error(`roundtrip mismatch: ${JSON.stringify(got)}`);
+  await db.destroy();
+  console.error('  pouchdb-node put/get/destroy ok');
+})().catch((err) => { console.error(err.stack || String(err)); process.exit(4); });
+NODE
+then
+  fail 'Native leveldown prebuilds or the pouchdb-node roundtrip failed.'
+fi
+printf 'PASS  leveldown and level resolve host-platform prebuilds (no build toolchain)\n'
+printf 'PASS  pouchdb-node leveldb put/get/destroy roundtrip\n'
+
+# 2. The full sidecar process boots on loopback against a throwaway data dir.
+boot_log="$work_dir/boot.log"
+(
+  cd "$sidecar_dir"
+  exec env \
+    LOCALHUB_DATA_DIR="$work_dir/hub" \
+    LOCALHUB_PORT="$probe_port" \
+    LOCALHUB_HOST=127.0.0.1 \
+    SHELL_APPS_DIR="$work_dir/hub/apps" \
+    node index.js
+) >"$boot_log" 2>&1 &
+sidecar_pid=$!
+
+listen_line="listening on http://127.0.0.1:$probe_port/"
+for _ in $(seq 1 40); do
+  grep -qF "$listen_line" "$boot_log" && break
+  kill -0 "$sidecar_pid" 2>/dev/null || { sed 's/^/  /' "$boot_log" >&2; fail 'Sidecar exited during startup.'; }
+  sleep 0.5
+done
+grep -qF "$listen_line" "$boot_log" || { sed 's/^/  /' "$boot_log" >&2; fail 'Sidecar did not report listening within 20s.'; }
+grep -qF "MCP endpoint: http://127.0.0.1:$probe_port/mcp" "$boot_log" || fail 'Sidecar MCP endpoint did not initialise.'
+printf 'PASS  full sidecar booted on 127.0.0.1:%s\n' "$probe_port"
+
+status=$(PROBE_PORT="$probe_port" node -e '
+const http = require("http");
+http.get({ host: "127.0.0.1", port: process.env.PROBE_PORT, path: "/v1/capabilities" }, (res) => {
+  let body = "";
+  res.on("data", (d) => { body += d; });
+  res.on("end", () => {
+    try { JSON.parse(body); process.stdout.write(String(res.statusCode)); }
+    catch { process.stdout.write("invalid-json"); }
+  });
+}).on("error", () => process.stdout.write("request-error"));
+')
+[[ "$status" == "200" ]] || fail "Loopback /v1/capabilities returned: $status"
+printf 'PASS  /v1/capabilities served valid JSON over loopback\n'
+
+kill "$sidecar_pid" >/dev/null 2>&1 || true
+wait "$sidecar_pid" 2>/dev/null || true
+sidecar_pid=""
+printf 'PASS  sidecar stopped cleanly\n'
+
+# 3. The working browser app host was never in scope.
+if [[ -d "$sidecar_dir/data" ]]; then
+  touched=$(find "$sidecar_dir/data" -newer "$started_marker" -type f -print -quit 2>/dev/null || true)
+  [[ -z "$touched" ]] || fail "Sidecar data directory was modified during verification: $touched"
+fi
+printf 'PASS  app host untouched (throwaway dir %s, port %s)\n' "$work_dir" "$probe_port"
+
+printf 'SHELL sidecar Linux dependency verification passed.\n'

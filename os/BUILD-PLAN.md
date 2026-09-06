@@ -192,9 +192,92 @@ confirmed in the qcow2 snapshot list (id 4). Its saved UEFI variables match the
 active UEFI file by SHA-256. The VM is stopped, with the working app setup saved.
 Before the next security, update, boot, or service change, shut it down and create
 a fresh offline checkpoint including both disk and UEFI state if the guest has
-changed since this checkpoint. Next investigate the full sidecar native
-dependencies. Native Linux packaging
-and Tenari mobile verification remain separate work.
+changed since this checkpoint. Tenari mobile verification remains separate work.
+
+### Full sidecar Linux dependency investigation
+
+Static analysis on 2026-09-06 (Windows checkout, `Shell` at `c447d3b9`) mapped
+the whole `node-sidecar` dependency graph: 250 packages in
+`node-sidecar/package-lock.json`, and exactly two carry an install script —
+`leveldown@6.1.1` (pulled directly by `pouchdb-node@9`) and `leveldown@5.6.0`
+(bundled inside `level@6.0.1`, also pulled by `pouchdb-node@9`). Both install
+scripts are `node-gyp-build`, which is a no-op when a matching prebuilt binary is
+present. Each `leveldown` ships `prebuilds/linux-x64/node.napi.glibc.node` and a
+musl variant in its package tree, so on the glibc Arch guest the N-API addon
+loads with no compiler, no `node-gyp`, and no `base-devel`. The npm-blocked
+install scripts recorded earlier are therefore cosmetic: `node-gyp-build`
+re-resolves the prebuild at `require()` time. Every other sidecar dependency is
+pure JavaScript. The optional subprocess integrations (`piper`/`aplay`/`ffmpeg`
+TTS in `lib/speaker.js`, `blender` in `lib/asset-forge.js`, `rpicam-*` in
+`mcp/tools`) are spawned lazily per request and degrade to error objects when the
+binary is absent; none are import-time or boot-time dependencies. A Windows
+smoke run loaded both `leveldown` copies from their `win32-x64` prebuilds, ran a
+`pouchdb-node` put/get/destroy roundtrip, and booted the full sidecar
+(`node index.js`) to a loopback `listening` state with `/v1/capabilities`
+serving JSON.
+
+`os/guest/bin/verify-shell-sidecar` is the guest-side proof of the same, added
+with a matching `tests/os-target.test.js` case (suite now 46 tests). It is
+read-only and recovery-safe: it never installs packages or touches system state,
+opens its PouchDB store and the sidecar HTTP surface only under a `mktemp -d`
+directory on port 5985, asserts each `leveldown` resolves a `prebuilds/<host>`
+binary (failing if a compile would be required), runs the database roundtrip,
+boots `node index.js` and probes loopback `/v1/capabilities`, then checks that
+`node-sidecar/data` — the working `npm run start:apps` browser host — was not
+modified. Run it in the guest from the repo root:
+
+```bash
+./os/guest/bin/verify-shell-sidecar
+```
+
+Expected: PASS lines through `SHELL sidecar Linux dependency verification
+passed.`, with the two `leveldown` lines showing `linux-x64` prebuild paths.
+This has not yet been run in the guest; capture its screenshot as the evidence
+for this gate. It does not exercise the lazy TTS/asset-forge/camera subprocess
+paths or native SHELL packaging.
+
+### Native Linux packaging investigation
+
+Findings from the checkout, not yet built or run:
+
+- The Tauri bundle in `src-tauri/tauri.conf.json` targets `["nsis"]` only.
+  `scripts/fetch-node-binary.mjs` pins Node for `win32-x64` only and states
+  "macOS/Linux deferred". `bundle.externalBin` is `binaries/node` and
+  `bundle.resources` already ships the entire `node-sidecar` tree, including
+  `node_modules` with the cross-platform `leveldown` prebuilds, so the sidecar
+  and its native addon travel with any bundle once a Linux Node binary exists.
+- The boot contract (this plan, "Boot contract") expects the packaged
+  executable at `/opt/shell/bin/shell` with the user unit
+  `os/guest/systemd/shell-session.service` enabled; `os/guest/bin/shell-session`
+  already fails visibly (exit 66) when that binary is missing and never falls
+  back to Plasma.
+- Tauri v2 Linux builds use `webkit2gtk-4.1` (Arch package `webkit2gtk-4.1`)
+  plus `gtk3`; `tauri build` can emit `appimage`, `deb`, and `rpm`. Arch has no
+  first-class Tauri target, so a pacman package installing to `/opt/shell` is a
+  separate wrapper.
+
+Ordered plan:
+
+1. Add a `linux-x64` entry to `scripts/fetch-node-binary.mjs`
+   (`x86_64-unknown-linux-gnu`, `node-v24.18.0-linux-x64` tarball, extract the
+   `bin/node`), keeping the pinned version identical to Windows.
+2. Add a Linux `bundle` section to `tauri.conf.json` (`targets` including at
+   least `appimage`; category and descriptions already present) behind the
+   existing per-platform config so the Windows `nsis` path is untouched.
+3. On the Arch guest: install `webkit2gtk-4.1`, `gtk3`, `base-devel`, `rust`,
+   run `npm ci && npm --prefix node-sidecar ci && node scripts/fetch-node-binary.mjs`,
+   then `npm run build`. Capture the produced AppImage under
+   `src-tauri/target/release/bundle/`.
+4. Prove the AppImage launches the SHELL window, spawns the bundled sidecar on
+   loopback, and completes the three-app catalog/install/open/persist flow that
+   `npm run test:app-store` covers — with Plasma still available underneath.
+5. Only then design the `/opt/shell` install layout (pacman `PKGBUILD` or a
+   staged tarball) and wire `shell-session.service`, keeping KDE as the recovery
+   session per the recovery rule.
+
+Do this after the guest has run `verify-shell-sidecar` and a fresh offline
+checkpoint exists. Building pulls `rust`, `webkit2gtk-4.1`, and `base-devel`
+into the guest, so treat the pre-build shutdown-and-checkpoint as mandatory.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a

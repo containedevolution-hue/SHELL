@@ -91,6 +91,18 @@ Verify the installed service, active policy, DNS, and outbound connectivity with
 sudo ./os/guest/bin/verify-shell-firewall
 ```
 
+Verify the full Node sidecar and its native `leveldown` chain on Linux with:
+
+```bash
+./os/guest/bin/verify-shell-sidecar
+```
+
+This runs unprivileged. It confirms both `leveldown` copies load from their
+shipped `linux-x64` prebuilds with no build toolchain, runs a `pouchdb-node`
+roundtrip, boots the full sidecar on a throwaway loopback port, and probes
+`/v1/capabilities` — all in a `mktemp` directory, leaving the `npm run start:apps`
+browser host on port 5984 untouched.
+
 ## Boot contract
 
 The guest image must install the SHELL bundle at `/opt/shell`, enable the user
