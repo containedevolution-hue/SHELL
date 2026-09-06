@@ -19,7 +19,7 @@ Legacy Tenari pairing code remains as a disabled adapter seam. It performs no re
 
 - Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
 - General-purpose utilities are Contained Evolution Apps. SHELL discovers released app manifests and supplies a local host adapter; app behavior, portable data models, and releases stay with each app.
-- Chat is the neutral, independently installable conversation home owned by Apps. SHELL launches the canonical Chat release, supplies the adaptive Status Bar and bounded host capabilities, preserves remote execution while the person changes desks, and never maintains a Shell-specific Chat fork.
+- Chat is the neutral, independently installable conversation home owned by Apps. SHELL launches the canonical Chat release, supplies the adaptive Status Bar and bounded host capabilities, and provides Chat's one-slot [native desk](docs/surfaces/Chat-Native-Desk.md). The desk summons and switches complete downloaded provider applications without replacing them, preserves remote execution, and never becomes a Shell-specific Chat fork.
 - FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
 - SEED — Secured Environment Educated Development — is an independently owned, opt-in local capability hosted through Memory Box inside SHELL's Core. Its corpus, curation, retrieval, dataset, backup, and restore remain off by default, permission-gated, and outside cloud sync or implicit integration reach. Chat's Seed Station is the primary planned human control surface; Shell owns local execution, receiving, staging, permissions, and storage rather than a competing SEED conversation surface.
 - Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
@@ -93,7 +93,7 @@ The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a thi
 5. Establish the MSI VM image and boot-to-SHELL Linux session.
 6. Build FETCH Browser on an embedded engine boundary.
 7. Add independent SHELL Cloud storage and sync.
-8. Publish and prove the narrow Status Bar, launch, remote-continuity, and receiving capabilities required by Chat without moving Chat or SEED ownership into SHELL.
+8. Publish and prove the narrow Status Bar, native-desk, remote-continuity, and receiving capabilities required by Chat without moving Chat or SEED ownership into SHELL.
 9. Expand the proven Scribble manifest host into signed package installation, update, rollback, and removal.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
@@ -102,6 +102,7 @@ served locally at `GET /v1/capabilities`. The safe MSI VM and recovery path star
 [SHELL OS](os/README.md). Security and performance observations use the versioned
 [health-event contract](contracts/v1/health-event.schema.json).
 The accepted adaptive system surface is defined by [Status Bar](docs/surfaces/Status-Bar.md).
+Chat's accepted complete-application window model is defined by [Chat native desk](docs/surfaces/Chat-Native-Desk.md) and its [version-2 host contract](contracts/chat/README.md).
 
 ## License
 

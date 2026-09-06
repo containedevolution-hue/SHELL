@@ -1,25 +1,36 @@
-# Chat host protocol v1
+# Chat native desk protocol v2
 
-`v1.mjs` is Shell's public, portable contract for Chat host observations, surface contributions, and launch acknowledgements. Consumers may vendor its exact bytes pinned to a Shell Git commit and SHA-256. Shell owns this source. It is not a live sidecar endpoint; existing capabilities must not advertise these operations as available yet.
+`v2.mjs` is Shell's public, portable contract for Chat host observations and complete native-client desk management. Consumers may vendor its exact bytes pinned to a Shell Git commit and SHA-256. Shell owns this source. It is not a live endpoint; current capabilities must not advertise native desk management until a real compositor/session adapter passes the acceptance gates below.
 
-Identifier: `com.containedevolution.shell.chat`, integer version `1`. Exports: `validateSnapshot`, `validateContext`, `validateLaunchAck`, and route constants. Breaking wire changes require a new major version.
+Identifier: `com.containedevolution.shell.chat`, integer version `2`. Version 1 was deleted before launch because its browser/contained route model contradicted the accepted native-client lab. Git preserves that history; no current contract supports or recommends the retired concept.
 
-## Local host adapter
+## One lab slot, complete applications
 
-A trusted local host constructs an adapter implementing `observe()`, `launch(request)`, and optional `contribute(context)`. No browser query parameter, arbitrary global callback, provider iframe, or unauthenticated postMessage attaches an adapter. The adapter owns authentication, origin checks, user gestures, permissions, and explicit native-session selection. This portable module checks wire data only. Standalone Chat can operate with no adapter.
+Chat owns the lab, its desk bubbles, default selection, surrounding controls, and troubleshooting presentation. Shell owns application discovery, process and window identity, the reserved native window slot, placement, focus, parking, restoration, permissions, and compositor integration. Hyprland is the first Linux compositor target; it manages top-level surfaces and does not turn provider applications into Chat HTML children.
 
-`observe()` returns host identity, a process-specific `hostSessionId`, `observedAt`, `expiresAt`, optional Status Bar presentation, aggregate connection observations, supported `launchRoutes`, and an optional opaque remote `sessionId` with target label and observed state. Observations expire within five minutes and must be refreshed; absent, expired, malformed, or mismatched identity becomes unavailable. A reconnect to a new host session requires a new trusted attachment. Counts and status must not be inferred from Chat's saved subscription shortcuts.
+A configured desk identifies a Shell-registered `clientId`, never an executable path supplied by webpage content. `attach` starts the registered application when necessary or reacquires its existing native window, atomically parks the previously active client, and places the requested complete application in the lab slot. `detach` parks the client without terminating it. `open-standalone` moves the same native session to an ordinary visible workspace for an isolation check. `reattach` returns that same session to the lab. Closing Chat detaches managed windows and leaves their applications running. The protocol deliberately contains no terminate, kill, credential, cookie, arbitrary command, or arbitrary URL operation.
 
-`contribute(context)` accepts only Chat's `appId`, `view` (home, desk, seed), optional opaque desk id, and a short title. These are suggestions for the active surface. Core chooses whether and how they appear in the Status Bar. Contributions are not system truth, permission changes, colors, HTML, or scripts.
+The required policy is `preserve-native`. A client may occupy the slot only with `capabilityState: native-complete`. Shell must not silently replace a downloaded application with a provider webpage, iframe, API recreation, different account, or newly created conversation. When the required native client or capability cannot be preserved, attachment fails visibly and Chat offers the ordinary standalone application path.
 
-`launch(request)` accepts a unique `requestId`, the expected `hostSessionId`, `deskId`, a validated public HTTPS provider `url`, and `returnTo: { appId: 'chat', view: 'home', deskId }`. The native host validates the provider and route again, then returns a matching opened acknowledgement with the exact URL and selected supported route. No provider credentials cross the boundary. The host maps `returnTo` to its installed Chat identity; it must not treat it as an arbitrary redirect or make a second app copy.
+## Troubleshooting
 
-Timeout after dispatch means the result is unknown. Chat must not retry or switch to a second route automatically because the first launch may have succeeded. The host retains request idempotency for its session. Unsupported capability before dispatch may use the regular external-browser route. Route support must be proven per provider and platform before being advertised.
+Every managed desk exposes the reversible isolation path: open the exact application separately, let the user test the disputed capability in its original surface, then reattach the same native session. A bounded health report may state only what Shell actually observes: application discovery, process state, slot attachment, Shell permissions, and remote-session continuity. Account identity or provider capability is `unknown` unless an authorized provider boundary supplies it.
 
-## Continuity and receiving
+Chat may interpret the user's comparison as follows: working standalone indicates a Chat/Shell window-management fault; failing standalone indicates a provider application, account, permission, or connection fault; launch failure indicates installation/discovery trouble; wrong account or conversation indicates session routing. This classification is diagnostic guidance, not permission to repair, reset, terminate, clear data, or collect credentials.
 
-Remote session identifiers are observations, not connection credentials or commands. Chat desk navigation, contribution changes, or adapter detachment never terminates remote execution. No remote-stop operation is in this contract. A new device still needs the normal Shell pairing and grant flow before it can observe a session.
+## Host attachment and continuity
 
-Seed uses its own `com.containedevolution.seed.chat` export protocol. Shell must authenticate and grant-check any eventual Seed bridge, preserve idempotency and event ordering, stage selected files safely, and forward Seed-owned verification receipts. No receiving, filesystem mount, or corpus access is enabled by this host protocol.
+A trusted local host implements `observe()`, `manage(request)`, optional `health(request)`, and optional `contribute(context)`. No query parameter, provider page, iframe, arbitrary global callback, or unauthenticated message attaches it. Observations expire within five minutes. Timeout after a dispatched management request is an unknown outcome and must be reconciled from a fresh observation before retrying.
 
-Live native, Android, Tenari, and standalone transport integrations remain to be implemented and tested. The contract supports their shared app identity without claiming automatic cookie sharing, device sync, or successful provider embedding.
+Remote identifiers remain observations, not credentials or commands. Switching, parking, opening standalone, reattaching, closing Chat, or detaching the adapter never terminates remote execution. No remote-stop operation exists in this contract.
+
+## Acceptance gates
+
+- Only a registered native client can be attached; provider URLs and executable paths never cross this boundary.
+- At most one client is attached to the lab slot; switching parks the former client without process termination.
+- Attach and reattach acknowledgements prove the exact desk, client, native session, window, and `native-complete` capability state.
+- Close/detach and Chat shutdown leave provider processes and remote work alive.
+- Standalone isolation and reattachment preserve the same native session and window identity.
+- A degraded or unknown-capability client cannot occupy the slot.
+- Unknown dispatch is reconciled before another state-changing request.
+- A real Hyprland/Tauri session, downloaded provider applications, multi-monitor behavior, crash recovery, and capability-by-capability comparison must pass before Shell advertises this manager as available.

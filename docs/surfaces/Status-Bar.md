@@ -8,4 +8,4 @@ Chat consumes the Status Bar as a host capability. When Chat is active, the bar 
 
 Standalone apps and non-Shell hosts may render an appropriate frame from the same bounded status contract when it exists. Absence of the contract is an explicit unavailable state, never permission to fabricate Shell status.
 
-The [Chat host protocol v1](../../contracts/chat/README.md) now defines the portable observation and contribution boundary. It is source-published and tested. The live adaptive Status Bar implementation and native transport remain queued; contract availability alone must not be advertised as a connected host.
+The [Chat native desk protocol v2](../../contracts/chat/README.md) now defines the portable observation, contribution, and complete-client window boundary. It is source-published and tested. The live adaptive Status Bar and compositor transport remain queued; contract availability alone must not be advertised as a connected host.
