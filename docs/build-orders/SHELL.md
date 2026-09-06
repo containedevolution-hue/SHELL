@@ -1,6 +1,6 @@
 # SHELL
 
-This order establishes SHELL as an independent local-first operating environment. SHELL bundles released Contained Evolution Apps and owns FETCH, Research Labs, local data, optional cloud storage and sync, devices, windows, settings, and integrations. Tenari is optional. Utility ownership lives in the Apps repository; durable SHELL shape lives in the repository README; SEED has its own repository and order.
+This order establishes SHELL as an independent local-first operating environment. SHELL bundles released Contained Evolution Apps and owns the adaptive Status Bar, FETCH, Research Labs, local data, optional cloud storage and sync, devices, windows, settings, automation execution, and integrations. Tenari is optional. Chat and utility ownership live in the Apps repository; durable SHELL shape lives in the repository README; SEED has its own repository and order.
 
 ## Current implementation seam
 
@@ -18,7 +18,7 @@ The public standalone repository is `https://github.com/containedevolution-hue/S
 
 **FETCH.** FETCH is the built-in browser and evidence-first research system. The visible browser, profiles, permissions, downloads, history, and Labs are SHELL-owned. The first runtime may embed Chromium; Chrome and Firefox remain installable alternatives.
 
-**SEED.** SEED shares the local data substrate through a sealed namespace but never enters SHELL Cloud or an integration. Local inference uses the same local-model provider contract as the optional SHELL assistant.
+**SEED.** SEED shares the local data substrate through a sealed namespace but never enters SHELL Cloud or an implicit integration. Shell hosts its execution and storage; Apps Chat presents its primary human controls through the Seed Station. Local inference uses the same local-model provider contract as the optional SHELL assistant.
 
 **Brics.** The device contract covers discovery, power/data negotiation, configuration, diagnostics, firmware recovery, input, and future snap-in screen or robot-face modes. Brics remains its own product and repository.
 
@@ -32,9 +32,9 @@ The public standalone repository is `https://github.com/containedevolution-hue/S
 4. **Build SHELL Cloud independently.** Add optional account, sync, encrypted object storage, detach, conflict, deletion, quota, and recovery behavior with no Tenari dependency.
 5. **Build FETCH Browser.** Ship tabs, navigation, profiles, permissions, history, bookmarks, downloads, engine updates, sandboxing, and Research Labs over the shared browser/evidence boundary.
 6. **Build the window and session model.** Add native-capable windows, focus, resize, saved placement, open-app controls, close-all recovery, and application lifecycle without assuming an iframe.
-7. **Host Contained Evolution Apps local-first.** Use the extracted Scribble reference app, then integrate remaining released utilities through the shared app manifest and SHELL host adapter. Each works with no account and no Tenari; SHELL does not fork their implementation.
+7. **Host Contained Evolution Apps local-first.** Use the extracted Scribble reference app, then integrate remaining released utilities through the shared app manifest and SHELL host adapter. Add canonical Chat only after its release gates pass, supplying the adaptive Status Bar, external destination launch, remote continuity, and Seed receiving capabilities through explicit contracts. SHELL does not fork any app implementation.
 8. **Attach Tenari as an optional integration.** Prove install, use, capability grant/revoke, Companion app operation, Stardust, Memory, World entry, detach, and use on a non-SHELL OS.
-9. **Stand up SEED.** Build its local corpus, capture, curation, datasets, lenses, feedback, and sealed operator surface under its own order.
+9. **Stand up SEED.** Build its local corpus, capture, curation, datasets, lenses, feedback, backup, and restore under its own order; expose owner controls through Chat's Seed Station rather than a separate Shell conversation surface.
 10. **Integrate Brics.** Ship configuration and diagnostics first, then the snap-in display/robot-face contract against real hardware.
 11. **Build the MSI development image.** Automate the Linux base, boot-to-SHELL session, drivers, updates, rollback, recovery, encryption, and developer tools. Prove the VM and live USB before installing to an isolated SSD.
 12. **Finish SHELL's Core.** Complete the Box, Trunk, Canopy, persisted globe layout, custody views, the gauge layer, offline behavior, and accessible desktop/phone layouts. Sequence in [SHELL's Core](SHELLs-Core.md).

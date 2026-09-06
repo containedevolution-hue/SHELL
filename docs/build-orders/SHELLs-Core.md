@@ -6,7 +6,7 @@ Build SHELL's Core as the operating environment's central desktop surface: an en
 
 - The desktop already presents a central tree metaphor, local documents, app bubbles, capability discovery, jailed filesystem access, audit, and default-deny browser reach.
 - Tenari already exposes bounded Memory MCP reads and evidence proposals, but the Core, Memory Box, assistant-memory slots, and SEED are not one coherent surface.
-- SEED has a local append-only corpus and ingest importer; backup lanes, restore, curation, and the owner-facing plugin surface inside Memory Box are not built.
+- SEED has a local append-only corpus and ingest importer; backup lanes, restore, curation, the sealed Memory Box mount, and the host contract consumed by Chat's Seed Station are not built.
 - System Dashboard defines gauge behaviour, but there is no free-placed gauge layer over the Core.
 - Connection state is fragmented across provider settings, pairing, MCP, browser grants, local models, and cloud reach; the Trunk has no single contract to draw from.
 - The former `localhub/` seam is folded into the Arch/SHELL local database; remaining `localhub` identifiers are compatibility names, not a live subsystem.
@@ -21,7 +21,7 @@ Build SHELL's Core as the operating environment's central desktop surface: an en
 6. **Mount apps and projects.** Add project roots, entry instruction files, app-owned records, aliases, removable media, network stores, and cloud stores without collapsing their ownership or moving bytes implicitly.
 7. **Unify connection status into the Trunk.** Publish one connection-state contract for MCP, provider APIs, paired devices, storage mounts, app integrations, and local models. Draw one conduit per connection and drive its green/red/yellow state, the live count, repair routes, and audit from that contract.
 8. **Build Memory Box.** Add one entry per assistant model (an aggregating provider is a single entry), each with a personality file, README and boot instructions, an isolated memory slot, and a visible boot process. Store locally under SHELL custody with inspect, export, correct, and delete controls and fail-closed behaviour on a missing grant.
-9. **Nest SEED inside Memory Box.** Expose SEED as an off-by-default, permission-gated plugin: local corpus, capture, curation, datasets, retrieval, and the sealed operator surface, with local inference only and no cloud or implicit-integration reach.
+9. **Mount SEED inside Memory Box.** Expose SEED as an off-by-default, permission-gated local source for corpus custody, capture, curation, datasets, and retrieval. Publish only the bounded execution, receiving, and status capabilities that Apps Chat needs for its Seed Station. Core does not create a competing SEED operator or conversation surface.
 10. **Build the gauge layer.** Reuse System Dashboard telemetry for system resources, active apps and jobs, models, providers, section size, index state, and backup/sync queues. Let the owner place, size, group, hide, and preset gauges freely over the full-screen Core. Prove privacy, freshness, limits, and stop behaviour.
 11. **Build SEED backup lanes.** Implement encrypted, checksummed Files, System, Project, Memory, and Full SEED snapshots with manifests, exclusions, retention, destination health, and scheduled or manual operation.
 12. **Build restore and disaster recovery.** Add preflight, compatibility and migration, selective restore, conflict preview, no-silent-overwrite behaviour, post-restore verification, receipts, and a non-graphical recovery path.

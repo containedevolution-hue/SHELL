@@ -10,7 +10,7 @@ SHELL's System Dashboard is the user-facing task manager: a customizable vehicle
 - Users may rearrange, resize, group, hide, and restore gauges; choose supported warnings; and set limits where the underlying subsystem can enforce them. Presets and reset-to-default remain available.
 - A limit states its consequence before saving: slow, queue, pause, stop, deny new work, reduce model size, require approval, or warn only. No decorative control pretends to enforce a boundary.
 - Applications, workflows, connectors, and models report usage through versioned SHELL telemetry rather than scraping private content. User documents, prompts, credentials, and workflow payloads never appear in system telemetry.
-- The dashboard links an unhealthy credential or blocked workflow to the same repair state summarized by the Top Bar. It does not create a second health authority.
+- The dashboard links an unhealthy credential or blocked workflow to the same repair state summarized by the adaptive Status Bar. It does not create a second health authority.
 - SHELL's Core reuses this telemetry contract for its gauge layer. Core-section size, index state, Trunk connection activity, and backup/sync queues follow the same source, freshness, privacy, and action rules rather than creating decorative gauges.
 - Stopping work distinguishes safe cancellation, force stop, unsupported interruption, and an external effect whose outcome is still unknown. It explains known partial data effects, never presents process exit as effect rollback, and ends with fresh verification that the worker stopped and owned resources and unused cost authorizations were released.
 

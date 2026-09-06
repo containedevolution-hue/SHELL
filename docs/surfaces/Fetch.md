@@ -60,7 +60,7 @@ FETCH is SHELL's browser and evidence-first research system. Ordinary web browsi
 - The Home tile remains **Fetch**. The opened app header says **Fetch Research Lab** and retains the Fetch icon.
 - The landing surface borrows Home's inline category behavior: selecting a research category opens its workspace below. It also exposes recent Labs and the **I'm not sure yet** start.
 - The professional Lab environment follows Home's day/night sky so extended work communicates the time of day, while keeping denser research-oriented components rather than copying Home wholesale.
-- Fetch alone carries a subtle cultural seasonal treatment. A seasonal color line and one small decorative composition sit on the top bar and outer Lab frame; Halloween uses an orange line with a jack-o'-lantern and black cat, without glow or animation.
+- Fetch alone carries a subtle cultural seasonal treatment. A seasonal color line and one small decorative composition sit on Fetch's contribution to the adaptive Status Bar and on the outer Lab frame; Halloween uses an orange line with a jack-o'-lantern and black cat, without glow or animation.
 - The seasonal schedule follows broad North American cultural visibility in the account timezone; Halloween begins around September 1 and ends October 31. Calendar eventually owns the schedule, but these dates never become personal events and Fetch exposes no seasonal preference switch.
 
 ## Next Builds

@@ -1,6 +1,6 @@
 # SHELL
 
-SHELL — Secured, Home, Exported, Life, Logs — is Contained Evolution's free, local-first operating environment. It owns its desktop, FETCH browser and Research Labs, files, local data, optional cloud storage and sync, devices, settings, and integration permissions. It bundles cross-platform Contained Evolution Apps without owning or forking their canonical implementations. It works without Tenari, an assistant, or an account.
+SHELL — Secured, Home, Exported, Life, Logs — is Contained Evolution's free, local-first operating environment. It owns its desktop, adaptive Status Bar, FETCH browser and Research Labs, files, local data, optional cloud storage and sync, devices, settings, windows, automation execution, and integration permissions. It bundles cross-platform Contained Evolution Apps without owning or forking their canonical implementations. It works without Tenari, an assistant, or an account.
 
 This repository was extracted from Tenari with the complete history of the former `localhub/` subtree. Compatibility identifiers such as `localhub`, `hub_*`, `com.containedevolution.localhub`, and `localhub://` remain only where changing them requires a deliberate migration.
 
@@ -19,8 +19,9 @@ Legacy Tenari pairing code remains as a disabled adapter seam. It performs no re
 
 - Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
 - General-purpose utilities are Contained Evolution Apps. SHELL discovers released app manifests and supplies a local host adapter; app behavior, portable data models, and releases stay with each app.
+- Chat is the neutral, independently installable conversation home owned by Apps. SHELL launches the canonical Chat release, supplies the adaptive Status Bar and bounded host capabilities, preserves remote execution while the person changes desks, and never maintains a Shell-specific Chat fork.
 - FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
-- SEED — Secured Environment Educated Development — is an opt-in plugin nested in Memory Box inside SHELL's Core: a sealed local corpus, curation, retrieval, dataset, backup, and restore feature for real users. It remains off by default, permission-gated, and outside cloud sync or implicit integration reach.
+- SEED — Secured Environment Educated Development — is an independently owned, opt-in local capability hosted through Memory Box inside SHELL's Core. Its corpus, curation, retrieval, dataset, backup, and restore remain off by default, permission-gated, and outside cloud sync or implicit integration reach. Chat's Seed Station is the primary planned human control surface; Shell owns local execution, receiving, staging, permissions, and storage rather than a competing SEED conversation surface.
 - Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
 - Brics is a separate product with a first-class SHELL device, diagnostics, input, and snap-in display seam.
 
@@ -92,13 +93,15 @@ The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a thi
 5. Establish the MSI VM image and boot-to-SHELL Linux session.
 6. Build FETCH Browser on an embedded engine boundary.
 7. Add independent SHELL Cloud storage and sync.
-8. Expand the proven Scribble manifest host into signed package installation, update, rollback, and removal.
+8. Publish and prove the narrow Status Bar, launch, remote-continuity, and receiving capabilities required by Chat without moving Chat or SEED ownership into SHELL.
+9. Expand the proven Scribble manifest host into signed package installation, update, rollback, and removal.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),
 served locally at `GET /v1/capabilities`. The safe MSI VM and recovery path starts in
 [SHELL OS](os/README.md). Security and performance observations use the versioned
 [health-event contract](contracts/v1/health-event.schema.json).
+The accepted adaptive system surface is defined by [Status Bar](docs/surfaces/Status-Bar.md).
 
 ## License
 
