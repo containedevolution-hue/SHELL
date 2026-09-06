@@ -20,7 +20,10 @@ const reviewed = require('../contracts/app-catalog.json');
     app.use(express.static(path.resolve(__dirname,'../web')));
     server = app.listen(5984,'127.0.0.1');
     await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});
-    browser = await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL ? {channel:process.env.BROWSER_CHANNEL} : {})});
+    const browserOptions = process.env.BROWSER_EXECUTABLE_PATH
+      ? {executablePath:process.env.BROWSER_EXECUTABLE_PATH}
+      : process.env.BROWSER_CHANNEL ? {channel:process.env.BROWSER_CHANNEL} : {};
+    browser = await chromium.launch({headless:true,...browserOptions});
     const page = await browser.newPage({acceptDownloads:true});
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     const externalRequests=[];

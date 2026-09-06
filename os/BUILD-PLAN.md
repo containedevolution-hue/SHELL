@@ -145,6 +145,15 @@ Chromium `152.0.7977.82`, followed by all five firewall checks passing. This
 establishes the guest prerequisites and post-update firewall persistence; app
 catalog execution and native Linux SHELL packaging remain unverified.
 
+Private release access and catalog preparation passed in the Linux guest on
+2026-09-06. Screenshot `codex-clipboard-bc9a6a74-baee-4ba1-80e8-c8860276ca40.png`
+shows successful GitHub CLI authentication and `Prepared 3 verified app
+package(s) for SHELL`. Both npm dependency installations completed; npm reported
+12 sidecar dependency vulnerabilities and blocked the two leveldown install
+scripts. Full sidecar native-module execution remains unverified. The isolated
+app-store browser test is the next check and uses system Chromium through
+`BROWSER_EXECUTABLE_PATH=/usr/bin/chromium`.
+
 ## Resume here
 
 The VM was stopped and an offline `firewall-live-verified` checkpoint was created

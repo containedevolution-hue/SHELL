@@ -59,6 +59,11 @@ The Windows consumer build includes selected runtime resources and the verified 
 
 `npm run test:app-store` verifies an empty installation through catalog, Install, Open, save, and reopen for all three apps in a disposable directory/browser profile. It also verifies Notes/Canvas export and reimport and preserves each app's data while switching apps, with external network requests blocked. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
 
+On Linux with system Chromium installed, run
+`BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run test:app-store` after preparing
+the catalog. An explicit executable path takes precedence over `BROWSER_CHANNEL`.
+This verifies the browser app host; it does not verify a native Linux SHELL build.
+
 Rust-only checks use `cargo check --manifest-path dedup-engine/Cargo.toml` and `cargo check --manifest-path src-tauri/Cargo.toml`.
 
 For direct installation of a reviewed artifact:
