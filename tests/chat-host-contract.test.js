@@ -46,15 +46,16 @@ test('switch lifecycle acknowledgements preserve one complete native session', a
 });
 
 test('health reports stay observational and cannot invent provider account state', async () => {
-  const { validateSnapshot, validateDeskRequest, validateHealthReport } = await import('../contracts/chat/v2.mjs');
+  const { validateSnapshot, validateHealthRequest, validateHealthReport } = await import('../contracts/chat/v2.mjs');
   const snapshot = validateSnapshot(base, now);
-  const request = validateDeskRequest({ requestId: 'health-1', hostSessionId: 'session', deskId: 'desk-codex', clientId: 'codex', action: 'open-standalone', slotId: 'chat-primary', preserveCapabilities: true, returnTo: { appId: 'chat', view: 'home', deskId: 'desk-codex' } }, snapshot);
+  const request = validateHealthRequest({ requestId: 'health-1', hostSessionId: 'session', deskId: 'desk-codex', clientId: 'codex' }, snapshot);
   const report = validateHealthReport({ requestId: 'health-1', hostSessionId: 'session', deskId: 'desk-codex', clientId: 'codex', observedAt: new Date(now).toISOString(), checks: [
     { id: 'application-found', state: 'pass', detail: 'Registered application found.' },
     { id: 'window-attached', state: 'unknown', detail: 'Testing in the standalone workspace.' },
   ] }, request, snapshot);
   assert.equal(report.checks.length, 2);
   assert.throws(() => validateHealthReport({ ...report, checks: [{ id: 'account', state: 'pass', detail: 'Assumed account.' }] }, request, snapshot));
+  assert.throws(() => validateHealthRequest({ ...request, requestId: 'bad request' }, snapshot));
 });
 
 test('context cannot smuggle lifecycle commands and observations expire', async () => {

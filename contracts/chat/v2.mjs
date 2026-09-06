@@ -81,6 +81,11 @@ export function validateDeskAck(input, request, snapshot) {
     nativeSessionId: id(input.nativeSessionId, 'native session'), windowId: id(input.windowId, 'native window'), capabilityState: 'native-complete' };
 }
 
+export function validateHealthRequest(input, snapshot) {
+  if (!input || input.hostSessionId !== snapshot.hostSessionId || snapshot.deskManager?.state !== 'available') throw new Error('Invalid desk health request.');
+  return { requestId: id(input.requestId, 'request'), hostSessionId: snapshot.hostSessionId, deskId: id(input.deskId, 'desk'), clientId: id(input.clientId, 'native client') };
+}
+
 export function validateHealthReport(input, request, snapshot) {
   if (!input || input.requestId !== request.requestId || input.hostSessionId !== snapshot.hostSessionId || input.deskId !== request.deskId || input.clientId !== request.clientId || !Array.isArray(input.checks) || input.checks.length > HEALTH_CHECKS.length) throw new Error('Invalid desk health report.');
   const checks = input.checks.map(check => {
