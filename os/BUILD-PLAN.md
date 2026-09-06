@@ -142,17 +142,26 @@ transaction and cold-started the guest. Screenshot
 `codex-clipboard-fee48c9b-753e-498a-a6c5-4ac2c65a8c11.png` proves kernel
 `7.2.3-arch1-3`, Node `v22.23.2`, npm `12.0.2`, GitHub CLI `2.100.0`, and
 Chromium `152.0.7977.82`, followed by all five firewall checks passing. This
-establishes the guest prerequisites and post-update firewall persistence; app
-catalog execution and native Linux SHELL packaging remain unverified.
+establishes the guest prerequisites and post-update firewall persistence. Native
+Linux SHELL packaging remains unverified.
 
 Private release access and catalog preparation passed in the Linux guest on
 2026-09-06. Screenshot `codex-clipboard-bc9a6a74-baee-4ba1-80e8-c8860276ca40.png`
 shows successful GitHub CLI authentication and `Prepared 3 verified app
 package(s) for SHELL`. Both npm dependency installations completed; npm reported
 12 sidecar dependency vulnerabilities and blocked the two leveldown install
-scripts. Full sidecar native-module execution remains unverified. The isolated
-app-store browser test is the next check and uses system Chromium through
-`BROWSER_EXECUTABLE_PATH=/usr/bin/chromium`.
+scripts. Full sidecar native-module execution remains unverified.
+
+The isolated three-app browser test passed in the Linux guest at `40cfc605` on
+2026-09-06 using `BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run test:app-store`.
+Screenshot `codex-clipboard-60dc5603-89c4-4e03-ab6f-023d73477619.png` shows the
+successful result and returned prompt. The test started with an empty app
+directory, installed Scribble, Notes, and Canvas from the reviewed catalog,
+reloaded discovery, opened each app, saved and reopened without cross-app data
+loss, and exported/reimported Notes and Canvas with no external network requests.
+This closes the Linux browser catalog gate. The test uses disposable app and
+browser storage; it does not establish a persistent user installation, native
+SHELL packaging, full sidecar operation, or the Tenari mobile WebView.
 
 ## Resume here
 
@@ -160,13 +169,12 @@ The VM was stopped and an offline `firewall-live-verified` checkpoint was create
 on 2026-09-05. It includes both the qcow2 disk snapshot and saved UEFI variable
 state. The earlier `pre-security-baseline` checkpoint also remains available.
 
-The guest is running following the successful startup-persistence verification.
+The guest is running following the successful Linux browser catalog verification.
 Before the next security, update, boot, or service change, shut it down and create
-a fresh offline checkpoint including both disk and UEFI state. For app delivery,
-the next live proof is the three-app catalog on Linux: establish private release
-access and the SHELL app host dependencies, then exercise install,
-launch, save/reopen, and portable transfer. Windows browser and installer proof
-does not satisfy this Linux guest gate.
+a fresh offline checkpoint including both disk and UEFI state. Next run the
+repository test suite in the guest, then establish persistent manual app hosting
+and investigate the full sidecar native dependencies. Native Linux packaging
+and Tenari mobile verification remain separate work.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a
