@@ -194,6 +194,28 @@ Before the next security, update, boot, or service change, shut it down and crea
 a fresh offline checkpoint including both disk and UEFI state if the guest has
 changed since this checkpoint. Tenari mobile verification remains separate work.
 
+On 2026-09-06 the first `start-msi-vm.ps1 -Mode Disk` boot of this session failed:
+OVMF walked every boot device and stopped at `No bootable device`; the qcow2 was
+intact (`qemu-img info` reported `corrupt: false`, snapshot 4 present) and the
+only anomaly was the active `uefi-vars.fd` reading SHA-256 `8E1AF521…` instead of
+the checkpoint's saved `3D157C2C…`. QEMU was force-stopped and
+`three-apps-persistence-verified` was restored with
+`manage-msi-vm-checkpoint.ps1 -Action Restore -ConfirmRestore` (reverts disk
+snapshot 4 and copies the saved UEFI vars back). The next boot reached SDDM and a
+normal Plasma session. After a later clean shutdown OVMF again wrote
+`8E1AF521…`, so that value is a normal post-boot NVRAM state, not corruption; the
+original failure was most likely a transient first-boot fault that a plain QEMU
+relaunch would also have cleared. Prefer relaunching QEMU once before restoring a
+checkpoint.
+
+Offline checkpoint `sidecar-linux-deps-verified` (qcow2 snapshot id 5) was then
+created on 2026-09-06 after the guest was cleanly shut down, capturing the
+post-verification disk with the checkout fast-forwarded to `7b7f5ed`. Its saved
+`uefi-vars.fd` was set to the proven-bootable `3D157C2C…` copy rather than the
+freshly written `8E1AF521…`. `three-apps-persistence-verified` (id 4) remains the
+older proven-good fallback; if id 5 ever fails to boot, restore id 4 and
+`git pull` again.
+
 ### Full sidecar Linux dependency investigation
 
 Static analysis on 2026-09-06 (Windows checkout, `Shell` at `c447d3b9`) mapped
@@ -230,11 +252,17 @@ modified. Run it in the guest from the repo root:
 ./os/guest/bin/verify-shell-sidecar
 ```
 
-Expected: PASS lines through `SHELL sidecar Linux dependency verification
-passed.`, with the two `leveldown` lines showing `linux-x64` prebuild paths.
-This has not yet been run in the guest; capture its screenshot as the evidence
-for this gate. It does not exercise the lazy TTS/asset-forge/camera subprocess
-paths or native SHELL packaging.
+The verifier passed in the Linux guest on 2026-09-06. With the checkout
+fast-forwarded to `7b7f5ed` and Node `v22.23.2`, `./os/guest/bin/verify-shell-sidecar`
+printed every PASS line through `SHELL sidecar Linux dependency verification
+passed.` Both native lines resolved
+`prebuilds/linux-x64/node.napi.glibc.node (linux-x64)` — `leveldown` directly and
+`level/leveldown` — confirming no build toolchain is used; the `pouchdb-node`
+leveldb roundtrip, the full sidecar boot on `127.0.0.1:5985`, the loopback
+`/v1/capabilities` JSON probe, a clean sidecar stop, and the untouched app-host
+check (`throwaway dir /tmp/shell-sidecar-verify.vIE2ds, port 5985`) all passed.
+This closes the full-sidecar Linux dependency gate. It does not exercise the lazy
+TTS/asset-forge/camera subprocess paths or native SHELL packaging.
 
 ### Native Linux packaging investigation
 
@@ -275,9 +303,11 @@ Ordered plan:
    staged tarball) and wire `shell-session.service`, keeping KDE as the recovery
    session per the recovery rule.
 
-Do this after the guest has run `verify-shell-sidecar` and a fresh offline
-checkpoint exists. Building pulls `rust`, `webkit2gtk-4.1`, and `base-devel`
-into the guest, so treat the pre-build shutdown-and-checkpoint as mandatory.
+This is the active next step: the guest has passed `verify-shell-sidecar` and the
+`sidecar-linux-deps-verified` checkpoint exists. Steps 1-2 are Windows-side repo
+edits and can land before the next guest boot. Step 3 pulls `rust`,
+`webkit2gtk-4.1`, and `base-devel` into the guest, so shut the guest down and
+take a fresh offline checkpoint immediately before starting it.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a
