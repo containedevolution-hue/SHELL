@@ -3,10 +3,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const { createRequire } = require('node:module');
-const express = createRequire(path.resolve(__dirname,'../node-sidecar/package.json'))('express');
+const { createAppHost } = require('./start-app-host');
 const { chromium } = require('playwright');
-const { createAppStore } = require('../node-sidecar/lib/app-store');
 const { createRegistry } = require('../node-sidecar/lib/app-registry');
 const reviewed = require('../contracts/app-catalog.json');
 
@@ -14,10 +12,7 @@ const reviewed = require('../contracts/app-catalog.json');
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'shell-click-install-'));
   let browser, server;
   try {
-    const app = express();
-    app.use('/v1/app-store',createAppStore({catalogDirectory:path.resolve(__dirname,'../node-sidecar/catalog'),appsDirectory:root}));
-    app.use('/v1/apps',createRegistry(root).router());
-    app.use(express.static(path.resolve(__dirname,'../web')));
+    const app = createAppHost(root);
     server = app.listen(5984,'127.0.0.1');
     await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});
     const browserOptions = process.env.BROWSER_EXECUTABLE_PATH

@@ -165,15 +165,22 @@ SHELL packaging, full sidecar operation, or the Tenari mobile WebView.
 
 ## Resume here
 
+The Linux guest repository suite also passed on 2026-09-06: screenshot
+`codex-clipboard-206c3c83-d3a6-4e72-8b87-8c8d0bc49dce.png` shows 45 tests passed,
+zero failures, zero skips, and the returned prompt. This does not exercise every
+native dependency in the full sidecar. The next manual step is `npm run start:apps`
+and opening `http://127.0.0.1:5984` in the guest's normal Chromium profile, then
+installing apps and verifying documents survive closing and reopening the browser
+and restarting the app host.
+
 The VM was stopped and an offline `firewall-live-verified` checkpoint was created
 on 2026-09-05. It includes both the qcow2 disk snapshot and saved UEFI variable
 state. The earlier `pre-security-baseline` checkpoint also remains available.
 
 The guest is running following the successful Linux browser catalog verification.
 Before the next security, update, boot, or service change, shut it down and create
-a fresh offline checkpoint including both disk and UEFI state. Next run the
-repository test suite in the guest, then establish persistent manual app hosting
-and investigate the full sidecar native dependencies. Native Linux packaging
+a fresh offline checkpoint including both disk and UEFI state. Next establish
+persistent manual app hosting and investigate the full sidecar native dependencies. Native Linux packaging
 and Tenari mobile verification remain separate work.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record

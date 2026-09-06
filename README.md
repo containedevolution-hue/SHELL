@@ -64,6 +64,15 @@ On Linux with system Chromium installed, run
 the catalog. An explicit executable path takes precedence over `BROWSER_CHANNEL`.
 This verifies the browser app host; it does not verify a native Linux SHELL build.
 
+For persistent manual use after catalog preparation, run `npm run start:apps`
+and open `http://127.0.0.1:5984` in Chromium. Keep the terminal running. This
+loopback-only app host uses the same routes and web surface as the browser test.
+Installed packages persist in `node-sidecar/data/apps` (or `SHELL_APPS_DIR`).
+Documents persist in the browser profile; use the same profile and exact URL
+when reopening, and export documents for portable backups. The host does not
+start the full sidecar, install a system service, or provide native Linux SHELL.
+Stop it before starting another host that uses port 5984.
+
 Rust-only checks use `cargo check --manifest-path dedup-engine/Cargo.toml` and `cargo check --manifest-path src-tauri/Cargo.toml`.
 
 For direct installation of a reviewed artifact:

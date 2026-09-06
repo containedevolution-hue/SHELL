@@ -4,6 +4,7 @@
   "private": false,
   "description": "SHELL — a free, local-first operating environment by Contained Evolution",
   "scripts": {
+    "start:apps": "node scripts/start-app-host.js",
     "test:app-store": "node scripts/test-app-store-browser.js",
     "tauri": "tauri",
     "dev": "tauri dev",
