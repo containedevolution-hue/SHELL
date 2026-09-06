@@ -37,6 +37,14 @@ The Windows/Tauri build remains the recoverable bridge while the Linux session m
 
 ## Development
 
+Install a reviewed local web app from its published v1 release and independently obtained SHA-256:
+
+```powershell
+node scripts/install-app.js PATH_TO_RELEASE.ceapp.json TRUSTED_SHA256
+```
+
+The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`. Pass a third directory argument for an isolated installation. Existing installations are preserved. The registry rejects unsupported required capabilities and launches app-owned browser assets. Scribble 0.2.0 uses browser-local storage; native document custody, automatic updates, and publisher signatures remain future contracts. The release format belongs to Apps `contracts/v1/app-release.md`.
+
 ```powershell
 npm ci
 npm --prefix node-sidecar ci

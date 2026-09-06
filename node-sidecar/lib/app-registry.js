@@ -14,11 +14,15 @@ function safeChild(root, relative) {
 
 function normalizeManifest(input, directory) {
   if (!input || input.contractVersion !== MANIFEST_VERSION) return null;
+  if (typeof input.name !== 'string' || !input.name.trim() || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(input.version || '')) return null;
   if (!/^[a-z][a-z0-9-]{1,62}$/.test(input.id || '')) return null;
   if (!input.entrypoints || typeof input.entrypoints.web !== 'string') return null;
+  if (!/^web\/[a-zA-Z0-9_.\/-]+$/.test(input.entrypoints.web) || input.entrypoints.web.split('/').some(part => !part || part === '..' || part === '.')) return null;
   if (!safeChild(directory, input.entrypoints.web)) return null;
   const capabilities = Array.isArray(input.capabilities) ? input.capabilities : [];
   if (capabilities.some(item => !item || !item.id || !['required', 'optional'].includes(item.requirement))) return null;
+  if (capabilities.some(item => item.requirement === 'required' && item.id !== 'storage.documents.local')) return null;
+  if (new Set(capabilities.map(item => item.id)).size !== capabilities.length) return null;
   return Object.freeze({
     contractVersion:MANIFEST_VERSION,
     id:input.id,
@@ -40,7 +44,7 @@ function createRegistry(appsDir) {
         const directory = path.join(root, entry.name);
         try {
           const manifest = normalizeManifest(JSON.parse(fs.readFileSync(path.join(directory, 'app.manifest.json'), 'utf8')), directory);
-          if (!manifest || manifest.id !== entry.name || !fs.existsSync(safeChild(directory, manifest.entrypoints.web))) return null;
+          if (!manifest || manifest.id !== entry.name || !safeFile(directory, manifest.entrypoints.web)) return null;
           return { ...manifest, launchUrl:`/v1/apps/${manifest.id}/${manifest.entrypoints.web.replace(/\\/g, '/')}` };
         } catch (_) {
           return null;
@@ -61,9 +65,12 @@ function createRegistry(appsDir) {
       const installed = app(req.params.id);
       if (!installed) return res.status(404).json({ error:'app_not_installed' });
       const directory = path.join(root, installed.id);
-      const file = safeChild(directory, req.path.replace(/^\//, ''));
-      if (!file || !fs.existsSync(file) || !fs.statSync(file).isFile()) return res.status(404).json({ error:'app_asset_not_found' });
-      res.set('Cache-Control', 'no-store').sendFile(file);
+      if (!['GET', 'HEAD'].includes(req.method)) return res.status(405).end();
+      const relative = req.path.replace(/^\//, '');
+      if (!/^(web|src|contracts)\//.test(relative) && relative !== 'app.manifest.json' && relative !== 'LICENSE') return res.status(404).end();
+      const file = safeFile(directory, relative);
+      if (!file) return res.status(404).json({ error:'app_asset_not_found' });
+      res.set('Cache-Control', 'no-store').set('X-Content-Type-Options', 'nosniff').sendFile(file);
     });
     return result;
   }
@@ -72,3 +79,13 @@ function createRegistry(appsDir) {
 }
 
 module.exports = { MANIFEST_VERSION, createRegistry, normalizeManifest, safeChild };
+
+function safeFile(directory, relative) {
+  try {
+    const file = safeChild(directory, relative);
+    if (!file || !fs.statSync(file).isFile()) return null;
+    const realRoot = fs.realpathSync(directory);
+    const realFile = fs.realpathSync(file);
+    return realFile.startsWith(realRoot + path.sep) ? realFile : null;
+  } catch { return null; }
+}
