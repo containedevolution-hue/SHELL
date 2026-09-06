@@ -4,7 +4,7 @@ const express = require('express');
 
 const CONTRACT = Object.freeze({
   contract: 'com.containedevolution.shell.capabilities',
-  version: '1.0.0',
+  version: '1.0.1',
   product: 'SHELL',
   localFirst: true,
   accountRequired: false,
@@ -12,7 +12,7 @@ const CONTRACT = Object.freeze({
   capabilities: Object.freeze([
     { id: 'apps.discover', category: 'apps', state: 'available', transport: 'loopback-http', endpoint: '/v1/apps' },
     { id: 'apps.launch', category: 'apps', state: 'available', transport: 'loopback-http', endpoint: '/v1/apps/{id}/{entrypoint}' },
-    { id: 'windows.manage', category: 'windows', state: 'available', transport: 'tauri' },
+    { id: 'windows.manage', category: 'windows', state: 'planned', transport: null, note: 'Native desk controller exists but remains unavailable until a real compositor session passes acceptance.' },
     { id: 'data.local.documents.read', category: 'data', state: 'available', transport: 'loopback-http', endpoint: '/local/docs' },
     { id: 'data.local.pouchdb', category: 'data', state: 'legacy', transport: 'loopback-http', note: 'Scheduled for replacement by SHELL SQLite.' },
     { id: 'files.scoped', category: 'files', state: 'available', transport: 'mcp', grantRequired: true },

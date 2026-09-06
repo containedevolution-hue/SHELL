@@ -10,6 +10,8 @@ Chat owns the lab, its desk bubbles, default selection, surrounding controls, an
 
 A configured desk identifies a Shell-registered `clientId`, never an executable path supplied by webpage content. `attach` starts the registered application when necessary or reacquires its existing native window, atomically parks the previously active client, and places the requested complete application in the lab slot. `detach` parks the client without terminating it. `open-standalone` moves the same native session to an ordinary visible workspace for an isolation check. `reattach` returns that same session to the lab. Closing Chat detaches managed windows and leaves their applications running. The protocol deliberately contains no terminate, kill, credential, cookie, arbitrary command, or arbitrary URL operation.
 
+`native-clients.schema.json` defines Shell's trusted local registry. Entries require an absolute executable, exact immutable initial-window classes, exact `/proc/<pid>/exe` targets, and a passed capability-comparison evidence record. Mutable window titles are not identity. The shipped registry is intentionally empty: no ChatGPT, Codex, Claude, or other Linux application identity is guessed before it is installed and observed on the target Shell machine.
+
 The required policy is `preserve-native`. A client may occupy the slot only with `capabilityState: native-complete`. Shell must not silently replace a downloaded application with a provider webpage, iframe, API recreation, different account, or newly created conversation. When the required native client or capability cannot be preserved, attachment fails visibly and Chat offers the ordinary standalone application path.
 
 ## Troubleshooting
@@ -34,3 +36,9 @@ Remote identifiers remain observations, not credentials or commands. Switching, 
 - A degraded or unknown-capability client cannot occupy the slot.
 - Unknown dispatch is reconciled before another state-changing request.
 - A real Hyprland/Tauri session, downloaded provider applications, multi-monitor behavior, crash recovery, and capability-by-capability comparison must pass before Shell advertises this manager as available.
+
+## Slice 3 implementation status
+
+Shell now contains an executable, default-off native-client registry, address-based Hyprland adapter, and serialized one-slot controller. Deterministic tests cover trusted registration, exact process/window matching, registered launch, switching and parking, same-session standalone/reattach, Chat-close parking without termination, bounded health facts, idempotency, and reconciliation after an uncertain compositor result. The adapter supports only the explicitly selected Hyprland `0.55.x` legacy command profile and refuses other versions rather than guessing across compositor command changes.
+
+No network endpoint is mounted. `native-desk-service.js` is an in-process trusted port for the future authenticated Tauri bridge; webpage content cannot enable it or supply paths and commands. Production remains unavailable because the shipped registry has no fabricated provider entries and this Windows checkout cannot pass Linux compositor or provider capability acceptance.

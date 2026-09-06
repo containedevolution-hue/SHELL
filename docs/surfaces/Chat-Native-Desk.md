@@ -20,6 +20,12 @@ Shell reports only observable facts: application found, process running, window 
 
 Troubleshooting never collects passwords, clears provider data, changes an installation, terminates a process, resets a session, or performs a repair without a separate explicit action.
 
+## Slice 3 foundation
+
+The first executable host foundation now lives in `node-sidecar/lib/native-desk-*.js` and `hyprland-native-desk.js`. It loads only Shell's trusted registry, verifies exact initial class plus `/proc` executable identity, derives a process-start-bound session id, serializes mutations, parks rather than closes, preserves the exact window through standalone and return, and blocks new changes until observation reconciles an uncertain compositor result. The Hyprland adapter selects windows only by compositor address and contains no close, kill, terminate, credential, URL, or arbitrary-command operation.
+
+The shipped registry is empty and the general capability discovery reports window management as planned. Enabling the adapter requires an explicit local Shell flag, an explicit `legacy-0.55` command profile, Hyprland `0.55.x`, a real compositor session, a validated provider registry entry, and a trusted caller that supplies the acceptance result. Page content cannot enable it. The future Tauri bridge consumes the in-process service; there is deliberately no unauthenticated loopback management endpoint.
+
 ## Proof still required
 
-The version-2 contract and deterministic pressure tests establish the boundary only. The first real implementation must prove Hyprland application matching without title spoofing, atomic switching, same-window reattachment, multi-monitor placement, focus recovery, provider crash/restart, Chat crash/restart, logout, suspend/resume, remote-session survival, reduced-motion behavior, and side-by-side capability comparison against every supported downloaded client. Until then Shell reports the native desk manager unavailable.
+Deterministic pressure tests do not establish live placement. A real Hyprland session must still prove the registered downloaded application, atomic batch behavior and recovery, same-window reattachment, multi-monitor coordinates, focus recovery, provider crash/restart, Chat crash/restart, logout, suspend/resume, remote-session survival, reduced-motion behavior, and side-by-side capability comparison for every supported client. The installed Hyprland command profile must be captured as evidence. Until those gates pass on the target Shell installation, Shell reports the native desk manager unavailable.

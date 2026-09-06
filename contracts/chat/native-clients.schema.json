@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shell.containedevolution.com/contracts/chat/native-clients.schema.json",
+  "title": "SHELL trusted native client registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "version", "clients"],
+  "properties": {
+    "contract": { "const": "com.containedevolution.shell.native-clients" },
+    "version": { "const": 1 },
+    "clients": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["clientId", "label", "desktopId", "executable", "args", "identity", "validation"],
+        "properties": {
+          "clientId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "desktopId": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "executable": { "type": "string", "pattern": "^/" },
+          "args": { "type": "array", "maxItems": 24, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+          "identity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["initialClasses", "processExecutables"],
+            "properties": {
+              "initialClasses": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
+              "processExecutables": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "pattern": "^/", "maxLength": 4096 } }
+            }
+          },
+          "validation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "validatedAt", "evidence"],
+            "properties": {
+              "status": { "const": "passed" },
+              "validatedAt": { "type": "string", "format": "date-time" },
+              "evidence": { "type": "string", "minLength": 1, "maxLength": 500 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

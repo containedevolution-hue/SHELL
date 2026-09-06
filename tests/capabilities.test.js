@@ -36,6 +36,13 @@ test('optional integrations are disabled and privileged surfaces require grants'
   }
 });
 
+test('window management is not advertised before real compositor acceptance', () => {
+  const windows = snapshot().capabilities.find(item => item.id === 'windows.manage');
+  assert.equal(windows.state, 'planned');
+  assert.equal(windows.transport, null);
+  assert.match(windows.note, /remains unavailable/);
+});
+
 test('Tenari network registration requires an explicit Shell integration flag', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'node-sidecar', 'index.js'), 'utf8');
   assert.match(source, /SHELL_TENARI_INTEGRATION === 'enabled'/);
