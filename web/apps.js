@@ -1,12 +1,26 @@
 (function () {
   'use strict';
-  const origin = location.protocol === 'http:' && location.hostname === '127.0.0.1' ? location.origin : 'http://127.0.0.1:5984';
   const $ = id => document.getElementById(id);
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let catalog = [], token = null;
   const localSessions = new Map();
   const invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+  // The native app always talks to its fixed process-owned sidecar. A Tauri
+  // development/webview origin may also be loopback, but it is not API authority.
+  // The standalone browser host intentionally serves UI and API on one origin.
+  const origin = invoke ? 'http://127.0.0.1:5984'
+    : location.protocol === 'http:' && location.hostname === '127.0.0.1' ? location.origin : 'http://127.0.0.1:5984';
   const requestId = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+  async function json(path, options = {}) {
+    const response = await fetch(origin + path, options);
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !/^application\/json(?:;|$)/i.test(contentType)) {
+      throw new Error(response.ok ? 'SHELL reached the wrong local service. Retry after local services start.'
+        : 'Start SHELL’s local services to open your apps.');
+    }
+    return response.json();
+  }
   async function localMutationHeaders(scope) {
     if (!invoke) return null;
     let localSession = localSessions.get(scope);
@@ -50,23 +64,42 @@
     }; });
   }
   async function refresh() {
-    const installedResponse = await fetch(origin + '/v1/apps', {cache:'no-store'});
-    if (!installedResponse.ok) throw new Error('Start SHELL’s local services to open your apps.');
-    const { apps } = await installedResponse.json();
+    const { apps } = await json('/v1/apps', {cache:'no-store'});
     $('state').textContent = `${apps.length} installed app${apps.length === 1 ? '' : 's'}`;
     $('mine').innerHTML = apps.map(app => `<article class="app"><h2>${esc(app.name)}</h2><small>Version ${esc(app.version)}</small><button data-open="${esc(app.launchUrl)}">Open ${esc(app.name)}</button></article>`).join('') || '<p class="empty">No apps installed yet. Open Contained Evolution Apps to choose your first tool.</p>';
     document.querySelectorAll('[data-open]').forEach(button => { button.onclick = () => launch(button.dataset.open); });
-    const storeResponse = await fetch(origin + '/v1/app-store', {cache:'no-store'});
-    if (!storeResponse.ok) { $('catalog').innerHTML = '<p class="empty">The starter collection is unavailable in this build. Installed apps remain usable.</p>'; return; }
-    const result = await storeResponse.json(); catalog = result.apps; token = result.installToken; renderCatalog();
+    try {
+      const result = await json('/v1/app-store', {cache:'no-store'});
+      catalog = result.apps; token = result.installToken; renderCatalog();
+    } catch (_) {
+      $('catalog').innerHTML = '<p class="empty">The starter collection is unavailable in this build. Installed apps remain usable.</p>';
+    }
   }
   async function refreshPairing() {
-    const response = await fetch(origin + '/v1/pairing-management', {cache:'no-store'});
-    if (!response.ok) throw new Error('Connection status unavailable.');
-    const result = await response.json();
+    const result = await json('/v1/pairing-management', {cache:'no-store'});
     const expiry = result.credentials && result.credentials.identity && result.credentials.identity.expiresAt;
     $('pairing-state').textContent = `${result.paired ? 'Paired' : 'Not paired'} · credentials ${result.credentials && result.credentials.identity ? result.credentials.identity.status : 'unavailable'}${expiry ? ` until ${new Date(expiry).toLocaleString()}` : ''}`;
   }
+  async function refreshAll({ startup = false } = {}) {
+    $('retry-local').hidden = true;
+    const attempts = startup ? 8 : 1;
+    let failure;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        await Promise.all([refresh(), refreshPairing()]);
+        $('message').hidden = true;
+        return;
+      } catch (error) {
+        failure = error;
+        if (attempt + 1 < attempts) await wait(250 * (attempt + 1));
+      }
+    }
+    $('state').textContent = 'Local services unavailable';
+    $('pairing-state').textContent = 'Connection status unavailable.';
+    message(failure && failure.message ? failure.message : 'Local services unavailable.', true);
+    $('retry-local').hidden = false;
+  }
+  $('retry-local').onclick = () => refreshAll();
   async function pairingMutation(action) {
     const headers = await localMutationHeaders('pairing.manage');
     if (!headers) throw new Error('Open this page inside the SHELL desktop app to change connections.');
@@ -93,8 +126,8 @@
   if (!invoke) {
     $('rotate-pairing').disabled=true; $('unpair').disabled=true;
     $('pairing-state').textContent='Open this page inside the SHELL desktop app to inspect or change connections.';
-    refresh().catch(error => { $('state').textContent = 'Local services unavailable'; message(error.message, true); });
+    refresh().catch(error => { $('state').textContent = 'Local services unavailable'; message(error.message, true); $('retry-local').hidden=false; });
   } else {
-    Promise.all([refresh(),refreshPairing()]).catch(error => { $('state').textContent = 'Local services unavailable'; message(error.message, true); });
+    refreshAll({startup:true});
   }
 })();
