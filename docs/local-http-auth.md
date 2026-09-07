@@ -11,6 +11,7 @@ Loopback is a transport boundary, not caller authentication. Shell applies these
 | `/mcp` | paired MCP credential | configured MCP client and documented appliance verification command |
 | PouchDB-compatible root | paired sync credential, then paired database binding for non-loopback callers | legacy paired synchronization client |
 | `/pair/confirm` | pairing identity credential | legacy provider pairing flow when explicitly enabled |
+| `/v1/pairing-management` mutations | `pairing.manage` local session | exact bundled `main` window |
 
 Tauri generates a random bootstrap for each desktop process and passes it directly to its child sidecar. Only the exact bundled `main` and `flow-hud` window labels at a Tauri asset origin can request that bootstrap. The sidecar exchanges it for a five-minute, caller- and scope-bound session. Every local mutation carries a unique request id; replay, wrong caller, wrong scope, expiry, and revocation fail closed. The bootstrap and local sessions are never written to disk or logged.
 

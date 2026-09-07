@@ -25,6 +25,7 @@ const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs, readLocalDoc } = require('./lib/local-docs');
 const accessControl = require('./lib/access');
 const { createLocalSessionAuthority } = require('./lib/local-auth');
+const { createPairingManagementRouter } = require('./lib/pairing-management');
 const parentWatch = require('./lib/parent-watch');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
@@ -35,6 +36,7 @@ const { createAppStore } = require('./lib/app-store');
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
 const CERT_FILE  = path.join(dataDir(), 'hub-cert.json');
+let httpsServer = null;
 
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = dataDir();
@@ -169,6 +171,14 @@ app.post('/speak/cancel', requireSyncToken, (_req, res) => {
 });
 
 app.use('/v1/local-auth', loopbackOnly, localAuthority.router());
+app.use('/v1/pairing-management', loopbackOnly, createPairingManagementRouter({
+  pairing,
+  mutationGuard:localAuthority.guard('pairing.manage'),
+  onUnpair() {
+    try { fs.rmSync(CERT_FILE, { force:true }); } catch (_) {}
+    if (httpsServer) { httpsServer.close(); httpsServer = null; }
+  },
+}));
 app.use('/access', loopbackOnly, accessControl.router({ mutationGuard: localAuthority.guard('access.mutate') }));
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
@@ -209,8 +219,9 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`[localhub-sidecar] MCP endpoint: http://${HOST}:${PORT}/mcp (shared folders: ${require('./mcp/jail').allowedRoots().length})`);
   console.log(`[localhub-pairing] credential v${pairing.CREDENTIAL_VERSION}; paired: ${pairing.isPaired()}`);
   
-  if (TENARI_INTEGRATION_ENABLED && pairing.isPaired()) autoRegister().then(() => certify());
-  else if (TENARI_INTEGRATION_ENABLED) autoBeacon();
+  if (TENARI_INTEGRATION_ENABLED && pairing.isPaired() && pairing.getToken()) autoRegister().then(() => certify());
+  else if (TENARI_INTEGRATION_ENABLED && !pairing.getUserId()) autoBeacon();
+  else if (TENARI_INTEGRATION_ENABLED) console.warn('[shell-integrations] pairing credentials expired or unavailable; rotate locally');
   else console.log('[shell-integrations] Tenari disabled; no remote registration or beacon will run');
 });
 
@@ -268,7 +279,6 @@ async function provisionCert() {
   }
 }
 
-let httpsServer = null;
 function startHttpsServer(certData) {
   if (httpsServer) { httpsServer.close(); httpsServer = null; }
   try {

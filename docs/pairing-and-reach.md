@@ -13,5 +13,7 @@ Settings pairs a local SHELL with a Tenari account. Local/LAN storage remains fr
 - Pairing reports endpoint, LAN, and MCP reach separately.
 - Unpair removes remote and LAN endpoints plus appliance, sync, and MCP credentials together.
 - Public pairing status never returns a credential.
+- [Credential v3](pairing-credentials-v3.md) hashes inbound bearers, expires each
+  generation after 30 days, and provides exact-local rotate/unpair operations.
 
 Pairing proves neither local permission nor current reach. The Settings Companion Reach panel is owned by `Tenari/memory/product-surfaces/Settings.md`.

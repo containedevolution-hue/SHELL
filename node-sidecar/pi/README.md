@@ -89,13 +89,10 @@ sudo reboot
 Wait ~30s, then from your laptop:
 
 ```
-MCP_TOKEN="$(ssh <user>@cehub.local "cd ~/SHELL/node-sidecar && node -p \"require('./lib/pairing').getMcpToken()\"")"
-SYNC_TOKEN="$(ssh <user>@cehub.local "cd ~/SHELL/node-sidecar && node -p \"require('./lib/pairing').getSyncToken()\"")"
+# A1 — safe public pairing status (no credential)
+curl http://cehub.local:5984/pair
 
-# A1 — PouchDB welcome
-curl http://cehub.local:5984/ -H "Authorization: Bearer $SYNC_TOKEN"
-
-# A2 — MCP tools list
+# A2 — MCP tools list, using the MCP credential returned to the intended client by pairing
 curl -X POST http://cehub.local:5984/mcp \
      -H "Authorization: Bearer $MCP_TOKEN" \
      -H 'content-type: application/json' \
@@ -108,7 +105,10 @@ curl -X POST http://cehub.local:5984/mcp \
      -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_system_status","arguments":{}}}'
 ```
 
-Both A1 and A2 should respond. The system-status call is the end-to-end
+Do not read a bearer back out of Shell's data files. Credential v3 stores only
+inbound verifiers. Capture the intended client's credentials when pairing or
+rotating through the local Shell Connections surface. Both A1 and A2 should
+respond. The system-status call is the end-to-end
 round-trip that proves the appliance is reachable + the MCP host is alive.
 
 ## 6 — Get your MCP tunnel URL (A3)

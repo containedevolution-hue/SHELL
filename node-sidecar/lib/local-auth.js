@@ -5,7 +5,7 @@ const express = require('express');
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const CALLER_SCOPES = Object.freeze({
-  main: Object.freeze(['access.mutate', 'app-store.install']),
+  main: Object.freeze(['access.mutate', 'app-store.install', 'pairing.manage']),
   'flow-hud': Object.freeze(['sync.invoke']),
 });
 

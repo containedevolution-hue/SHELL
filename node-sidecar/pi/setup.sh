@@ -136,9 +136,8 @@ sudo systemctl status cehub-tunnel.service --no-pager -l | head -8 || true
 
 echo
 echo "==> Verify locally (A1 + A2):"
-echo "    SYNC_TOKEN=\"\$(cd '$SIDECAR_DIR' && node -p \"require('./lib/pairing').getSyncToken()\")\""
-echo "    MCP_TOKEN=\"\$(cd '$SIDECAR_DIR' && node -p \"require('./lib/pairing').getMcpToken()\")\""
-echo "    curl http://localhost:5984/ -H \"Authorization: Bearer \$SYNC_TOKEN\""
+echo "    curl http://localhost:5984/v1/capabilities"
+echo "    # After pairing, use the intended client's MCP token (Shell never reads it back from disk):"
 echo "    curl -X POST http://localhost:5984/mcp -H \"Authorization: Bearer \$MCP_TOKEN\" -H 'content-type: application/json' \\"
 echo "         -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
 echo
@@ -146,7 +145,7 @@ echo "==> Get tunnel URL (A3) — after ~10s for cloudflared to connect:"
 echo "    show-mcp-url"
 echo
 echo "==> From another LAN device (after reboot):"
-echo "    curl http://cehub.local:5984/"
+echo "    curl http://cehub.local:5984/pair"
 echo
 echo "==> Optional: Hub speaker output (Piper TTS via Pi audio out):"
 echo "    ./setup-audio.sh"

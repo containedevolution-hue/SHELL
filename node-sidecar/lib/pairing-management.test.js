@@ -1,0 +1,42 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const express = require('express');
+const { createPairingStore } = require('./pairing');
+const { createLocalSessionAuthority } = require('./local-auth');
+const { createPairingManagementRouter } = require('./pairing-management');
+
+test('local status is redacted and exact authenticated rotate/unpair invalidates prior remote credentials', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(),'pairing-management-'));
+  const pairing = createPairingStore({ pairingFile:path.join(dir,'pairing.json'), outboundFile:path.join(dir,'pairing.outbound.json') });
+  pairing.setUserId('user-a');
+  const old = pairing.getMcpToken();
+  const local = createLocalSessionAuthority({ bootstrapToken:'p'.repeat(64) });
+  const session = local.issue('main',['pairing.manage']);
+  let unpairCalls = 0;
+  const app = express();
+  app.use('/v1/pairing-management',createPairingManagementRouter({pairing,mutationGuard:local.guard('pairing.manage'),onUnpair:()=>{unpairCalls++;}}));
+  const server = app.listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/v1/pairing-management`;
+  const before = await (await fetch(base)).json();
+  assert.equal(before.paired,true);
+  assert.ok(!JSON.stringify(before).includes(old));
+  assert.equal((await fetch(base+'/rotate',{method:'POST'})).status,401);
+  const headers = nonce=>({Authorization:`Bearer ${session.token}`,'X-Shell-Caller':'main','X-Shell-Request-Id':nonce});
+  const rotatedResponse = await fetch(base+'/rotate',{method:'POST',headers:headers('rotate-a')});
+  assert.equal(rotatedResponse.status,200);
+  const rotated = await rotatedResponse.json();
+  assert.equal(pairing.matchesToken('mcp',old),false);
+  assert.equal(pairing.matchesToken('mcp',rotated.credentials.mcp_token),true);
+  assert.equal((await fetch(base+'/rotate',{method:'POST',headers:headers('rotate-a')})).status,409);
+  assert.equal((await fetch(base+'/unpair',{method:'POST',headers:headers('unpair-a')})).status,200);
+  assert.equal(unpairCalls,1);
+  assert.equal(pairing.isPaired(),false);
+  assert.equal(pairing.matchesToken('mcp',rotated.credentials.mcp_token),false);
+});

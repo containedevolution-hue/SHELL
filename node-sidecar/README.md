@@ -18,7 +18,8 @@ Part of the SHELL local agent — see [`../docs/extraction-manifest.md`](../docs
   the sync-only credential; MCP uses its separate credential. Remote PouchDB
   paths are bound to the paired user.
 - `GET /pair` returns status only. Pair through the Railway beacon plus the
-  ten-minute local code; legacy shared-token files rotate and require re-pairing.
+  ten-minute local code. Credential v3 hashes inbound bearers, expires each
+  generation after 30 days, and supports authenticated local rotate/unpair.
 - `GET /local/docs` and `GET /local/docs/:id` are loopback-only and feed the
   bundled offline shell. The list carries a 200-character snippet; the single
   read carries the whole body. Both serve `doc:*` rows from the most recently
