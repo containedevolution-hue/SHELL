@@ -68,13 +68,27 @@
     $('state').textContent = `${apps.length} installed app${apps.length === 1 ? '' : 's'}`;
     $('mine').innerHTML = apps.map(app => `<article class="app"><h2>${esc(app.name)}</h2><small>Version ${esc(app.version)}</small><button data-open="${esc(app.launchUrl)}">Open ${esc(app.name)}</button></article>`).join('') || '<p class="empty">No apps installed yet. Open Contained Evolution Apps to choose your first tool.</p>';
     document.querySelectorAll('[data-open]').forEach(button => { button.onclick = () => launch(button.dataset.open); });
+    await refreshCatalog();
+  }
+  async function refreshCatalog() {
+    $('retry-catalog').disabled = true;
+    $('catalog-status').textContent = 'Loading the Apps collection…';
+    $('catalog-status').hidden = false;
     try {
       const result = await json('/v1/app-store', {cache:'no-store'});
       catalog = result.apps; token = result.installToken; renderCatalog();
+      $('catalog-status').hidden = true;
+      $('retry-catalog').hidden = true;
     } catch (_) {
-      $('catalog').innerHTML = '<p class="empty">The starter collection is unavailable in this build. Installed apps remain usable.</p>';
+      catalog = []; token = null;
+      $('catalog').innerHTML = '';
+      $('catalog-status').textContent = 'The Apps collection could not load. Retry to load it. You can still open installed apps from My apps.';
+      $('retry-catalog').hidden = false;
+    } finally {
+      $('retry-catalog').disabled = false;
     }
   }
+  $('retry-catalog').onclick = () => refreshCatalog();
   async function refreshPairing() {
     const result = await json('/v1/pairing-management', {cache:'no-store'});
     const expiry = result.credentials && result.credentials.identity && result.credentials.identity.expiresAt;
