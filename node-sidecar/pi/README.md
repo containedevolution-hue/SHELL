@@ -89,16 +89,21 @@ sudo reboot
 Wait ~30s, then from your laptop:
 
 ```
+MCP_TOKEN="$(ssh <user>@cehub.local "cd ~/SHELL/node-sidecar && node -p \"require('./lib/pairing').getMcpToken()\"")"
+SYNC_TOKEN="$(ssh <user>@cehub.local "cd ~/SHELL/node-sidecar && node -p \"require('./lib/pairing').getSyncToken()\"")"
+
 # A1 — PouchDB welcome
-curl http://cehub.local:5984/
+curl http://cehub.local:5984/ -H "Authorization: Bearer $SYNC_TOKEN"
 
 # A2 — MCP tools list
 curl -X POST http://cehub.local:5984/mcp \
+     -H "Authorization: Bearer $MCP_TOKEN" \
      -H 'content-type: application/json' \
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # A2 — A live tool call
 curl -X POST http://cehub.local:5984/mcp \
+     -H "Authorization: Bearer $MCP_TOKEN" \
      -H 'content-type: application/json' \
      -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_system_status","arguments":{}}}'
 ```
@@ -153,11 +158,13 @@ TUNNEL=https://your-name.trycloudflare.com
 
 # tools/list — should return the three read-only tools
 curl -s -X POST "$TUNNEL/mcp" \
+     -H "Authorization: Bearer $MCP_TOKEN" \
      -H 'content-type: application/json' \
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq .
 
 # live tool call — should return system status from the Pi
 curl -s -X POST "$TUNNEL/mcp" \
+     -H "Authorization: Bearer $MCP_TOKEN" \
      -H 'content-type: application/json' \
      -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_system_status","arguments":{}}}' | jq .
 ```

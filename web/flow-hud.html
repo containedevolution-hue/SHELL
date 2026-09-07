@@ -16,7 +16,8 @@
          its localStorage from here.
        - We record a push-to-talk clip and POST it to the chosen engine: the cloud
          Groq relay (apiBase), or — when engine='local' — the loopback LocalHub
-         sidecar (hubBase/flow: whisper.cpp + Ollama, no key). Then we paste the
+         sidecar (hubBase/flow: whisper.cpp + Ollama, authenticated by the exact
+         Flow HUD window). Then we paste the
          result into whatever app the user is actually typing in.
      Dictate: hotkey -> record -> stop (hotkey again) -> /api/flow/dictate -> paste.
      Command: hotkey -> copy selection -> record instruction -> stop -> transcribe
@@ -53,12 +54,14 @@
   const invoke = T.core && T.core.invoke;
   const getWin = T.window && (T.window.getCurrentWindow || T.window.getCurrent);
   const hudWin = getWin ? getWin() : null;
+  const LOCAL_HUB = 'http://127.0.0.1:5984';
 
   const pill = document.getElementById('pill');
   const label = document.getElementById('label');
 
   let session = { token: '', groqKey: '', model: '', engine: 'cloud', ollamaModel: '',
                   apiBase: 'https://app.tenari.world', hubBase: 'http://localhost:5984' };
+  let localAuth = null;
   let state = 'idle';        // idle | listening | thinking
   let mode = null;           // dictate | command
   let selection = '';
@@ -151,22 +154,36 @@
   }
 
   // ---- relay calls ----
-  // Local engine → the loopback LocalHub sidecar (/flow, no key/token). Cloud →
+  // Local engine → the loopback sidecar with a short-lived, HUD-scoped token. Cloud →
   // the Groq relay at apiBase with the auth token + device key.
   function isLocal() { return session.engine === 'local'; }
-  function hdrs(extra) {
+  function requestId() { return window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`; }
+  async function localHeaders() {
+    if (!invoke) throw new Error('Flow local authentication is unavailable');
+    if (!localAuth || Date.now() + 10000 >= localAuth.expiresAt) {
+      const bootstrap = await invoke('shell_local_auth_bootstrap');
+      const response = await fetch(LOCAL_HUB + '/v1/local-auth/session', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Shell-Bootstrap':bootstrap,'X-Shell-Caller':'flow-hud'},
+        body:JSON.stringify({scopes:['sync.invoke']})
+      });
+      if (!response.ok) throw new Error('Flow local authentication failed');
+      localAuth = await response.json();
+    }
+    return {'Authorization':'Bearer ' + localAuth.token,'X-Shell-Caller':'flow-hud','X-Shell-Request-Id':requestId()};
+  }
+  async function hdrs(extra) {
     const h = Object.assign({}, extra || {});
-    if (isLocal()) { if (session.ollamaModel) h['X-Flow-Model'] = session.ollamaModel; return h; }
+    if (isLocal()) { Object.assign(h, await localHeaders()); if (session.ollamaModel) h['X-Flow-Model'] = session.ollamaModel; return h; }
     h['Authorization'] = 'Bearer ' + session.token;
     h['X-Provider-Key'] = session.groqKey;
     if (session.model) h['X-Flow-Model'] = session.model;
     return h;
   }
-  function dictateUrl() { return isLocal() ? session.hubBase + '/flow/dictate' : session.apiBase + '/api/flow/dictate'; }
-  function commandUrl() { return isLocal() ? session.hubBase + '/flow/command' : session.apiBase + '/api/flow/command'; }
+  function dictateUrl() { return isLocal() ? LOCAL_HUB + '/flow/dictate' : session.apiBase + '/api/flow/dictate'; }
+  function commandUrl() { return isLocal() ? LOCAL_HUB + '/flow/command' : session.apiBase + '/api/flow/command'; }
   async function apiDictate(blob) {
     const r = await fetch(dictateUrl(), {
-      method: 'POST', headers: hdrs({ 'Content-Type': blob.type || (isLocal() ? 'audio/wav' : 'audio/webm') }), body: blob,
+      method: 'POST', headers: await hdrs({ 'Content-Type': blob.type || (isLocal() ? 'audio/wav' : 'audio/webm') }), body: blob,
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.message || 'Dictation failed');
@@ -174,7 +191,7 @@
   }
   async function apiCommand(sel, instruction) {
     const r = await fetch(commandUrl(), {
-      method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }),
+      method: 'POST', headers: await hdrs({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ selection: sel, instruction }),
     });
     const d = await r.json().catch(() => ({}));
@@ -187,7 +204,7 @@
     if (state === 'thinking') return;
     if (state === 'listening') { await stopAndProcess(); return; }
 
-    // idle → begin. Local needs neither a token nor a Groq key (loopback sidecar).
+    // idle → begin. Local uses the exact HUD's short-lived Shell credential.
     if (!isLocal()) {
       if (!session.token) { flash('Sign in to SHELL'); hideSoon(); return; }
       if (!session.groqKey) { flash('Add your Groq key in Flow'); hideSoon(); return; }

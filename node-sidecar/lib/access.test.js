@@ -11,6 +11,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ce-access-'));
 process.env.LOCALHUB_DATA_DIR = dataDir;
 
 const accessControl = require('./access');
+const { createLocalSessionAuthority } = require('./local-auth');
 const { isLoopbackRequest } = require('./scoped-auth');
 const allowlist = require('../mcp/allowlist');
 const browser = require('../mcp/browser');
@@ -25,6 +26,9 @@ let server;
 let base;
 let guarded;
 let guardedBase;
+const localAuthority = createLocalSessionAuthority({ bootstrapToken: 'a'.repeat(64) });
+const localSession = localAuthority.issue('main', ['access.mutate']);
+let requestSerial = 0;
 function loopbackOnly(req, res, next) {
   if (isLoopbackRequest(req)) return next();
   return res.status(403).json({ error: 'loopback_only' });
@@ -32,11 +36,11 @@ function loopbackOnly(req, res, next) {
 function start() {
   return new Promise((resolve) => {
     const app = express();
-    app.use('/access', accessControl.router());
+    app.use('/access', accessControl.router({ mutationGuard: localAuthority.guard('access.mutate') }));
     server = app.listen(0, '127.0.0.1', () => {
       base = `http://127.0.0.1:${server.address().port}/access`;
       const wired = express();
-      wired.use('/access', loopbackOnly, accessControl.router());
+      wired.use('/access', loopbackOnly, accessControl.router({ mutationGuard: localAuthority.guard('access.mutate') }));
       guarded = wired.listen(0, '127.0.0.1', () => {
         guardedBase = `http://127.0.0.1:${guarded.address().port}/access`;
         resolve();
@@ -61,7 +65,16 @@ function rawStatus(headers) {
 
 async function call(pathname, options) {
   const opts = options || {};
-  const headers = opts.body != null ? { 'Content-Type': 'application/json' } : {};
+  const mutation = opts.method && opts.method !== 'GET';
+  const headers = {
+    ...(opts.body != null ? { 'Content-Type': 'application/json' } : {}),
+    ...(mutation ? {
+      Authorization: `Bearer ${localSession.token}`,
+      'X-Shell-Caller': 'main',
+      'X-Shell-Request-Id': `access-test-${++requestSerial}`,
+    } : {}),
+    ...(opts.headers || {}),
+  };
   const res = await fetch(base + pathname, { ...opts, headers });
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
@@ -80,6 +93,16 @@ check('a folder is shared read-only and writing stays off until approved', async
   const revoked = await call('/folders/write', { method: 'POST', body: JSON.stringify({ path: dir, allowed: false }) });
   assert.strictEqual(revoked.body.folders[0].writable, false);
   await call('/folders', { method: 'DELETE', body: JSON.stringify({ path: dir }) });
+});
+
+check('loopback reads remain available but loopback alone cannot mutate access', async () => {
+  allowlist.save([]);
+  assert.strictEqual((await fetch(base + '/state')).status, 200);
+  const denied = await fetch(base + '/folders', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: os.tmpdir() }),
+  });
+  assert.strictEqual(denied.status, 401);
+  assert.deepStrictEqual(allowlist.list(), []);
 });
 
 check('writing cannot be approved for a folder that was never shared', async () => {

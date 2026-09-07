@@ -136,8 +136,10 @@ sudo systemctl status cehub-tunnel.service --no-pager -l | head -8 || true
 
 echo
 echo "==> Verify locally (A1 + A2):"
-echo "    curl http://localhost:5984/"
-echo "    curl -X POST http://localhost:5984/mcp -H 'content-type: application/json' \\"
+echo "    SYNC_TOKEN=\"\$(cd '$SIDECAR_DIR' && node -p \"require('./lib/pairing').getSyncToken()\")\""
+echo "    MCP_TOKEN=\"\$(cd '$SIDECAR_DIR' && node -p \"require('./lib/pairing').getMcpToken()\")\""
+echo "    curl http://localhost:5984/ -H \"Authorization: Bearer \$SYNC_TOKEN\""
+echo "    curl -X POST http://localhost:5984/mcp -H \"Authorization: Bearer \$MCP_TOKEN\" -H 'content-type: application/json' \\"
 echo "         -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'"
 echo
 echo "==> Get tunnel URL (A3) — after ~10s for cloudflared to connect:"

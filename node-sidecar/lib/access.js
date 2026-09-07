@@ -80,7 +80,8 @@ function normalizeDomain(input) {
   return value;
 }
 
-function router() {
+function router({ mutationGuard } = {}) {
+  if (typeof mutationGuard !== 'function') throw new TypeError('authenticated mutationGuard required');
   const api = express.Router();
   api.use(express.json({ limit: '32kb' }));
 
@@ -112,21 +113,21 @@ function router() {
     res.json({ path: checked.path, parent: parent === checked.path ? null : parent, folders });
   });
 
-  api.post('/folders', (req, res) => {
+  api.post('/folders', mutationGuard, (req, res) => {
     const checked = directoryOrError(req.body && req.body.path);
     if (checked.error) return res.status(400).json({ error: checked.error });
     allowlist.add(checked.path);
     res.json({ folders: folderState() });
   });
 
-  api.delete('/folders', (req, res) => {
+  api.delete('/folders', mutationGuard, (req, res) => {
     const target = req.body && req.body.path;
     if (typeof target !== 'string' || !target) return res.status(400).json({ error: 'Which folder?' });
     allowlist.remove(target);
     res.json({ folders: folderState() });
   });
 
-  api.post('/folders/write', (req, res) => {
+  api.post('/folders/write', mutationGuard, (req, res) => {
     const target = req.body && req.body.path;
     if (typeof target !== 'string' || !target) return res.status(400).json({ error: 'Which folder?' });
     if (!allowlist.list().includes(target)) return res.status(400).json({ error: 'Share that folder before approving writing.' });
@@ -135,13 +136,13 @@ function router() {
     res.json({ folders: folderState() });
   });
 
-  api.post('/websites', (req, res) => {
+  api.post('/websites', mutationGuard, (req, res) => {
     const domain = normalizeDomain(req.body && req.body.domain);
     if (!domain) return res.status(400).json({ error: 'Enter a website like example.com.' });
     res.json({ domains: browser.saveDomains([...browser.domains(), domain]) });
   });
 
-  api.delete('/websites', (req, res) => {
+  api.delete('/websites', mutationGuard, (req, res) => {
     const domain = normalizeDomain(req.body && req.body.domain);
     if (!domain) return res.status(400).json({ error: 'Which website?' });
     res.json({ domains: browser.saveDomains(browser.domains().filter((d) => d !== domain)) });
@@ -155,7 +156,7 @@ function router() {
     res.json({ items: trashEntries() });
   });
 
-  api.post('/trash/restore', (req, res) => {
+  api.post('/trash/restore', mutationGuard, (req, res) => {
     const id = req.body && req.body.id;
     const entry = trashEntries().find((item) => item.id === id);
     if (!entry) return res.status(404).json({ error: 'That item is no longer in the trash.' });

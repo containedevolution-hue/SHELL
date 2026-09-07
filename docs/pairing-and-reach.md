@@ -7,6 +7,9 @@ Settings pairs a local SHELL with a Tenari account. Local/LAN storage remains fr
 - SHELL displays a rotating six-hex local code. Settings claims the discovered device with that code; successful claim removes it, and repeated wrong attempts lock and delete the beacon.
 - Appliance identity, browser sync, and remote MCP use separate credentials. Legacy shared credentials require rotation through local-code pairing.
 - Forwarding headers cannot make a tunnel request inherit loopback trust.
+- Loopback is never sufficient to authorize MCP, sync, Flow, speech, asset, or
+  access-setting mutations. Bundled Shell windows use expiring scoped local
+  sessions; appliance clients send the paired capability credential.
 - Pairing reports endpoint, LAN, and MCP reach separately.
 - Unpair removes remote and LAN endpoints plus appliance, sync, and MCP credentials together.
 - Public pairing status never returns a credential.

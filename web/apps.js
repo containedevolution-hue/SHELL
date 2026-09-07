@@ -4,6 +4,22 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let catalog = [], token = null;
+  let localSession = null;
+  const invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+  const requestId = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  async function localInstallHeaders() {
+    if (!invoke) return null;
+    if (!localSession || Date.now() + 10000 >= localSession.expiresAt) {
+      const bootstrap = await invoke('shell_local_auth_bootstrap');
+      const response = await fetch(origin + '/v1/local-auth/session', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Shell-Bootstrap':bootstrap,'X-Shell-Caller':'main'},
+        body:JSON.stringify({scopes:['app-store.install']})
+      });
+      if (!response.ok) throw new Error('SHELL could not authenticate this app window.');
+      localSession = await response.json();
+    }
+    return {'Authorization':'Bearer ' + localSession.token,'X-Shell-Caller':'main','X-Shell-Request-Id':requestId()};
+  }
   function tab(store) {
     $('mine').hidden = store; $('store').hidden = !store;
     $('mine-tab').setAttribute('aria-selected', String(!store)); $('store-tab').setAttribute('aria-selected', String(store));
@@ -21,10 +37,14 @@
       if (app.installedVersion) { launch(app.launchUrl); return; }
       button.disabled = true; button.textContent = 'Installing…';
       try {
-        const response = await fetch(origin + '/v1/app-store/' + encodeURIComponent(app.id) + '/install', {method:'POST',headers:{'X-Shell-Install':token}});
+        const localHeaders = await localInstallHeaders();
+        const response = await fetch(origin + '/v1/app-store/' + encodeURIComponent(app.id) + '/install', {method:'POST',headers:localHeaders || {'X-Shell-Install':token}});
         if (!response.ok) throw new Error('Installation could not finish. Your existing apps were kept.');
         await refresh(); message(`${app.name} is installed. Open it here or from My apps.`);
-      } catch (error) { button.disabled = false; button.textContent = `Retry install ${app.name}`; message(error.message, true); }
+      } catch (error) {
+        try { await refresh(); } catch (_) { button.disabled = false; button.textContent = `Retry install ${app.name}`; }
+        message(error.message, true);
+      }
     }; });
   }
   async function refresh() {

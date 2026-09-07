@@ -186,6 +186,38 @@ async fn flow_copy_selection() -> Result<String, String> {
 /// plugin. TODO(#258): route its shutdown through a single `on_before_exit` path.
 struct SidecarChild(Mutex<Option<CommandChild>>);
 
+#[derive(Clone)]
+struct LocalAuthBootstrap(String);
+
+fn generate_local_auth_bootstrap() -> Result<String, String> {
+    let mut bytes = [0_u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|e| format!("local authentication entropy unavailable: {e}"))?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+#[tauri::command]
+fn shell_local_auth_bootstrap(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, LocalAuthBootstrap>,
+) -> Result<String, String> {
+    let url = window.url().map_err(|_| "Shell could not verify this surface URL".to_string())?;
+    if trusted_local_auth_surface(window.label(), &url) {
+        Ok(state.inner().0.clone())
+    } else {
+        Err("this Shell surface cannot request local HTTP authority".to_string())
+    }
+}
+
+fn trusted_local_auth_surface(label: &str, url: &tauri::Url) -> bool {
+    if label != "main" && label != "flow-hud" {
+        return false;
+    }
+    let scheme = url.scheme();
+    let host = url.host_str().unwrap_or_default();
+    (scheme == "tauri" && host == "localhost")
+        || ((scheme == "http" || scheme == "https") && host == "tauri.localhost")
+}
+
 /// Spawn the bundled-Node sidecar via `app.shell().sidecar("node")` (DA1). The
 /// pinned `node` externalBin + the `node-sidecar/` and `whisper/` resource dirs
 /// are bundled by `tauri build`, so this runs on a machine with no system Node.
@@ -198,6 +230,7 @@ struct SidecarChild(Mutex<Option<CommandChild>>);
 fn spawn_sidecar(
     app: &tauri::AppHandle,
     data_dir: Option<&std::path::Path>,
+    local_auth_bootstrap: &str,
 ) -> Result<CommandChild, String> {
     // Bundled resources (packaged) → source tree (dev). `../node-sidecar` and
     // `../whisper` are mapped to `node-sidecar`/`whisper` under the resource dir
@@ -262,7 +295,9 @@ fn spawn_sidecar(
     // skips it and leaves node.exe holding port 5984 and the LevelDB lock, which
     // then fails the next install with "Error opening file for writing". Handing
     // the sidecar our pid lets it exit on its own when we disappear by any route.
-    cmd = cmd.env("LOCALHUB_PARENT_PID", std::process::id().to_string());
+    cmd = cmd
+        .env("LOCALHUB_PARENT_PID", std::process::id().to_string())
+        .env("SHELL_LOCAL_AUTH_BOOTSTRAP", local_auth_bootstrap);
 
     if std::env::var_os("WHISPER_BIN").is_none() {
         if let Some(w) = whisper_bin {
@@ -332,7 +367,9 @@ fn main() {
     let command_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Period);
     let (hd, hc) = (dictate_sc.clone(), command_sc.clone());
 
+    let local_auth_bootstrap = generate_local_auth_bootstrap().expect("secure local authentication bootstrap");
     let app = tauri::Builder::default()
+        .manage(LocalAuthBootstrap(local_auth_bootstrap))
         // single-instance MUST be registered before deep-link so a second
         // `start localhub://...` invocation forwards its args to the running
         // process instead of spawning a fresh Tauri shell.
@@ -375,7 +412,8 @@ fn main() {
             scan_duplicates,
             delete_to_trash,
             inject_text,
-            flow_copy_selection
+            flow_copy_selection,
+            shell_local_auth_bootstrap
         ])
         .setup(move |app| {
             // DA0: spawn the sidecar here so app_local_data_dir() is resolvable.
@@ -386,7 +424,8 @@ fn main() {
             if data_dir.is_none() {
                 eprintln!("[localhub] WARN: app_local_data_dir() unavailable — sidecar uses its legacy data path");
             }
-            let child = match spawn_sidecar(app.handle(), data_dir.as_deref()) {
+            let local_auth_bootstrap = app.state::<LocalAuthBootstrap>().inner().0.clone();
+            let child = match spawn_sidecar(app.handle(), data_dir.as_deref(), &local_auth_bootstrap) {
                 Ok(c) => {
                     println!("[localhub] sidecar pid: {}", c.pid());
                     Some(c)
@@ -498,6 +537,20 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use super::trusted_local_auth_surface;
+
+    #[test]
+    fn local_auth_bootstrap_is_bound_to_exact_bundled_surfaces() {
+        let bundled = tauri::Url::parse("http://tauri.localhost/flow-hud.html").unwrap();
+        let installed = tauri::Url::parse("http://127.0.0.1:5984/v1/apps/notes/web/index.html").unwrap();
+        let provider = tauri::Url::parse("https://app.tenari.world/").unwrap();
+        assert!(trusted_local_auth_surface("flow-hud", &bundled));
+        assert!(trusted_local_auth_surface("main", &bundled));
+        assert!(!trusted_local_auth_surface("dedup", &bundled));
+        assert!(!trusted_local_auth_surface("main", &installed));
+        assert!(!trusted_local_auth_surface("main", &provider));
+    }
+
     /// Verifies the Recycle-Bin path actually removes a file from its original
     /// location (the destructive half of the dedup tool). Trashing a throwaway
     /// temp file is harmless — it lands in the Recycle Bin.

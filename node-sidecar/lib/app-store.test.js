@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const { createAppStore } = require('./app-store');
 const { createRegistry } = require('./app-registry');
+const { createLocalSessionAuthority } = require('./local-auth');
 
 test('store requires a local surface and install token, then installs and opens a verified app', async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-store-'));
@@ -21,7 +22,8 @@ test('store requires a local surface and install token, then installs and opens 
   const release = Buffer.from(JSON.stringify({contractVersion:1,kind:'ce.app.release',id:'scribble',version:'0.2.0',files:Object.entries(files).map(([name,content])=>({path:name,encoding:'base64',content:Buffer.from(content).toString('base64'),sha256:hash(content)}))}));
   fs.writeFileSync(path.join(catalogDirectory,'scribble.ceapp.json'),release);
   fs.writeFileSync(path.join(catalogDirectory,'catalog.json'),JSON.stringify({contractVersion:1,apps:[{id:'scribble',name:'Scribble',version:'0.2.0',file:'scribble.ceapp.json',sha256:hash(release)}]}));
-  const app = express(); app.use('/v1/app-store',createAppStore({catalogDirectory,appsDirectory})); app.use('/v1/apps',createRegistry(appsDirectory).router());
+  const localAuthority = createLocalSessionAuthority({bootstrapToken:'q'.repeat(64)});
+  const app = express(); app.use('/v1/app-store',createAppStore({catalogDirectory,appsDirectory,localAuthority})); app.use('/v1/apps',createRegistry(appsDirectory).router());
   const server = app.listen(0,'127.0.0.1'); await new Promise(resolve=>server.once('listening',resolve));
   t.after(()=>new Promise(resolve=>server.close(resolve)));
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -32,10 +34,13 @@ test('store requires a local surface and install token, then installs and opens 
   assert.equal((await fetch(url+'/scribble/install',{method:'POST'})).status,403);
   const headers = {'X-Shell-Install':catalog.installToken,Origin:origin};
   assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers})).status,201);
-  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers})).status,200);
-  assert.equal((await fetch(url+'/unknown/install',{method:'POST',headers})).status,404);
+  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers})).status,409);
   const installed = await (await fetch(url)).json();
+  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers})).status,403, 'used grants are retired on catalog refresh');
+  assert.equal((await fetch(url+'/unknown/install',{method:'POST',headers:{'X-Shell-Install':installed.installToken,Origin:origin}})).status,404);
   assert.equal(installed.apps[0].installedVersion,'0.2.0');
+  const exactCaller = localAuthority.issue('main',['app-store.install']);
+  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers:{Authorization:`Bearer ${exactCaller.token}`,'X-Shell-Caller':'main','X-Shell-Request-Id':'install-local-a',Origin:origin}})).status,200);
   assert.equal(await (await fetch(origin+installed.apps[0].launchUrl)).text(),'<h1>Scribble</h1>');
   fs.appendFileSync(path.join(catalogDirectory,'scribble.ceapp.json'),'tampered');
   assert.equal((await fetch(url)).status,503);

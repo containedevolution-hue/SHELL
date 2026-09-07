@@ -24,6 +24,7 @@ const { dataDir, SIDECAR_ROOT } = require('./lib/paths');
 const { migrateIfNeeded } = require('./lib/migrate-data');
 const { readLocalDocs, readLocalDoc } = require('./lib/local-docs');
 const accessControl = require('./lib/access');
+const { createLocalSessionAuthority } = require('./lib/local-auth');
 const parentWatch = require('./lib/parent-watch');
 const { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard } = require('./lib/scoped-auth');
 const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-policy');
@@ -47,6 +48,12 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const StoreCtor = PouchDB.defaults({ prefix: DATA_DIR + path.sep });
 
 const app = express();
+const localAuthority = createLocalSessionAuthority({ bootstrapToken: process.env.SHELL_LOCAL_AUTH_BOOTSTRAP });
+
+function loopbackOnly(req, res, next) {
+  if (isLoopbackRequest(req)) return next();
+  return res.status(403).json({ error: 'loopback_only' });
+}
 
 app.use(privateNetworkPreflight);
 
@@ -130,7 +137,7 @@ pairingRouter.post('/confirm', (req, res) => {
 
 app.use('/pair', pairingRouter);
 
-const requireSyncToken = createScopedTokenGuard(pairing, 'sync');
+const requireSyncToken = createScopedTokenGuard(pairing, 'sync', { localAuthority, localScope: 'sync.invoke' });
 const requireMcpToken = createScopedTokenGuard(pairing, 'mcp');
 const requirePairedDatabase = createPairedDatabaseGuard(pairing);
 
@@ -161,14 +168,11 @@ app.post('/speak/cancel', requireSyncToken, (_req, res) => {
   res.json({ ok: true });
 });
 
-function loopbackOnly(req, res, next) {
-  if (isLoopbackRequest(req)) return next();
-  return res.status(403).json({ error: 'loopback_only' });
-}
-app.use('/access', loopbackOnly, accessControl.router());
+app.use('/v1/local-auth', loopbackOnly, localAuthority.router());
+app.use('/access', loopbackOnly, accessControl.router({ mutationGuard: localAuthority.guard('access.mutate') }));
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
-app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR }));
+app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR, localAuthority }));
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {

@@ -7,9 +7,9 @@ const { installRelease, validateRelease } = require('./app-install');
 const { createRegistry } = require('./app-registry');
 const NATIVE_ORIGINS = new Set(['tauri://localhost','http://tauri.localhost','https://tauri.localhost']);
 
-function createAppStore({ catalogDirectory, appsDirectory }) {
+function createAppStore({ catalogDirectory, appsDirectory, localAuthority = null, now = Date.now, randomBytes = crypto.randomBytes }) {
   const router = express.Router();
-  const token = crypto.randomBytes(32).toString('hex');
+  const installGrants = new Map();
   const registry = createRegistry(appsDirectory);
   router.use((req, res, next) => {
     const origin = req.headers.origin;
@@ -33,14 +33,29 @@ function createAppStore({ catalogDirectory, appsDirectory }) {
   router.get('/', (_req, res) => {
     try {
       const installed = registry.list();
-      res.json({ contractVersion:1, installToken:token, apps:list().map(({id,name,description,version}) => {
+      for (const [key, grant] of installGrants) if (grant.used || now() >= grant.expiresAt) installGrants.delete(key);
+      const token = randomBytes(32).toString('hex');
+      const installGrant = { token, expiresAt:now() + 2 * 60 * 1000, used:false };
+      installGrants.set(token, installGrant);
+      res.json({ contractVersion:1, installToken:installGrant.token, installTokenExpiresAt:installGrant.expiresAt, apps:list().map(({id,name,description,version}) => {
         const current = installed.find(app => app.id === id);
         return { id,name,description,version, installedVersion:current?.version || null, launchUrl:current?.launchUrl || null };
       }) });
     } catch { res.status(503).json({ error:'catalog_unavailable' }); }
   });
   router.post('/:id/install', (req, res) => {
-    if (req.get('X-Shell-Install') !== token) return res.status(403).json({ error:'installation_not_authorized' });
+    const authorization = req.get('Authorization');
+    if (authorization) {
+      const result = localAuthority?.authenticate(req, 'app-store.install');
+      if (!result?.ok) return res.status(result?.status || 401).json({ error:result?.error || 'installation_not_authorized' });
+    } else {
+      const candidate = req.get('X-Shell-Install');
+      const installGrant = installGrants.get(candidate);
+      if (!installGrant) return res.status(403).json({ error:'installation_not_authorized' });
+      if (now() >= installGrant.expiresAt) return res.status(401).json({ error:'install_token_expired' });
+      if (installGrant.used) return res.status(409).json({ error:'install_token_replayed' });
+      installGrant.used = true;
+    }
     try {
       const app = list().find(item => item.id === req.params.id);
       if (!app) return res.status(404).json({ error:'app_not_in_catalog' });

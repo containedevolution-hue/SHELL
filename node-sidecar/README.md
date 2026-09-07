@@ -10,11 +10,13 @@ Part of the SHELL local agent — see [`../docs/extraction-manifest.md`](../docs
 - Listens on `http://localhost:5984/` (the CouchDB default port).
 - Storage: `./data/` next to this script. One subfolder per PouchDB database.
 - Started + killed by Tauri's `src-tauri/src/main.rs` automatically.
-- Direct loopback requests are trusted for same-machine desktop use; proxy
-  headers or a public Host remove that trust because cloudflared also connects
-  to the origin over loopback. Every remote
-  PouchDB, Flow, speech, and asset request needs the sync-only capability; MCP
-  uses a different capability. Remote PouchDB paths are bound to the paired user.
+- Loopback identifies transport location; it is not mutation authority. The
+  bundled Tauri `main` and `flow-hud` windows exchange a process bootstrap for
+  short-lived, caller- and scope-bound local sessions. Mutations require a
+  unique request id, and replay, expiry, revocation, caller mismatch, or scope
+  mismatch fail closed. PouchDB, Flow, speech, and asset requests otherwise need
+  the sync-only credential; MCP uses its separate credential. Remote PouchDB
+  paths are bound to the paired user.
 - `GET /pair` returns status only. Pair through the Railway beacon plus the
   ten-minute local code; legacy shared-token files rotate and require re-pairing.
 - `GET /local/docs` and `GET /local/docs/:id` are loopback-only and feed the
@@ -33,9 +35,13 @@ node index.js
 Then in another shell:
 
 ```powershell
-curl http://localhost:5984/
-# {"couchdb":"Welcome","version":"...","vendor":{"name":"PouchDB-Server"}}
+$env:SHELL_SYNC_TOKEN = node -p "require('./lib/pairing').getSyncToken()"
+Invoke-RestMethod http://localhost:5984/ -Headers @{ Authorization = "Bearer $env:SHELL_SYNC_TOKEN" }
 ```
+
+PouchDB and MCP routes require their respective bearer credentials even on
+loopback. Read-only Shell discovery routes remain loopback-only.
+The complete route/caller inventory is [local HTTP authentication](../docs/local-http-auth.md).
 
 ## Sync status
 
