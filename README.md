@@ -47,6 +47,8 @@ The prototype hosts trusted app packages on the sidecar origin. It does not esta
 
 ## Build and verification
 
+The [Windows app delivery acceptance record](docs/acceptance/windows-app-delivery.md) covers the verified installer contents, native MSI install/open/restart behavior, and the limits of the Codex-hosted Windows installation.
+
 ```powershell
 npm ci
 npm --prefix node-sidecar ci
