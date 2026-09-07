@@ -18,4 +18,3 @@ Idempotency keys are single-use bindings. A verified completed receipt is replay
 ## Runtime status
 
 This release publishes schemas, policy semantics, and deterministic tests only. It does not implement pairing, transport, credential storage, cross-platform adapters, or phone control. The existing legacy Tenari pairing adapter is not an implementation of this contract. Windows, macOS, and Linux support must each earn separate hardware acceptance evidence before Shell reports it available.
-
