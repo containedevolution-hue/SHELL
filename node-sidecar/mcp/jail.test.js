@@ -59,10 +59,11 @@ check('relative path rejected with multiple roots', () => {
   allowlist.save([]);
 });
 
-check('appliance mode falls back to home dir', () => {
+check('listening beyond loopback never grants the home directory', () => {
   cleanEnv(); allowlist.save([]);
   process.env.LOCALHUB_HOST = '0.0.0.0';
-  assert.deepStrictEqual(jail.allowedRoots(), [path.resolve(os.homedir())]);
+  assert.deepStrictEqual(jail.allowedRoots(), []);
+  assert.ok(throws(() => jail.resolveJailed(path.join(os.homedir(), 'secret.txt'))), 'home remains denied');
   cleanEnv();
 });
 

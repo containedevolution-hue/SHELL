@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:contained-evolution:shell:permission-decision:v1",
+  "title": "SHELL authenticated permission decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "contractVersion", "decisionId", "grantId", "confirmationId", "subject", "target", "capability", "effect", "outcome", "authentication", "decidedAt", "expiresAt", "revokedAt"],
+  "properties": {
+    "contract": { "const": "com.containedevolution.shell.permission-decision/1" },
+    "contractVersion": { "const": 1 },
+    "decisionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "grantId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "confirmationId": { "type": ["string", "null"], "maxLength": 128 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceId", "remoteSessionId"],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "remoteSessionId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "target": { "$ref": "#/$defs/target" },
+    "capability": { "$ref": "#/$defs/capability" },
+    "effect": { "enum": ["read", "write", "destructive"] },
+    "outcome": { "enum": ["allow", "deny", "revoked"] },
+    "authentication": { "$ref": "#/$defs/authentication" },
+    "decidedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "revokedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "effect": { "const": "destructive" } }, "required": ["effect"] },
+      "then": { "properties": { "confirmationId": { "type": "string", "minLength": 1, "maxLength": 128 } } }
+    }
+  ],
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "sessionId"],
+      "properties": {
+        "kind": { "const": "remote-host" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "inputSchemaHash"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "inputSchemaHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "keyId", "proofHash"],
+      "properties": {
+        "method": { "enum": ["local-user-approval", "policy-engine"] },
+        "keyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "proofHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

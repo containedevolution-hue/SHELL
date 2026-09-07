@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:contained-evolution:shell:remote-session:v1",
+  "title": "SHELL authenticated remote session v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "contractVersion", "sessionId", "subject", "target", "state", "authentication", "authenticatedAt", "expiresAt", "revokedAt"],
+  "properties": {
+    "contract": { "const": "com.containedevolution.shell.remote-session/1" },
+    "contractVersion": { "const": 1 },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "deviceId"],
+      "properties": {
+        "kind": { "enum": ["phone", "desktop", "tablet"] },
+        "deviceId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "target": { "$ref": "#/$defs/target" },
+    "state": { "enum": ["active", "disconnected", "expired", "revoked", "unknown"] },
+    "authentication": { "$ref": "#/$defs/authentication" },
+    "authenticatedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "revokedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "sessionId"],
+      "properties": {
+        "kind": { "const": "remote-host" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "keyId", "proofHash"],
+      "properties": {
+        "method": { "enum": ["pairing-key", "platform-attestation"] },
+        "keyId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "proofHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

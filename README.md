@@ -103,6 +103,9 @@ The executable discovery format is [capability contract v1](contracts/v1/capabil
 served locally at `GET /v1/capabilities`. The safe MSI VM and recovery path starts in
 [SHELL OS](os/README.md). Security and performance observations use the versioned
 [health-event contract](contracts/v1/health-event.schema.json).
+The contract-only [remote trust v1](contracts/v1/REMOTE-TRUST.md) baseline binds authenticated
+sessions, live capability evidence, permission decisions, and receipts without claiming a shipped
+phone or cross-platform runtime.
 The accepted adaptive system surface is defined by [Status Bar](docs/surfaces/Status-Bar.md).
 Chat's accepted complete-application window model is defined by [Chat native desk](docs/surfaces/Chat-Native-Desk.md) and its [version-2 host contract](contracts/chat/README.md).
 

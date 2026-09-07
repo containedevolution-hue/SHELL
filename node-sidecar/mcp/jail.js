@@ -1,7 +1,6 @@
 'use strict';
 
 const path = require('path');
-const os = require('os');
 const fs = require('fs');
 const allowlist = require('./allowlist');
 
@@ -20,9 +19,6 @@ function allowedRoots() {
   const roots = [];
   if (process.env.MCP_ROOT) roots.push(real(process.env.MCP_ROOT));
   for (const f of allowlist.list()) roots.push(real(f));
-  if (roots.length === 0 && process.env.LOCALHUB_HOST === '0.0.0.0') {
-    roots.push(real(os.homedir()));
-  }
   return [...new Set(roots)];
 }
 
