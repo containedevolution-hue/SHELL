@@ -74,6 +74,9 @@ test('Windows collector remains read-only and excludes sensitive descriptive fie
   assert.match(source, /GetApplicationUserModelId/);
   assert.match(source, /GetPackageFamilyName/);
   assert.match(source, /GetClassName/);
+  assert.match(source, /-not \$sample\.RootSelf/);
+  assert.match(source, /-not \$sample\.Visible -and -not \$sample\.Iconic/);
+  assert.match(source, /\$sample\.ToolWindow/);
 });
 
 test('Linux evidence records actual returned identities and excludes monitor serials', async () => {

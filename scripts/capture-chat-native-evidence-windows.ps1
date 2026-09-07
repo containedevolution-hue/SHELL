@@ -131,6 +131,11 @@ foreach ($sample in [CeWindowEvidence]::Capture()) {
         elseif ($sample.PackageFamilyName -match '^Claude_[A-Za-z0-9]+$') { 'claude' }
         else { $null }
     if ($null -eq $candidate -or -not $packages.ContainsKey($sample.PackageFullName)) { continue }
+    # Match the native driver's user-window boundary before serializing. Electron
+    # helper, tray, IME, crash and hidden staging HWNDs never enter the evidence.
+    if (-not $sample.RootSelf -or -not $sample.OwnerAbsent -or $sample.ToolWindow -or
+        (-not $sample.Visible -and -not $sample.Iconic) -or ($sample.Cloaked -and -not $sample.Iconic) -or
+        $sample.Width -lt 1 -or $sample.Height -lt 1 -or $sample.Dpi -lt 1) { continue }
     $root = [IO.Path]::GetFullPath([string]$packages[$sample.PackageFullName]).TrimEnd('\')
     $executable = [IO.Path]::GetFullPath($sample.ProcessExecutable)
     $prefix = $root + '\'
