@@ -23,4 +23,11 @@ test('acceptance host pins exact artifact and Tauri navigation without page auth
   const handlers=main.match(/invoke_handler\(tauri::generate_handler!\[([\s\S]*?)\]\)/)?.[1]||'';
   assert.doesNotMatch(handlers,/chat.acceptance|native.desk/i);
   assert.doesNotMatch(installer,/app-store|\/v1\/apps/);
+  assert.match(rust,/SHELL_CHAT_ACCEPTANCE_WINDOW/);
+  assert.match(rust,/inner_position\(\)/);
+  assert.match(rust,/current_monitor\(\)/);
+  assert.match(rust,/\.hwnd\(\)/);
+  assert.match(main,/Open disposable Chat acceptance/);
+  assert.equal(require('../src-tauri/tauri.conf.json').app.windows.some(window=>window.label==='chat-acceptance'),false);
+  assert.deepEqual(require('../node-sidecar/config/native-desk-clients.json').clients,[]);
 });

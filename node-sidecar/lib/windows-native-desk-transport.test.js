@@ -61,6 +61,14 @@ test('authenticated fake host drives the fixed Windows backend without serializi
   h.port.close();
 });
 
+test('authenticated channel carries only the fixed Chat observation operation', async()=>{
+  const observation={id:'chat',windowLabel:'chat-acceptance'};
+  const h=harness((request,reply)=>reply(request.op==='chatObserve'?observation:true));
+  assert.deepEqual(await h.port.lifecycle.observe(),observation);
+  assert.equal(typeof h.port.lifecycle.open,'undefined');
+  h.port.close();
+});
+
 test('malformed, unauthenticated, wrong-session and replayed replies are ignored', async () => {
   let request;
   const h = harness((value, reply) => { request = value;

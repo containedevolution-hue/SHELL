@@ -241,6 +241,7 @@ fn spawn_sidecar(
     app: &tauri::AppHandle,
     data_dir: Option<&std::path::Path>,
     local_auth_bootstrap: &str,
+    chat_runtime: chat_acceptance::SharedRuntime,
 ) -> Result<Arc<Mutex<Option<CommandChild>>>, String> {
     // Bundled resources (packaged) → source tree (dev). `../node-sidecar` and
     // `../whisper` are mapped to `node-sidecar`/`whisper` under the resource dir
@@ -363,12 +364,13 @@ fn spawn_sidecar(
     let shared_child = Arc::new(Mutex::new(Some(child)));
     let response_child = shared_child.clone();
     #[cfg(windows)]
-    let mut native_pipe = match native_desk_windows::NativeDeskPipe::from_registry(
+    let mut native_pipe = match native_desk_windows::NativeDeskPipe::from_registry_with_chat(
         &native_registry,
         native_secret,
         native_session,
         std::process::id(),
         child_pid,
+        chat_runtime,
     ) {
         Ok(pipe) => pipe,
         Err(error) => {
@@ -430,6 +432,9 @@ fn main() {
 
     let local_auth_bootstrap =
         generate_local_auth_bootstrap().expect("secure local authentication bootstrap");
+    let chat_runtime = chat_acceptance::Runtime::shared();
+    let navigation_runtime = chat_runtime.clone();
+    let setup_chat_runtime = chat_runtime.clone();
     let app = tauri::Builder::default()
         .manage(LocalAuthBootstrap(local_auth_bootstrap))
         // single-instance MUST be registered before deep-link so a second
@@ -445,7 +450,13 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri::plugin::Builder::<tauri::Wry, ()>::new("chat-acceptance-navigation")
-            .on_navigation(|webview, url| chat_acceptance::navigation_allowed(webview.label(), url))
+            .on_navigation(move |webview, url| {
+                let allowed = chat_acceptance::navigation_allowed(webview.label(), url);
+                if !allowed && webview.label() == chat_acceptance::WINDOW_LABEL {
+                    if let Ok(mut state) = navigation_runtime.lock() { state.revoke_current(); }
+                }
+                allowed
+            })
             .build())
         // DA1 — launches the bundled Node externalBin as the sidecar.
         .plugin(tauri_plugin_shell::init())
@@ -490,7 +501,7 @@ fn main() {
                 eprintln!("[localhub] WARN: app_local_data_dir() unavailable — sidecar uses its legacy data path");
             }
             let local_auth_bootstrap = app.state::<LocalAuthBootstrap>().inner().0.clone();
-            let child = match spawn_sidecar(app.handle(), data_dir.as_deref(), &local_auth_bootstrap) {
+            let child = match spawn_sidecar(app.handle(), data_dir.as_deref(), &local_auth_bootstrap, setup_chat_runtime.clone()) {
                 Ok(c) => {
                     if let Ok(guard) = c.lock() {
                         if let Some(child) = guard.as_ref() { println!("[localhub] sidecar pid: {}", child.pid()); }
@@ -531,10 +542,15 @@ fn main() {
                 MenuItem::with_id(app, "open_dedup", "Photo Duplicates", true, None::<&str>)?;
             let open_typing =
                 MenuItem::with_id(app, "open_typing", "Typing Trainer", true, None::<&str>)?;
-            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup, &open_typing])?;
+            let acceptance_enabled = std::env::var("SHELL_CHAT_ACCEPTANCE_WINDOW").as_deref() == Ok("enabled");
+            let open_chat_acceptance = MenuItem::with_id(app, "open_chat_acceptance", "Open disposable Chat acceptance", acceptance_enabled, None::<&str>)?;
+            let close_chat_acceptance = MenuItem::with_id(app, "close_chat_acceptance", "Close disposable Chat acceptance", acceptance_enabled, None::<&str>)?;
+            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup, &open_typing, &open_chat_acceptance, &close_chat_acceptance])?;
             let menu = Menu::with_items(app, &[&tools])?;
             app.set_menu(menu)?;
-            app.on_menu_event(|app_handle, event| {
+            let menu_chat_runtime = setup_chat_runtime.clone();
+            let acceptance_base = data_dir.clone().map(|value| value.join("chat-acceptance"));
+            app.on_menu_event(move |app_handle, event| {
                 match event.id().0.as_str() {
                     "open_dedup" => {
                         if let Some(w) = app_handle.get_webview_window("dedup") {
@@ -547,6 +563,14 @@ fn main() {
                             let _ = w.show();
                             let _ = w.set_focus();
                         }
+                    }
+                    "open_chat_acceptance" => {
+                        let result = acceptance_base.as_deref().ok_or_else(|| "Shell application data is unavailable.".to_string())
+                            .and_then(|base| chat_acceptance::open(app_handle, menu_chat_runtime.clone(), base));
+                        if let Err(error) = result { eprintln!("[chat-acceptance] open refused: {error}"); }
+                    }
+                    "close_chat_acceptance" => {
+                        if let Err(error) = chat_acceptance::close(app_handle, menu_chat_runtime.clone()) { eprintln!("[chat-acceptance] close failed: {error}"); }
                     }
                     _ => {}
                 }

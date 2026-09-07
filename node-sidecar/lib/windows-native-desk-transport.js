@@ -5,7 +5,7 @@ const readline = require('node:readline');
 
 const PREFIX = '@@SHELL_NATIVE_DESK_V1@@';
 const MAX_FRAME = 64 * 1024;
-const OPS = new Set(['probe', 'listWindows', 'applicationFound', 'activate', 'minimize', 'restore', 'place', 'focus']);
+const OPS = new Set(['probe', 'listWindows', 'applicationFound', 'activate', 'minimize', 'restore', 'place', 'focus', 'chatObserve']);
 let inheritedPort;
 
 function exactKeys(value, keys) {
@@ -128,7 +128,8 @@ function createInheritedWindowsNativeDeskDriver({
     place: (guard, rect) => request('place', { ...reference(guard), rect }),
     focus: guard => request('focus', reference(guard)),
   };
-  return Object.freeze({ driver: Object.freeze(driver), accepted: true, close: () => { reader.close(); rejectAll('Native desk channel disconnected.'); } });
+  const lifecycle = Object.freeze({ observe: () => request('chatObserve') });
+  return Object.freeze({ driver: Object.freeze(driver), lifecycle, accepted: true, close: () => { reader.close(); rejectAll('Native desk channel disconnected.'); } });
 }
 
 function initializeInheritedWindowsNativeDeskDriver(options) {

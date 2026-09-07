@@ -448,6 +448,7 @@ pub(crate) struct NativeDeskPipe {
     windows: HashMap<String, PipeWindow>,
     seen_nonces: HashSet<String>,
     replies: HashMap<String, (String, String)>,
+    chat_runtime: crate::chat_acceptance::SharedRuntime,
 }
 
 impl NativeDeskPipe {
@@ -457,6 +458,24 @@ impl NativeDeskPipe {
         session_id: String,
         parent_pid: u32,
         child_pid: u32,
+    ) -> Result<Self, String> {
+        Self::from_registry_with_chat(
+            path,
+            secret,
+            session_id,
+            parent_pid,
+            child_pid,
+            crate::chat_acceptance::Runtime::shared(),
+        )
+    }
+
+    pub(crate) fn from_registry_with_chat(
+        path: &Path,
+        secret: String,
+        session_id: String,
+        parent_pid: u32,
+        child_pid: u32,
+        chat_runtime: crate::chat_acceptance::SharedRuntime,
     ) -> Result<Self, String> {
         let parsed: RegistryDocument = serde_json::from_slice(
             &std::fs::read(path)
@@ -513,6 +532,7 @@ impl NativeDeskPipe {
             windows: HashMap::new(),
             seen_nonces: HashSet::new(),
             replies: HashMap::new(),
+            chat_runtime,
         })
     }
 
@@ -601,6 +621,11 @@ impl NativeDeskPipe {
 
     fn dispatch(&mut self, op: &str, body: &Value) -> Result<Value, String> {
         match op {
+            "chatObserve" if empty_body(body) => self
+                .chat_runtime
+                .lock()
+                .map_err(|_| "Chat acceptance runtime is unavailable.".to_string())?
+                .observe(),
             "probe" if empty_body(body) => {
                 Ok(json!({ "available": true, "name": "Windows private native desk" }))
             }
@@ -1441,6 +1466,7 @@ mod tests {
             windows: HashMap::new(),
             seen_nonces: HashSet::new(),
             replies: HashMap::new(),
+            chat_runtime: crate::chat_acceptance::Runtime::shared(),
         }
     }
 
