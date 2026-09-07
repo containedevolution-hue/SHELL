@@ -6,7 +6,7 @@ const test=require('node:test');
 const root=path.resolve(__dirname,'..');
 
 test('private Chat acceptance remains absent from every public catalog',()=>{
-  const catalogs=[require('../contracts/app-catalog.json'),require('../node-sidecar/catalog/catalog.json')];
+  const catalogs=[require('../node-sidecar/catalog/catalog.json')];
   for(const catalog of catalogs) assert.equal(catalog.apps.some(app=>app.id==='chat'),false);
   assert.equal(fs.existsSync(path.join(root,'node-sidecar','catalog','chat-0.1.0-dev.ceapp.json')),false);
 });

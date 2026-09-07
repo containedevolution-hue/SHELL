@@ -46,14 +46,24 @@ function normalizeChatAcceptanceManifest(input, directory) {
 
 function createRegistry(appsDir) {
   const root = path.resolve(appsDir);
+  function directoryFor(id) {
+    const legacy = path.join(root,id), pointer = path.join(legacy,'.active-release.json');
+    if (!fs.existsSync(pointer)) return legacy;
+    const selected = JSON.parse(fs.readFileSync(pointer,'utf8'));
+    if (!/^\d+\.\d+\.\d+$/.test(selected.version) || !/^[a-f0-9]{64}$/.test(selected.sha256)) throw new Error('Invalid active release');
+    const directory = path.join(root,'.releases',id,selected.version);
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory,'app.manifest.json'),'utf8'));
+    if(manifest.id!==id || manifest.version!==selected.version) throw new Error('Active release identity mismatch');
+    return directory;
+  }
 
   function list() {
     if (!fs.existsSync(root)) return [];
     return fs.readdirSync(root, { withFileTypes:true })
-      .filter(entry => entry.isDirectory())
+      .filter(entry => entry.isDirectory() && /^[a-z][a-z0-9-]{1,62}$/.test(entry.name))
       .map(entry => {
-        const directory = path.join(root, entry.name);
         try {
+          const directory = directoryFor(entry.name);
           const manifest = normalizeManifest(JSON.parse(fs.readFileSync(path.join(directory, 'app.manifest.json'), 'utf8')), directory);
           if (!manifest || manifest.id !== entry.name || !safeFile(directory, manifest.entrypoints.web)) return null;
           return { ...manifest, launchUrl:`/v1/apps/${manifest.id}/${manifest.entrypoints.web.replace(/\\/g, '/')}` };
@@ -75,7 +85,8 @@ function createRegistry(appsDir) {
     result.use('/:id', (req, res) => {
       const installed = app(req.params.id);
       if (!installed) return res.status(404).json({ error:'app_not_installed' });
-      const directory = path.join(root, installed.id);
+      let directory;
+      try { directory = directoryFor(installed.id); } catch { return res.status(503).end(); }
       if (!['GET', 'HEAD'].includes(req.method)) return res.status(405).end();
       const relative = req.path.replace(/^\//, '');
       if (!/^(web|src|contracts)\//.test(relative) && relative !== 'app.manifest.json' && relative !== 'LICENSE') return res.status(404).end();

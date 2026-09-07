@@ -39,9 +39,9 @@ The Windows/Tauri build remains the recoverable bridge while the Linux session m
 
 ## App delivery
 
-Contained Evolution Apps in SHELL offers Scribble 0.2.0, Notes 0.1.0, and Canvas 0.1.0 from the pinned starter catalog in `contracts/app-catalog.json`. Install copies the selected verified release into the local app directory without an account or network request; My apps then opens the installed browser entrypoint. The general installer can also accept explicitly selected compatible artifacts. Adding an app to the Apps repository does not add it to this starter catalog automatically.
+Contained Evolution Apps in SHELL consumes `https://apps.containedevolution.com/catalog.json`. Apps owns the catalog and releases; Shell bundles a verified offline snapshot and refreshes its device-local cache. Scribble 0.2.0, Notes 0.1.0, and Canvas 0.1.0 are the current compatible releases. Install copies the selected verified package locally; My apps opens it without an account. There is no separately maintained Shell app roster.
 
-`/v1/app-store` owns catalog discovery and installation. A browser installation requires a local SHELL/native origin and a per-process install token; only reviewed ids can be installed. `/v1/apps` owns installed discovery and launch. Existing versions are preserved, and a broken starter catalog does not disable installed apps. Updates, rollback, removal, publisher signatures, native document custody, and cloud sync remain unsupported by this delivery profile.
+`/v1/app-store` owns catalog discovery and installation. A browser installation requires a local SHELL/native origin and a per-process install token; only reviewed ids can be installed. `/v1/apps` owns installed discovery and launch. Existing versions are preserved, and failed catalog refreshes do not disable installed apps. A newer compatible release exposes an explicit Update action. All new files are verified and staged before an atomic active-version pointer changes; the local URL and browser document storage remain stable. Old releases remain on disk. Rollback UI, removal, publisher signatures, native document custody, and cloud sync remain unsupported by this delivery profile.
 
 The prototype hosts trusted app packages on the sidecar origin. It does not establish a third-party app sandbox. Manifest capability checks describe compatibility, not isolation from every other same-origin sidecar endpoint.
 
@@ -55,13 +55,13 @@ npm test
 npm run build
 ```
 
-`npm run dev` and `npm run build` prepare the catalog before Tauri starts. The build machine needs authenticated GitHub CLI access to the private Apps releases, or `CE_APP_RELEASE_DIR` containing all selected release artifacts. The preparation script verifies the pinned digest and identity; end users need neither GitHub nor a source checkout.
+`npm run dev` and `npm run build` prepare the catalog before Tauri starts. The build machine downloads the canonical public Apps catalog and verifies every selected artifact's digest, identity, and required capabilities. No GitHub credentials or product checkout are needed. A failed download fails the build rather than silently bundling stale content.
 
 The Windows consumer build includes selected runtime resources and the verified catalog. Sidecar `data/`, user credentials, and arbitrary working-directory files are excluded. Development asset-forge tools are not loaded by the consumer profile. `npm run build` produces the NSIS installer under `src-tauri/target/release/bundle/nsis/`.
 
 `fetch-node-binary.mjs` pins one Node per platform (`win32-x64`, `linux-x64`), checksum-verified against the release `SHASUMS256.txt`. `bundle.targets` is `["nsis", "appimage"]`; Tauri builds only the targets valid for the host, so the same config yields the NSIS installer on Windows and an AppImage under `src-tauri/target/release/bundle/appimage/` on Linux. The Linux build (`webkit2gtk-4.1` + `gtk3` + `rust`) has not been exercised yet; see [SHELL OS](os/BUILD-PLAN.md).
 
-`npm run test:app-store` verifies an empty installation through catalog, Install, Open, save, and reopen for all three apps in a disposable directory/browser profile. It also verifies Notes/Canvas export and reimport and preserves each app's data while switching apps, with external network requests blocked. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
+`npm run test:app-store` verifies an empty installation through catalog, Install, Open, save, and reopen for all three apps in a disposable directory/browser profile. It also verifies Notes/Canvas export and reimport and preserves each app's data while switching apps and activating test-only next-version artifacts, with external browser requests blocked. It uses a disposable port/profile and does not interrupt a running Shell. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
 
 On Linux with system Chromium installed, run
 `BROWSER_EXECUTABLE_PATH=/usr/bin/chromium npm run test:app-store` after preparing
@@ -99,7 +99,7 @@ The destination defaults to `SHELL_APPS_DIR` or the sidecar's `data/apps`; a thi
 6. Build FETCH Browser on an embedded engine boundary.
 7. Add independent SHELL Cloud storage and sync.
 8. Publish and prove the narrow Status Bar, native-desk, remote-continuity, and receiving capabilities required by Chat without moving Chat or SEED ownership into SHELL.
-9. Expand the proven Scribble manifest host into signed package installation, update, rollback, and removal.
+9. Expand verified explicit updates into publisher signatures, rollback UI, and removal.
 
 See [the extraction manifest](docs/extraction-manifest.md) for current ownership and debt.
 The executable discovery format is [capability contract v1](contracts/v1/capabilities.schema.json),

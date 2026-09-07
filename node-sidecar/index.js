@@ -191,7 +191,7 @@ app.use('/v1/pairing-management', loopbackOnly, createPairingManagementRouter({
 app.use('/access', loopbackOnly, accessControl.router({ mutationGuard: localAuthority.guard('access.mutate') }));
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
-app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR, localAuthority }));
+app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR, remote:true, localAuthority }));
 app.use('/__shell/chat-acceptance', loopbackOnly, createChatAcceptanceAssets(CHAT_ACCEPTANCE_DIR).router);
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {

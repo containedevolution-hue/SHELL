@@ -5,11 +5,12 @@ const express = createRequire(path.resolve(__dirname, '../node-sidecar/package.j
 const { createAppStore } = require('../node-sidecar/lib/app-store');
 const { createRegistry } = require('../node-sidecar/lib/app-registry');
 
-function createAppHost(appsDirectory) {
+function createAppHost(appsDirectory, { remote = false } = {}) {
   const app = express();
   app.use('/v1/app-store', createAppStore({
     catalogDirectory: path.resolve(__dirname, '../node-sidecar/catalog'),
     appsDirectory,
+    remote,
   }));
   app.use('/v1/apps', createRegistry(appsDirectory).router());
   app.use(express.static(path.resolve(__dirname, '../web')));
@@ -18,7 +19,7 @@ function createAppHost(appsDirectory) {
 
 if (require.main === module) {
   const appsDirectory = path.resolve(process.env.SHELL_APPS_DIR || path.join(__dirname, '../node-sidecar/data/apps'));
-  const server = createAppHost(appsDirectory).listen(5984, '127.0.0.1', () => {
+  const server = createAppHost(appsDirectory, {remote:true}).listen(5984, '127.0.0.1', () => {
     console.log('SHELL browser app host: http://127.0.0.1:5984');
     console.log(`Installed packages: ${appsDirectory}`);
     console.log('Documents stay in this browser profile. Use app export for portable backups.');

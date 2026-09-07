@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const origin = 'http://127.0.0.1:5984';
+  const origin = location.protocol === 'http:' && location.hostname === '127.0.0.1' ? location.origin : 'http://127.0.0.1:5984';
   const $ = id => document.getElementById(id);
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let catalog = [], token = null;
@@ -33,11 +33,11 @@
   }
   function message(text, error = false) { $('message').textContent = text; $('message').className = error ? 'error' : ''; $('message').hidden = false; }
   function renderCatalog() {
-    $('catalog').innerHTML = catalog.map(app => `<article class="app"><h2>${esc(app.name)}</h2><p>${esc(app.description)}</p><small>Version ${esc(app.version)} · browser-local documents</small><button data-install="${esc(app.id)}">${app.installedVersion ? 'Open' : 'Install'} ${esc(app.name)}</button></article>`).join('') || '<p class="empty">No apps in this collection yet.</p>';
+    $('catalog').innerHTML = catalog.map(app => `<article class="app"><h2>${esc(app.name)}</h2><p>${esc(app.description)}</p><small>Version ${esc(app.version)} · browser-local documents</small><button data-install="${esc(app.id)}">${app.updateAvailable ? 'Update' : app.installedVersion ? 'Open' : 'Install'} ${esc(app.name)}</button></article>`).join('') || '<p class="empty">No apps in this collection yet.</p>';
     document.querySelectorAll('[data-install]').forEach(button => { button.onclick = async () => {
       const app = catalog.find(item => item.id === button.dataset.install);
-      if (app.installedVersion) { launch(app.launchUrl); return; }
-      button.disabled = true; button.textContent = 'Installing…';
+      if (app.installedVersion && !app.updateAvailable) { launch(app.launchUrl); return; }
+      button.disabled = true; button.textContent = app.updateAvailable ? 'Updating…' : 'Installing…';
       try {
         const localHeaders = await localMutationHeaders('app-store.install');
         const response = await fetch(origin + '/v1/app-store/' + encodeURIComponent(app.id) + '/install', {method:'POST',headers:localHeaders || {'X-Shell-Install':token}});

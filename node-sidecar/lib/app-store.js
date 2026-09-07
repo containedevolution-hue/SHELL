@@ -5,12 +5,22 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { installRelease, validateRelease } = require('./app-install');
 const { createRegistry } = require('./app-registry');
+const { syncCatalog, CATALOG_URL } = require('./app-catalog-source');
+const { updateRelease, newer } = require('./app-update');
 const NATIVE_ORIGINS = new Set(['tauri://localhost','http://tauri.localhost','https://tauri.localhost']);
 
-function createAppStore({ catalogDirectory, appsDirectory, localAuthority = null, now = Date.now, randomBytes = crypto.randomBytes }) {
+function createAppStore({ catalogDirectory, appsDirectory, remote = false, localAuthority = null, now = Date.now, randomBytes = crypto.randomBytes }) {
   const router = express.Router();
   const installGrants = new Map();
   const registry = createRegistry(appsDirectory);
+  const cacheDirectory = path.join(appsDirectory,'.catalog');
+  let nextRefresh=0, refreshing, sourceStatus='bundled';
+  async function refreshCatalog() {
+    if(!remote || now()<nextRefresh) return;
+    if(!refreshing) refreshing=syncCatalog(cacheDirectory).then(()=>{sourceStatus='current';nextRefresh=now()+5*60*1000;})
+      .catch(()=>{sourceStatus='offline';nextRefresh=now()+30000;}).finally(()=>{refreshing=null;});
+    await refreshing;
+  }
   router.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin && !NATIVE_ORIGINS.has(origin) && origin !== `${req.protocol}://${req.get('host')}`) return res.status(403).json({ error:'shell_surface_required' });
@@ -18,11 +28,12 @@ function createAppStore({ catalogDirectory, appsDirectory, localAuthority = null
     next();
   });
   function list() {
-    const catalog = JSON.parse(fs.readFileSync(path.join(catalogDirectory, 'catalog.json'), 'utf8'));
+    const directory=remote && fs.existsSync(path.join(cacheDirectory,'catalog.json'))?cacheDirectory:catalogDirectory;
+    const catalog = JSON.parse(fs.readFileSync(path.join(directory, 'catalog.json'), 'utf8'));
     if (catalog.contractVersion !== 1 || !Array.isArray(catalog.apps)) throw new Error('Unsupported catalog');
     return catalog.apps.map(app => {
       if (!/^[a-z][a-z0-9-]{1,62}$/.test(app.id) || !/^[a-z0-9.-]+\.ceapp\.json$/.test(app.file)) throw new Error('Invalid catalog entry');
-      const file = path.join(catalogDirectory, app.file);
+      const file = path.join(directory, app.file);
       if (fs.statSync(file).size > 20 * 1024 * 1024) throw new Error('Release exceeds size limit');
       const bytes = fs.readFileSync(file);
       const { manifest } = validateRelease(bytes, app.sha256);
@@ -30,16 +41,17 @@ function createAppStore({ catalogDirectory, appsDirectory, localAuthority = null
       return { ...app, bytes };
     });
   }
-  router.get('/', (_req, res) => {
+  router.get('/', async (_req, res) => {
     try {
+      await refreshCatalog();
       const installed = registry.list();
       for (const [key, grant] of installGrants) if (grant.used || now() >= grant.expiresAt) installGrants.delete(key);
       const token = randomBytes(32).toString('hex');
       const installGrant = { token, expiresAt:now() + 2 * 60 * 1000, used:false };
       installGrants.set(token, installGrant);
-      res.json({ contractVersion:1, installToken:installGrant.token, installTokenExpiresAt:installGrant.expiresAt, apps:list().map(({id,name,description,version}) => {
+      res.json({ contractVersion:1, sourceUrl:CATALOG_URL, sourceStatus, installToken:installGrant.token, installTokenExpiresAt:installGrant.expiresAt, apps:list().map(({id,name,description,version}) => {
         const current = installed.find(app => app.id === id);
-        return { id,name,description,version, installedVersion:current?.version || null, launchUrl:current?.launchUrl || null };
+        return { id,name,description,version, updateAvailable:!!current && newer(version,current.version), installedVersion:current?.version || null, launchUrl:current?.launchUrl || null };
       }) });
     } catch { res.status(503).json({ error:'catalog_unavailable' }); }
   });
@@ -61,7 +73,10 @@ function createAppStore({ catalogDirectory, appsDirectory, localAuthority = null
       if (!app) return res.status(404).json({ error:'app_not_in_catalog' });
       const installed = registry.list().find(item => item.id === app.id);
       if (installed) {
-        if (installed.version !== app.version) return res.status(409).json({ error:'update_not_supported' });
+        if (installed.version !== app.version) {
+          const updated=updateRelease(app.bytes,app.sha256,appsDirectory);
+          return res.json({installed:true,updated:true,...updated,launchUrl:registry.list().find(item=>item.id===app.id).launchUrl});
+        }
         return res.json({ installed:true, launchUrl:installed.launchUrl });
       }
       installRelease(app.bytes, app.sha256, appsDirectory);

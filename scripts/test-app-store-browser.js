@@ -6,15 +6,18 @@ const assert = require('node:assert/strict');
 const { createAppHost } = require('./start-app-host');
 const { chromium } = require('playwright');
 const { createRegistry } = require('../node-sidecar/lib/app-registry');
-const reviewed = require('../contracts/app-catalog.json');
+const { updateRelease } = require('../node-sidecar/lib/app-update');
+const { createHash } = require('node:crypto');
+const reviewed = require('../node-sidecar/catalog/catalog.json');
 
 (async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(),'shell-click-install-'));
   let browser, server;
   try {
     const app = createAppHost(root);
-    server = app.listen(5984,'127.0.0.1');
+    server = app.listen(0,'127.0.0.1');
     await new Promise((resolve,reject)=>{server.once('listening',resolve);server.once('error',reject);});
+    const origin = `http://127.0.0.1:${server.address().port}`;
     const browserOptions = process.env.BROWSER_EXECUTABLE_PATH
       ? {executablePath:process.env.BROWSER_EXECUTABLE_PATH}
       : process.env.BROWSER_CHANNEL ? {channel:process.env.BROWSER_CHANNEL} : {};
@@ -23,12 +26,12 @@ const reviewed = require('../contracts/app-catalog.json');
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     const externalRequests=[];
     await page.route('**/*',route=>{
-      if(new URL(route.request().url()).origin !== 'http://127.0.0.1:5984') {
+      if(new URL(route.request().url()).origin !== origin) {
         externalRequests.push(route.request().url()); return route.abort();
       }
       return route.continue();
     });
-    await page.goto('http://127.0.0.1:5984');
+    await page.goto(origin);
     await page.getByText(/No apps installed yet/).waitFor();
     await page.getByRole('tab',{name:'Contained Evolution Apps'}).click();
     for(const item of reviewed.apps) {
@@ -46,7 +49,7 @@ const reviewed = require('../contracts/app-catalog.json');
     assert.equal((await page.locator('#content').innerText()),'The installed app works.');
 
     async function open(name) {
-      await page.goto('http://127.0.0.1:5984');
+      await page.goto(origin);
       await page.getByRole('button',{name:`Open ${name}`,exact:true}).click();
     }
     async function transfer(button) {
@@ -96,9 +99,28 @@ const reviewed = require('../contracts/app-catalog.json');
     assert.equal(await page.locator('#world > g').count(),1);
     await page.locator('#library').click();
     assert.equal(await page.getByRole('button',{name:'SHELL planning surface',exact:true}).count(),2);
+    // Test-only next-version artifacts exercise real release activation while
+    // preserving each app's browser storage. These are never published releases.
+    await page.goto(origin);
+    for (const item of reviewed.apps) {
+      const release = JSON.parse(fs.readFileSync(path.join(__dirname,'../node-sidecar/catalog',item.file)));
+      const parts=release.version.split('.').map(Number); parts[2]++;
+      release.version=parts.join('.');
+      const manifestFile=release.files.find(file=>file.path==='app.manifest.json');
+      const manifest=JSON.parse(Buffer.from(manifestFile.content,'base64')); manifest.version=release.version;
+      const body=Buffer.from(JSON.stringify(manifest)); manifestFile.content=body.toString('base64'); manifestFile.sha256=createHash('sha256').update(body).digest('hex');
+      const bytes=Buffer.from(JSON.stringify(release)); updateRelease(bytes,createHash('sha256').update(bytes).digest('hex'),root);
+    }
+    await open('Scribble'); await page.getByRole('button',{name:/Installed from Shell/}).click();
+    assert.equal(await page.locator('#content').innerText(),'The installed app works.');
+    await open('Notes'); await page.getByRole('button',{name:/SHELL packing list/}).first().click();
+    assert.equal(await page.locator('#content').inputValue(),'Stored by the installed Notes app.');
+    assert.equal(await page.locator('#items input').isChecked(),true);
+    await open('Canvas'); await page.getByRole('button',{name:'SHELL planning surface',exact:true}).first().click();
+    assert.equal(await page.locator('#world > g').count(),1);
     assert.deepEqual(externalRequests,[]);
     assert.deepEqual(errors,[]);
-    console.log('Passed empty SHELL → install all reviewed apps → reload → open each → save and reopen without cross-app data loss → Notes/Canvas portable transfer. No external network requests.');
+    console.log('Passed empty SHELL → install all reviewed apps → reload → open/save/reopen → portable transfer → explicit next-version activation with all documents preserved. No external browser network requests.');
   } finally {
     if(browser) await browser.close();
     if(server?.listening) await new Promise(resolve=>server.close(resolve));
