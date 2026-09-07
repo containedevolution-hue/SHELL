@@ -316,7 +316,7 @@ Ordered plan:
    the host OS, so the Windows `nsis` path is unchanged; a Linux `tauri build`
    emits the AppImage. `externalBin` and the `node-sidecar` resource tree are
    untouched. Covered by two new `tests/app-bundle.test.js` cases.
-3. On the Arch guest: install `webkit2gtk-4.1`, `gtk3`, `base-devel`, `rust`,
+3. On the Arch guest: install `webkit2gtk-4.1`, `gtk3`, `base-devel`, `rust`, and `xdotool`,
    run `npm ci && npm --prefix node-sidecar ci && node scripts/fetch-node-binary.mjs`,
    then `npm run build`. Capture the produced AppImage under
    `src-tauri/target/release/bundle/`.
@@ -336,6 +336,19 @@ as Windows-side repo edits. Step 3 is the first build and should run on the HP
 [HP development](HP-DEVELOPMENT.md) is done; it pulls `rust`, `webkit2gtk-4.1`,
 and `base-devel`, so take a physical recovery checkpoint immediately before it.
 The same step on the MSI guest needs a fresh offline checkpoint first.
+
+The first physical HP build on 2026-09-07 compiled the optimized native
+`localhub` executable after `xdotool` supplied the required `libxdo.so`, then
+failed only in AppImage assembly. Verbose `linuxdeploy` evidence showed it was
+scanning the resource tree's unused `leveldown` musl prebuild and trying to find
+`libc.musl-x86_64.so.1` on the glibc Arch host. The source dependency install
+must remain cross-platform, so the packaging fix adds
+`scripts/prepare-sidecar-bundle.js`: it copies `node_modules` to an ignored
+bundle staging directory and retains only native addons for the current host
+(`linux-x64` glibc on this HP; `win32-x64` on Windows). Tauri packages that
+staging directory while development and browser hosts continue using the
+untouched source install. Pull that fix, then rerun `npm run build`; successful
+AppImage creation and launch remain the open gate.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a

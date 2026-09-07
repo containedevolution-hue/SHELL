@@ -8,6 +8,7 @@
 # DA1 bundled build artifacts — large binaries fetched/built, not committed.
 # Provision with: node scripts/fetch-node-binary.mjs  +  npm ci --omit=dev  +  whisper (see README).
 /src-tauri/binaries/
+/src-tauri/bundle-resources/
 /whisper/
 *.log
 /.artifacts/
