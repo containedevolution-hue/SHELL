@@ -4,6 +4,8 @@ The Status Bar is Shell's persistent, adaptive system surface. On a phone-sized 
 
 The Status Bar is comparable in persistence to the Windows taskbar, but not in behavior. Its visible controls and summaries change according to the active main surface and the person's Core settings. Shell owns the bar, its state, permissions, system alerts, and contribution contract. An app may contribute bounded actions or status through that contract; no app owns, duplicates, or independently recolors system truth.
 
+The bar is the shared home for the active surface's toolbox, options, workspace controls, settings action, and notifications. The surface below it supplies bounded contributions and occupies the remaining app area; it does not add a second top toolbar. Changing apps or navigating a multi-page product such as Brics replaces the contribution while preserving the same Shell-owned bar, geometry, notification authority, and user-selected separator line.
+
 Chat consumes the Status Bar as a host capability. When Chat is active, the bar may summarize the current desk, remote execution connection, notifications, connection health, or settings selected by Core. Those summaries remain Shell observations. Chat's API, MCP, local-model, subscription, and Seed instruments live in the Chat Lab below the bar and do not become a second system-status authority.
 
 Standalone apps and non-Shell hosts may render an appropriate frame from the same bounded status contract when it exists. Absence of the contract is an explicit unavailable state, never permission to fabricate Shell status.
