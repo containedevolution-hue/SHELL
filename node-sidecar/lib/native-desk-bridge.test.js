@@ -13,7 +13,7 @@ function fixture(accepted = true) {
   const now = 10000;
   const chat = { pid: 1, windowId: '0x1', nativeSessionId: 'process-1', processExecutable: '/fixture/chat', initialClass: 'FixtureChat',
     at: [-1600, 0], size: [1600, 1000], workspace: 'lab', workspaceId: 4, floating: true };
-  const client = { pid: 2, windowId: '0x2', nativeSessionId: 'process-2', processExecutable: '/fixture/provider', initialClass: 'FixtureProvider',
+  const client = { platform: 'linux', pid: 2, windowId: '0x2', nativeSessionId: 'process-2', processExecutable: '/fixture/provider', initialClass: 'FixtureProvider',
     at: [0, 0], size: [800, 600], workspace: 'separate', workspaceId: 5, floating: true };
   const windows = [chat, client];
   const calls = [];
@@ -28,11 +28,11 @@ function fixture(accepted = true) {
     park: async (target, slot) => { calls.push('park'); windows.find(w => w.windowId === target.windowId).workspace = slot.holdingWorkspace; },
     openStandalone: async target => { calls.push('standalone'); Object.assign(windows.find(w => w.windowId === target.windowId), { workspace: 'separate', workspaceId: 5 }); },
   };
-  const registry = createRegistry({ contract: 'com.containedevolution.shell.native-clients', version: 1, clients: [
-    { clientId: 'fixture', label: 'Fixture', desktopId: 'fixture.provider', executable: '/fixture/provider', args: [],
-      identity: { initialClasses: ['FixtureProvider'], processExecutables: ['/fixture/provider'] },
-      validation: { status: 'passed', validatedAt: '2026-09-06T20:00:00Z', evidence: 'synthetic-test-only' } },
-  ] });
+  const registry = createRegistry({ contract: 'com.containedevolution.shell.native-clients', version: 2, clients: [
+    { clientId: 'fixture', label: 'Fixture', identities: { linux: { desktopId: 'fixture.provider', executable: '/fixture/provider', args: [],
+      initialClasses: ['FixtureProvider'], processExecutables: ['/fixture/provider'],
+      validation: { status: 'passed', validatedAt: '2026-09-06T20:00:00Z', evidence: 'synthetic-test-only' } } } },
+  ] }, 'linux');
   const layout = { observedAt: now, contentMatchesWindow: true, windowId: chat.windowId, nativeSessionId: chat.nativeSessionId,
     compositorSize: [1600, 1000], viewport: { width: 1600, height: 1000 }, rect: { x: 200, y: 100, width: 1200, height: 800 } };
   const bridge = createNativeDeskBridge({ peer, chatIdentity: chat, backend, readLayout: async () => structuredClone(layout),

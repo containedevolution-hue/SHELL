@@ -76,16 +76,20 @@ URL, window title, or page storage is not this boundary.
 
 Linux packaging, native IPC, the geometry producer, crash recovery after loss of
 the entire host process, and physical multi-monitor/provider comparisons remain
-unproven. General capability discovery remains planned, and the bundled provider
-registry remains empty. See [the test-session procedure](../../os/CHAT-HYPRLAND-TEST.md).
+unproven. Windows also has only a default-off JavaScript backend boundary: its
+trusted Rust driver, authenticated caller wiring, mixed-DPI geometry, focus
+behavior, and live provider comparison remain unimplemented. It must never be
+replaced by a page-visible generic HWND/AUMID command. General capability
+discovery remains planned, and the bundled provider registry remains empty. See
+[the test-session procedure](../../os/CHAT-HYPRLAND-TEST.md).
 
 ## Verification boundary
 
-The Windows continuation passed all 88 Shell repository tests and the Apps
-repository suite. The Windows Tauri release binary and NSIS installer build also
-passed. Changed-document local links resolve. The new tests exercise forged peer
-objects, revoked/queued calls, close during dispatch, stale/native-frame geometry,
+The current Windows continuation passes all 124 Shell repository tests. The last
+recorded Windows Tauri release binary and NSIS installer build also passed.
+Changed-document local links resolve. Tests exercise forged peer objects,
+revoked/queued calls, close during dispatch, stale/native-frame geometry,
 negative origins, exact scaling, provider restart, lost-switch reconciliation,
-pid recycling, launch failure, and unavailable evidence collection. These are
-deterministic/Windows build results, not a Linux desktop runtime or provider
-capability acceptance record.
+pid/HWND recycling, package update identity, launch failure, and unavailable
+evidence collection. These are deterministic build results, not a Linux or
+Windows native-desk runtime or provider capability acceptance record.

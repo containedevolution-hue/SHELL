@@ -19,10 +19,18 @@ function normalizeSlot(input) {
 }
 
 function matches(entry, window) {
-  return Boolean(window && Number.isSafeInteger(window.pid) && window.pid > 0 &&
-    typeof window.windowId === 'string' && typeof window.nativeSessionId === 'string' &&
-    entry.identity.initialClasses.includes(window.initialClass) &&
-    entry.identity.processExecutables.includes(window.processExecutable));
+  if (!window || entry.platform !== window.platform || !Number.isSafeInteger(window.pid) || window.pid < 1 ||
+      typeof window.windowId !== 'string' || typeof window.nativeSessionId !== 'string') return false;
+  if (entry.platform === 'linux') {
+    return entry.initialClasses.includes(window.initialClass) && entry.processExecutables.includes(window.processExecutable);
+  }
+  if (entry.platform === 'win32') {
+    return entry.packageFamilyName === window.packageFamilyName &&
+      entry.applicationUserModelId === window.applicationUserModelId &&
+      entry.relativeExecutables.includes(window.relativeExecutable) &&
+      entry.windowClasses.includes(window.windowClass) && window.controllable === true;
+  }
+  return false;
 }
 
 function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionId, accepted = false, now = Date.now }) {
@@ -51,7 +59,7 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
     const registered = registry.list();
     if (!probe?.available || !accepted || registered.length === 0) return { probe, available: false, windows: [], clients: registered.map(entry => ({
       clientId: entry.clientId, label: entry.label, state: 'unavailable', nativeSessionId: null, windowId: null,
-      capabilityState: 'unknown', detail: !accepted ? 'Native desk acceptance has not passed on this Shell installation.' : registered.length === 0 ? 'No provider application has passed native capability validation.' : 'Hyprland native desk is unavailable.',
+      capabilityState: 'unknown', detail: !accepted ? 'Native desk acceptance has not passed on this Shell installation.' : registered.length === 0 ? 'No provider application has passed native capability validation.' : 'Native window control is unavailable.',
     })) };
     const windows = await backend.listWindows();
     const clients = registry.list().map(entry => {
@@ -106,7 +114,7 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
     if (!entry) throw new Error('Native client is not registered.');
     if (uncertain.size) throw new Error('Reconciliation is required before another native desk action.');
     const probe = await backend.probe();
-    if (!probe?.available) throw new Error('Hyprland native desk is unavailable.');
+    if (!probe?.available) throw new Error('Native window control is unavailable.');
     let windows = await backend.listWindows();
     let target = await findOne(entry, windows);
     if (!target && request.action === 'attach') {

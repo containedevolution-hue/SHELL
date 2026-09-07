@@ -6,15 +6,16 @@ const { createRegistry } = require('./native-desk-registry');
 const { createNativeDeskManager, matches } = require('./native-desk-manager');
 
 function registry() {
-  return createRegistry({ contract: 'com.containedevolution.shell.native-clients', version: 1, clients: [
-    { clientId: 'codex', label: 'Codex', desktopId: 'com.openai.codex', executable: '/opt/codex/codex', args: [], identity: { initialClasses: ['Codex'], processExecutables: ['/opt/codex/codex'] }, validation: { status: 'passed', validatedAt: '2026-09-06T20:00:00Z', evidence: 'CE-CHAT-1' } },
-    { clientId: 'claude', label: 'Claude', desktopId: 'com.anthropic.claude', executable: '/opt/claude/claude', args: [], identity: { initialClasses: ['Claude'], processExecutables: ['/opt/claude/claude'] }, validation: { status: 'passed', validatedAt: '2026-09-06T20:00:00Z', evidence: 'CE-CHAT-2' } },
-  ] });
+  const linux = (desktopId, executable, initialClass, evidence) => ({ desktopId, executable, args: [], initialClasses: [initialClass], processExecutables: [executable], validation: { status: 'passed', validatedAt: '2026-09-06T20:00:00Z', evidence } });
+  return createRegistry({ contract: 'com.containedevolution.shell.native-clients', version: 2, clients: [
+    { clientId: 'codex', label: 'Codex', identities: { linux: linux('com.openai.codex', '/opt/codex/codex', 'Codex', 'CE-CHAT-1') } },
+    { clientId: 'claude', label: 'Claude', identities: { linux: linux('com.anthropic.claude', '/opt/claude/claude', 'Claude', 'CE-CHAT-2') } },
+  ] }, 'linux');
 }
 
 function native(clientId, state, pid) {
   const names = { codex: ['Codex', '/opt/codex/codex'], claude: ['Claude', '/opt/claude/claude'] }[clientId];
-  return { pid, windowId: `0x${pid}`, nativeSessionId: `process-${pid}`, processExecutable: names[1], initialClass: names[0], place: state };
+  return { platform: 'linux', pid, windowId: `0x${pid}`, nativeSessionId: `process-${pid}`, processExecutable: names[1], initialClass: names[0], place: state };
 }
 
 function fakeBackend(initial = []) {
@@ -107,11 +108,12 @@ test('closing Chat parks an attached client and never asks the backend to close 
   assert.equal(backend.windows.length, 2);
 });
 
-test('identity ignores titles and requires exact initial class plus executable path', () => {
+test('Linux identity ignores titles and requires exact initial class plus executable path', () => {
   const entry = registry().get('codex');
   assert.equal(matches(entry, { ...native('codex', 'parked', 11), title: 'Claude' }), true);
   assert.equal(matches(entry, { ...native('codex', 'parked', 11), initialClass: 'Claude', title: 'Codex' }), false);
   assert.equal(matches(entry, { ...native('codex', 'parked', 11), processExecutable: '/tmp/codex', title: 'Codex' }), false);
+  assert.equal(matches(entry, { ...native('codex', 'parked', 11), platform: 'win32' }), false);
 });
 
 test('health stays observational and leaves remote provider state unknown', async () => {

@@ -1,43 +1,72 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://shell.containedevolution.com/contracts/chat/native-clients.schema.json",
-  "title": "SHELL trusted native client registry v1",
+  "title": "SHELL trusted native client registry v2",
+  "$defs": {
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "validatedAt", "evidence"],
+      "properties": {
+        "status": { "const": "passed" },
+        "validatedAt": { "type": "string", "format": "date-time" },
+        "evidence": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "exactStrings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "required": ["contract", "version", "clients"],
   "properties": {
     "contract": { "const": "com.containedevolution.shell.native-clients" },
-    "version": { "const": 1 },
+    "version": { "const": 2 },
     "clients": {
       "type": "array",
       "maxItems": 30,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["clientId", "label", "desktopId", "executable", "args", "identity", "validation"],
+        "required": ["clientId", "label", "identities"],
         "properties": {
           "clientId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$" },
           "label": { "type": "string", "minLength": 1, "maxLength": 80 },
-          "desktopId": { "type": "string", "minLength": 1, "maxLength": 200 },
-          "executable": { "type": "string", "pattern": "^/" },
-          "args": { "type": "array", "maxItems": 24, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
-          "identity": {
+          "identities": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["initialClasses", "processExecutables"],
+            "minProperties": 1,
             "properties": {
-              "initialClasses": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
-              "processExecutables": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "pattern": "^/", "maxLength": 4096 } }
-            }
-          },
-          "validation": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["status", "validatedAt", "evidence"],
-            "properties": {
-              "status": { "const": "passed" },
-              "validatedAt": { "type": "string", "format": "date-time" },
-              "evidence": { "type": "string", "minLength": 1, "maxLength": 500 }
+              "linux": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["desktopId", "executable", "args", "initialClasses", "processExecutables", "validation"],
+                "properties": {
+                  "desktopId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "executable": { "type": "string", "pattern": "^/", "maxLength": 4096 },
+                  "args": { "type": "array", "maxItems": 24, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+                  "initialClasses": { "$ref": "#/$defs/exactStrings" },
+                  "processExecutables": { "$ref": "#/$defs/exactStrings" },
+                  "validation": { "$ref": "#/$defs/validation" }
+                }
+              },
+              "windows": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["packageFamilyName", "applicationUserModelId", "relativeExecutables", "windowClasses", "validation"],
+                "properties": {
+                  "packageFamilyName": { "type": "string", "pattern": "^[A-Za-z0-9.-]+_[A-Za-z0-9]+$", "maxLength": 200 },
+                  "applicationUserModelId": { "type": "string", "minLength": 3, "maxLength": 300 },
+                  "relativeExecutables": { "$ref": "#/$defs/exactStrings" },
+                  "windowClasses": { "$ref": "#/$defs/exactStrings" },
+                  "validation": { "$ref": "#/$defs/validation" }
+                }
+              }
             }
           }
         }

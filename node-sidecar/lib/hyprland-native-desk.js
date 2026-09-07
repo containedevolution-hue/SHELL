@@ -75,6 +75,7 @@ function createHyprlandBackend({
         const startTime = await processStartTime(pid, readFile);
         if (before !== startTime) continue;
         result.push({
+          platform: 'linux',
           pid,
           windowId: address.toLowerCase(),
           nativeSessionId: sessionId(pid, startTime, executable),
