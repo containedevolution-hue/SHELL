@@ -24,7 +24,6 @@ test('loopback is transport location, never scoped authentication', async t => {
   assert.equal((await fetch(host.url,{method:'POST',headers:{Authorization:'Bearer wrong'}})).status,401);
   assert.equal((await fetch(host.url,{method:'POST',headers:{Authorization:'Bearer mcp-secret'}})).status,200);
 });
-
 test('the exact Flow HUD may use a fresh local sync session with non-replayed requests', async t => {
   const localAuthority = createLocalSessionAuthority({bootstrapToken:'s'.repeat(64)});
   const host = await serve(createScopedTokenGuard(pairing,'sync',{localAuthority,localScope:'sync.invoke'})); t.after(host.close);
@@ -34,4 +33,3 @@ test('the exact Flow HUD may use a fresh local sync session with non-replayed re
   assert.equal((await fetch(host.url,{method:'POST',headers})).status,409);
   assert.equal((await fetch(host.url,{method:'POST',headers:{...headers,'X-Shell-Caller':'main','X-Shell-Request-Id':'flow-b'}})).status,403);
 });
-

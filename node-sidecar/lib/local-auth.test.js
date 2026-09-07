@@ -46,7 +46,6 @@ test('unauthenticated loopback and a wrong bootstrap cannot mint or mutate', asy
   assert.equal((await exchange(server.base, 'main', ['access.mutate'], 'wrong'.repeat(16))).status, 401);
   assert.equal((await exchange(server.base, 'unknown-surface')).status, 403);
 });
-
 test('an exact caller and scope can mutate once per request identity', async t => {
   const auth = authority(); const server = await host(auth); t.after(server.close);
   const issued = await (await exchange(server.base)).json();
@@ -68,4 +67,3 @@ test('wrong, expired, revoked, and over-scoped local tokens fail closed', async 
   assert.equal((await fetch(server.base + '/mutate', { method: 'POST', headers: headers(active.token, 'main', 'revoked') })).status, 401);
   assert.equal((await exchange(server.base, 'flow-hud', ['access.mutate'])).status, 403);
 });
-
