@@ -13,3 +13,25 @@ test('desktop packaging includes the verified catalog and excludes local sidecar
   for (const resource of Object.keys(config.bundle.resources)) assert.doesNotMatch(resource, /(?:data|\.env|credentials)(?:\/|$)/);
   assert.match(fs.readFileSync(path.join(root,'src-tauri/Cargo.toml'),'utf8'),/default = \["consumer"\]/);
 });
+
+test('bundle targets cover Windows nsis and Linux appimage from one config', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root,'src-tauri/tauri.conf.json'),'utf8'));
+  assert.deepEqual(config.bundle.targets, ['nsis', 'appimage']);
+  assert.equal(config.bundle.windows.nsis.installMode, 'currentUser');
+  assert.equal(config.bundle.linux.appimage.bundleMediaFramework, false);
+  // The sidecar Node binary is still a per-triple externalBin, and the whole
+  // node-sidecar tree (with cross-platform leveldown prebuilds) still ships.
+  assert.deepEqual(config.bundle.externalBin, ['binaries/node']);
+  assert.equal(config.bundle.resources['../node-sidecar/node_modules'], 'node-sidecar/node_modules');
+});
+
+test('fetch-node-binary pins Linux Node by triple and checksum-verifies downloads', () => {
+  const src = fs.readFileSync(path.join(root,'scripts/fetch-node-binary.mjs'),'utf8');
+  assert.match(src, /const NODE_VERSION = 'v24\.18\.0'/);
+  assert.match(src, /'win32-x64':[\s\S]*?triple: 'x86_64-pc-windows-msvc'/);
+  assert.match(src, /'linux-x64':[\s\S]*?triple: 'x86_64-unknown-linux-gnu'/);
+  assert.match(src, /archiveMember: `node-\$\{NODE_VERSION\}-linux-x64\/bin\/node`/);
+  assert.match(src, /SHASUMS256\.txt/);
+  assert.match(src, /createHash\('sha256'\)/);
+  assert.match(src, /checksum mismatch/);
+});

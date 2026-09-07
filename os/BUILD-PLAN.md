@@ -282,14 +282,14 @@ TTS/asset-forge/camera subprocess paths or native SHELL packaging.
 
 ### Native Linux packaging investigation
 
-Findings from the checkout, not yet built or run:
+Findings from the checkout (steps 1-2 below now address the first bullet):
 
-- The Tauri bundle in `src-tauri/tauri.conf.json` targets `["nsis"]` only.
-  `scripts/fetch-node-binary.mjs` pins Node for `win32-x64` only and states
-  "macOS/Linux deferred". `bundle.externalBin` is `binaries/node` and
-  `bundle.resources` already ships the entire `node-sidecar` tree, including
-  `node_modules` with the cross-platform `leveldown` prebuilds, so the sidecar
-  and its native addon travel with any bundle once a Linux Node binary exists.
+- `bundle.externalBin` is `binaries/node` and `bundle.resources` ships the
+  entire `node-sidecar` tree, including `node_modules` with the cross-platform
+  `leveldown` prebuilds, so the sidecar and its native addon travel with any
+  bundle once a Linux Node binary exists. As of 2026-09-07
+  `scripts/fetch-node-binary.mjs` fetches that Linux binary and
+  `bundle.targets` includes `appimage`; the actual build has still not run.
 - The boot contract (this plan, "Boot contract") expects the packaged
   executable at `/opt/shell/bin/shell` with the user unit
   `os/guest/systemd/shell-session.service` enabled; `os/guest/bin/shell-session`
@@ -302,12 +302,20 @@ Findings from the checkout, not yet built or run:
 
 Ordered plan:
 
-1. Add a `linux-x64` entry to `scripts/fetch-node-binary.mjs`
-   (`x86_64-unknown-linux-gnu`, `node-v24.18.0-linux-x64` tarball, extract the
-   `bin/node`), keeping the pinned version identical to Windows.
-2. Add a Linux `bundle` section to `tauri.conf.json` (`targets` including at
-   least `appimage`; category and descriptions already present) behind the
-   existing per-platform config so the Windows `nsis` path is untouched.
+1. DONE (2026-09-07). `scripts/fetch-node-binary.mjs` now has a `linux-x64`
+   target (`x86_64-unknown-linux-gnu`) that downloads
+   `node-v24.18.0-linux-x64.tar.xz` — same pinned version as Windows — and
+   extracts the single `bin/node` member with `tar -xJOf`, writing it mode
+   `0755`. Both targets now verify the raw download against the pinned
+   `SHASUMS256.txt` (exact filename-column match) before use, since the binary
+   ships inside the installer. `tar` extraction of the ~118 MB member was
+   confirmed working.
+2. DONE (2026-09-07). `src-tauri/tauri.conf.json` `bundle.targets` is now
+   `["nsis", "appimage"]` with a `bundle.linux.appimage` block
+   (`bundleMediaFramework: false`). Tauri v2 builds only the targets valid for
+   the host OS, so the Windows `nsis` path is unchanged; a Linux `tauri build`
+   emits the AppImage. `externalBin` and the `node-sidecar` resource tree are
+   untouched. Covered by two new `tests/app-bundle.test.js` cases.
 3. On the Arch guest: install `webkit2gtk-4.1`, `gtk3`, `base-devel`, `rust`,
    run `npm ci && npm --prefix node-sidecar ci && node scripts/fetch-node-binary.mjs`,
    then `npm run build`. Capture the produced AppImage under
@@ -319,11 +327,15 @@ Ordered plan:
    staged tarball) and wire `shell-session.service`, keeping KDE as the recovery
    session per the recovery rule.
 
-This is the native-packaging dependency path: the guest has passed `verify-shell-sidecar` and the
-`sidecar-linux-deps-verified` checkpoint exists. Steps 1-2 are Windows-side repo
-edits and can land before the next guest boot. Step 3 pulls `rust`,
-`webkit2gtk-4.1`, and `base-devel` into the guest, so shut the guest down and
-take a fresh offline checkpoint immediately before starting it.
+This is the native-packaging dependency path. The MSI VM has passed
+`verify-shell-sidecar` and the `sidecar-linux-deps-verified` checkpoint exists;
+the HP has passed browser-app persistence but not yet `verify-shell-sidecar`,
+the firewall, or a physical recovery checkpoint. Steps 1-2 landed on 2026-09-07
+as Windows-side repo edits. Step 3 is the first build and should run on the HP
+(x86_64 Arch, the real packaging target) once its resume checklist in
+[HP development](HP-DEVELOPMENT.md) is done; it pulls `rust`, `webkit2gtk-4.1`,
+and `base-devel`, so take a physical recovery checkpoint immediately before it.
+The same step on the MSI guest needs a fresh offline checkpoint first.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a

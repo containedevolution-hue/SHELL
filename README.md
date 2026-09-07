@@ -58,6 +58,8 @@ npm run build
 
 The Windows consumer build includes selected runtime resources and the verified catalog. Sidecar `data/`, user credentials, and arbitrary working-directory files are excluded. Development asset-forge tools are not loaded by the consumer profile. `npm run build` produces the NSIS installer under `src-tauri/target/release/bundle/nsis/`.
 
+`fetch-node-binary.mjs` pins one Node per platform (`win32-x64`, `linux-x64`), checksum-verified against the release `SHASUMS256.txt`. `bundle.targets` is `["nsis", "appimage"]`; Tauri builds only the targets valid for the host, so the same config yields the NSIS installer on Windows and an AppImage under `src-tauri/target/release/bundle/appimage/` on Linux. The Linux build (`webkit2gtk-4.1` + `gtk3` + `rust`) has not been exercised yet; see [SHELL OS](os/BUILD-PLAN.md).
+
 `npm run test:app-store` verifies an empty installation through catalog, Install, Open, save, and reopen for all three apps in a disposable directory/browser profile. It also verifies Notes/Canvas export and reimport and preserves each app's data while switching apps, with external network requests blocked. Install Playwright's Chromium first, or set `BROWSER_CHANNEL=msedge` to use installed Edge. The application and installer compile; clean-machine Windows installation and Linux packaging still require separate proof.
 
 On Linux with system Chromium installed, run
