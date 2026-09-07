@@ -42,3 +42,30 @@ test('process stat parsing uses the start-time field even when the process name 
   assert.equal(sessionId(42, value, '/opt/app'), sessionId(42, value, '/opt/app'));
   assert.notEqual(sessionId(42, value, '/opt/app'), sessionId(42, 'other', '/opt/app'));
 });
+
+test('workspace identity uses compositor ids or exact named workspaces', () => {
+  const backend = createHyprlandBackend();
+  const window = { workspace: 'chat-lab', workspaceId: 4, floating: true, at: [-1000, 0], size: [900, 600] };
+  const slot = { workspace: '4', x: -1000, y: 0, width: 900, height: 600 };
+  assert.equal(backend.location(window, slot), 'attached');
+  assert.equal(backend.location(window, { ...slot, workspace: 'name:chat-lab' }), 'attached');
+  assert.equal(backend.location(window, { ...slot, workspace: '5' }), 'standalone');
+});
+
+test('launch errors reject safely without an unhandled child-process error', async () => {
+  const { EventEmitter } = require('node:events');
+  const backend = createHyprlandBackend({ access: async () => {}, spawnProcess: () => {
+    const child = new EventEmitter();
+    process.nextTick(() => child.emit('error', new Error('launch denied')));
+    return child;
+  } });
+  await assert.rejects(backend.launch({ executable: '/fixture/provider', args: [] }), /launch denied/);
+});
+
+test('inventory drops a pid recycled during proc inspection', async () => {
+  let reads = 0;
+  const backend = createHyprlandBackend({ run: async () => JSON.stringify([{ pid: 42, address: '0x1', initialClass: 'Fixture' }]),
+    readlink: async () => '/fixture/app',
+    readFile: async () => `42 (fixture) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 ${++reads} 20` });
+  assert.deepEqual(await backend.listWindows(), []);
+});

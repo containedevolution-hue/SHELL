@@ -10,8 +10,10 @@ the intended product surface.
 
 The separate physical HP development installation and its current resume point
 are recorded in [HP development](HP-DEVELOPMENT.md). It has passed browser-app
-persistence across a full machine restart; its next work is recovery and the
-HP firewall baseline, followed by the shared native packaging path.
+persistence across a full machine restart. Chat Slice 3 now follows the
+[separate Hyprland test-session procedure](CHAT-HYPRLAND-TEST.md), preserving KDE
+and the HP's still-pending recovery/firewall baseline. Native packaging remains
+a dependency of live Chat host integration.
 
 ## First target
 

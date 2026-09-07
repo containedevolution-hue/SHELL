@@ -12,7 +12,7 @@ function validId(value, label) {
 function normalizeSlot(input) {
   if (!input || input.id !== 'chat-primary') throw new Error('Invalid native desk slot.');
   for (const key of ['x', 'y', 'width', 'height']) {
-    if (!Number.isSafeInteger(input[key]) || input[key] < 0 || (['width', 'height'].includes(key) && input[key] < 320)) throw new Error('Invalid native desk geometry.');
+    if (!Number.isSafeInteger(input[key]) || Math.abs(input[key]) > 100000 || (['width', 'height'].includes(key) && input[key] < 320)) throw new Error('Invalid native desk geometry.');
   }
   for (const key of ['workspace', 'holdingWorkspace', 'standaloneWorkspace']) validId(input[key], key);
   return Object.freeze({ ...input });
@@ -27,12 +27,24 @@ function matches(entry, window) {
 
 function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionId, accepted = false, now = Date.now }) {
   if (!registry || !backend) throw new Error('Native desk dependencies are required.');
-  const deskSlot = normalizeSlot(slot);
+  let deskSlot = normalizeSlot(slot);
   validId(hostId, 'host');
   validId(hostSessionId, 'host session');
   const requests = new Map();
   const uncertain = new Set();
+  const managed = new Map();
   let serialized = Promise.resolve();
+  let closing = false;
+
+  function enqueue(operation) {
+    const result = serialized.then(operation);
+    serialized = result.catch(() => {});
+    return result;
+  }
+
+  function sameWindow(left, right) {
+    return left?.windowId === right?.windowId && left?.nativeSessionId === right?.nativeSessionId;
+  }
 
   async function inventory() {
     const probe = await backend.probe();
@@ -54,10 +66,16 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
     return { probe, available: true, windows, clients };
   }
 
-  async function observe() {
+  async function observeNow() {
     const state = await inventory();
     const observedAt = now();
-    if (state.available) uncertain.clear();
+    if (state.available && state.clients.every(client => client.state !== 'unavailable')) {
+      for (const [clientId, known] of managed) {
+        const current = state.windows.find(window => sameWindow(window, known));
+        if (current) managed.set(clientId, { ...current, state: backend.location(current, deskSlot) });
+      }
+      uncertain.clear();
+    }
     return {
       contract: 'com.containedevolution.shell.chat', version: 2, source: 'shell', hostId, hostSessionId,
       observedAt: new Date(observedAt).toISOString(), expiresAt: new Date(observedAt + 60000).toISOString(),
@@ -78,6 +96,7 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
   }
 
   async function execute(request) {
+    if (closing) throw new Error('Chat host has closed.');
     if (!accepted) throw new Error('Native desk acceptance has not passed.');
     if (!request || request.hostSessionId !== hostSessionId || request.slotId !== deskSlot.id || request.preserveCapabilities !== true || !ACTIONS.includes(request.action)) throw new Error('Invalid native desk request.');
     if (Object.keys(request).some(key => !REQUEST_KEYS.includes(key)) || request.returnTo?.appId !== 'chat' || request.returnTo?.view !== 'home' || request.returnTo?.deskId !== request.deskId) throw new Error('Invalid native desk request fields.');
@@ -85,7 +104,7 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
     validId(request.deskId, 'desk');
     const entry = registry.get(validId(request.clientId, 'native client'));
     if (!entry) throw new Error('Native client is not registered.');
-    if (uncertain.has(entry.clientId)) throw new Error('Reconciliation is required before another native desk action.');
+    if (uncertain.size) throw new Error('Reconciliation is required before another native desk action.');
     const probe = await backend.probe();
     if (!probe?.available) throw new Error('Hyprland native desk is unavailable.');
     let windows = await backend.listWindows();
@@ -96,16 +115,20 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
       windows = await backend.listWindows();
     }
     if (!target) throw new Error('The registered native application window is not available.');
+    const previous = managed.get(entry.clientId);
+    if (request.action === 'reattach' && previous && !sameWindow(previous, target)) throw new Error('Native session changed; explicitly attach the restarted application.');
     const active = [];
     for (const candidate of registry.list()) {
       const window = await findOne(candidate, windows);
-      if (window && backend.location(window, deskSlot) === 'attached') active.push(window);
+      const known = managed.get(candidate.clientId);
+      if (window && (backend.location(window, deskSlot) === 'attached' || (known?.state === 'attached' && sameWindow(known, window)))) active.push(window);
     }
     if (active.length > 1) throw new Error('Native desk has conflicting attached clients.');
     let dispatched = false;
     try {
       if (request.action === 'attach' || request.action === 'reattach') {
         dispatched = true;
+        managed.set(entry.clientId, { ...target, state: 'attached' });
         await backend.switch({ park: active[0]?.windowId === target.windowId ? null : active[0] || null, target, slot: deskSlot });
       } else if (request.action === 'detach') {
         dispatched = true;
@@ -122,6 +145,15 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
       if ((request.action === 'attach' || request.action === 'reattach') && after.some(window => window.windowId !== verified.windowId && backend.location(window, deskSlot) === 'attached')) {
         throw new Error('Native desk switch left multiple attached windows.');
       }
+      if ((request.action === 'attach' || request.action === 'reattach') && active[0] && !sameWindow(active[0], target)) {
+        const parked = after.find(window => sameWindow(window, active[0]));
+        if (!parked || backend.location(parked, deskSlot) !== 'parked') throw new Error('Previous native window parking was not verified.');
+      }
+      for (const [clientId, known] of managed) {
+        const current = after.find(window => sameWindow(window, known));
+        if (current) managed.set(clientId, { ...current, state: backend.location(current, deskSlot) });
+      }
+      managed.set(entry.clientId, { ...verified, state: ACTION_STATE[request.action] });
       return { requestId: request.requestId, hostSessionId, deskId: request.deskId, clientId: entry.clientId, action: request.action,
         status: 'completed', state: ACTION_STATE[request.action], nativeSessionId: verified.nativeSessionId, windowId: verified.windowId, capabilityState: 'native-complete' };
     } catch (error) {
@@ -131,6 +163,9 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
   }
 
   function manage(request) {
+    if (closing) return Promise.reject(new Error('Chat host has closed.'));
+    try { request = structuredClone(request); }
+    catch { return Promise.reject(new Error('Invalid native desk request.')); }
     try { validId(request?.requestId, 'request'); }
     catch (error) { return Promise.reject(error); }
     const fingerprint = JSON.stringify(request);
@@ -139,13 +174,12 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
       if (prior.fingerprint !== fingerprint) return Promise.reject(new Error('A native desk request id cannot be reused.'));
       return prior.result;
     }
-    const result = serialized.then(() => execute(request));
-    serialized = result.catch(() => {});
+    const result = enqueue(() => execute(request));
     requests.set(request.requestId, { fingerprint, result });
     return result;
   }
 
-  async function health(request) {
+  async function healthNow(request) {
     if (!request || request.hostSessionId !== hostSessionId) throw new Error('Invalid native desk health request.');
     validId(request.requestId, 'request');
     validId(request.deskId, 'desk');
@@ -163,17 +197,45 @@ function createNativeDeskManager({ registry, backend, slot, hostId, hostSessionI
     ] };
   }
 
-  async function closeChat() {
+  async function parkManaged() {
     const state = await inventory();
-    if (!state.available) return;
-    const attached = state.clients.filter(client => client.state === 'attached');
+    if (!state.available) {
+      if ([...managed.values()].some(client => client.state === 'attached')) throw new Error('Unable to verify parking while compositor is unavailable.');
+      return;
+    }
+    const attached = state.clients.filter(client => client.state === 'attached' || (managed.get(client.clientId)?.state === 'attached' && sameWindow(managed.get(client.clientId), client)));
     for (const client of attached) {
       const window = state.windows.find(item => item.windowId === client.windowId);
-      if (window) await backend.park(window, deskSlot);
+      if (window) {
+        uncertain.add(client.clientId);
+        await backend.park(window, deskSlot);
+        const after = (await backend.listWindows()).find(item => sameWindow(item, window));
+        if (!after || backend.location(after, deskSlot) !== 'parked') throw new Error('Chat parking outcome requires reconciliation.');
+        managed.set(client.clientId, { ...after, state: 'parked' });
+        uncertain.delete(client.clientId);
+      }
     }
   }
 
-  return Object.freeze({ observe, manage, health, closeChat, slot: deskSlot });
+  function updateSlot(input) {
+    const next = normalizeSlot(input);
+    return enqueue(async () => {
+      if (closing) throw new Error('Chat host has closed.');
+      if (JSON.stringify(next) === JSON.stringify(deskSlot)) return;
+      if (uncertain.size) throw new Error('Reconciliation is required before changing native desk geometry.');
+      await parkManaged();
+      deskSlot = next;
+    });
+  }
+
+  function closeChat() {
+    closing = true; // Revoke queued/new actions immediately; let dispatched work settle.
+    return enqueue(parkManaged);
+  }
+
+  return Object.freeze({ observe: () => enqueue(observeNow), manage,
+    health: request => { const copy = structuredClone(request); return enqueue(() => healthNow(copy)); },
+    closeChat, updateSlot, get slot() { return deskSlot; } });
 }
 
 module.exports = { ACTIONS, ACTION_STATE, createNativeDeskManager, matches, normalizeSlot };

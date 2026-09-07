@@ -67,7 +67,8 @@ available underneath for recovery.
 ### O4 — independent SHELL development session
 
 - Add a distinct `SHELL Development` entry to the login session selector.
-- Start KWin/Wayland with the SHELL workspace instead of Plasma shell/panels.
+- Qualify Hyprland/Wayland as the first Chat native-desk compositor candidate;
+  start the SHELL workspace only after its independent-session gates pass.
 - Provide launcher, workspace, window controls, terminal, network recovery,
   display settings, notifications, lock, logout, and crash fallback.
 - Keep `Plasma (Recovery)` as a separate login choice.
@@ -98,6 +99,15 @@ Exit: the MSI evidence gates are complete. Primary-drive installation remains a
 separate explicit decision.
 
 ## Current start point
+
+The active Chat Slice 3 continuation is the separate
+[Hyprland test session](CHAT-HYPRLAND-TEST.md), with KDE retained as recovery.
+The registry, controller, adapter, authenticated in-process bridge, and trusted
+geometry validator are implemented and default-off. Tauri IPC/launcher wiring,
+the live native geometry producer and lifecycle callbacks, and installed-provider
+capability comparison remain pending. No Linux machine was connected during
+the Windows implementation pass; the read-only identity collector correctly
+reported unavailable. This work does not close O1/O2, native packaging, or O4.
 
 O0 is active. `guest/bin/shell-health-inventory` is the first read-only probe.
 It is intentionally small: prove facts and their unavailable states before
@@ -309,7 +319,7 @@ Ordered plan:
    staged tarball) and wire `shell-session.service`, keeping KDE as the recovery
    session per the recovery rule.
 
-This is the active next step: the guest has passed `verify-shell-sidecar` and the
+This is the native-packaging dependency path: the guest has passed `verify-shell-sidecar` and the
 `sidecar-linux-deps-verified` checkpoint exists. Steps 1-2 are Windows-side repo
 edits and can land before the next guest boot. Step 3 pulls `rust`,
 `webkit2gtk-4.1`, and `base-devel` into the guest, so shut the guest down and

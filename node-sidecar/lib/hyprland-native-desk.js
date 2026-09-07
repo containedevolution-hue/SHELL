@@ -70,8 +70,10 @@ function createHyprlandBackend({
       const address = String(client.address || '');
       if (!Number.isSafeInteger(pid) || pid < 1 || !ADDRESS.test(address) || typeof client.initialClass !== 'string') continue;
       try {
+        const before = await processStartTime(pid, readFile);
         const executable = await readlink(`/proc/${pid}/exe`);
         const startTime = await processStartTime(pid, readFile);
+        if (before !== startTime) continue;
         result.push({
           pid,
           windowId: address.toLowerCase(),
@@ -79,6 +81,7 @@ function createHyprlandBackend({
           processExecutable: executable,
           initialClass: client.initialClass,
           workspace: workspaceName(client),
+          workspaceId: client.workspace?.id,
           at: Array.isArray(client.at) ? client.at.map(Number) : [],
           size: Array.isArray(client.size) ? client.size.map(Number) : [],
           floating: Boolean(client.floating),
@@ -97,7 +100,8 @@ function createHyprlandBackend({
 
   function location(window, slot) {
     if (window.workspace === slot.holdingWorkspace) return 'parked';
-    if (window.workspace === slot.workspace && window.floating && window.at[0] === slot.x && window.at[1] === slot.y && window.size[0] === slot.width && window.size[1] === slot.height) return 'attached';
+    const inWorkspace = slot.workspace.startsWith('name:') ? window.workspace === slot.workspace.slice(5) : String(window.workspaceId) === slot.workspace;
+    if (inWorkspace && window.floating && window.at[0] === slot.x && window.at[1] === slot.y && window.size[0] === slot.width && window.size[1] === slot.height) return 'attached';
     return 'standalone';
   }
 
@@ -146,6 +150,7 @@ function createHyprlandBackend({
   async function launch(entry) {
     if (!await applicationFound(entry)) throw new Error('Registered native executable is missing or not executable.');
     const child = spawnProcess(entry.executable, [...entry.args], { detached: true, shell: false, stdio: 'ignore' });
+    await new Promise((resolve, reject) => { child.once('error', reject); child.once('spawn', resolve); });
     child.unref?.();
   }
 

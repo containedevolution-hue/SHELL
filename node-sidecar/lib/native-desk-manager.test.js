@@ -130,3 +130,62 @@ test('request ids are idempotent and cannot be rebound to another action', async
   await assert.rejects(host.manage(request('codex', 'detach', 'same')), /cannot be reused/);
   assert.equal(backend.calls.filter(call => call[0] === 'switch').length, 1);
 });
+
+test('an uncertain switch blocks a different provider until observation reconciles it', async () => {
+  const backend = fakeBackend([native('codex', 'parked', 11), native('claude', 'parked', 22)]);
+  const host = manager(backend);
+  backend.setFailure(true);
+  await assert.rejects(host.manage(request('codex', 'attach')), /lost compositor reply/);
+  backend.setFailure(false);
+  await assert.rejects(host.manage(request('claude', 'attach', 'blocked')), /Reconciliation/);
+  assert.equal(backend.calls.length, 1);
+  await host.observe();
+  assert.equal((await host.manage(request('claude', 'attach', 'reconciled'))).state, 'attached');
+});
+
+test('reconciliation refreshes both sides of a switch whose acknowledgement was lost', async () => {
+  const backend = fakeBackend([native('codex', 'parked', 11), native('claude', 'parked', 22)]);
+  const host = manager(backend);
+  await host.manage(request('codex', 'attach', 'first'));
+  backend.setFailure(true);
+  await assert.rejects(host.manage(request('claude', 'attach', 'lost-switch')), /lost compositor reply/);
+  backend.setFailure(false);
+  const snapshot = await host.observe();
+  assert.equal(snapshot.clients.find(client => client.clientId === 'codex').state, 'parked');
+  assert.equal(snapshot.clients.find(client => client.clientId === 'claude').state, 'attached');
+  assert.equal((await host.manage(request('codex', 'attach', 'return'))).state, 'attached');
+});
+
+test('observation waits for dispatched work and requests are copied before queueing', async () => {
+  const backend = fakeBackend([native('codex', 'parked', 11)]);
+  let start;
+  const started = new Promise(resolve => { start = resolve; });
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const original = backend.switch;
+  backend.switch = async args => { start(); await gate; return original(args); };
+  const host = manager(backend);
+  const input = request('codex', 'attach');
+  const mutation = host.manage(input);
+  input.action = 'detach';
+  await started;
+  let observed = false;
+  const observation = host.observe().then(value => { observed = true; return value; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(observed, false);
+  release();
+  assert.equal((await mutation).action, 'attach');
+  assert.equal((await observation).clients[0].state, 'attached');
+});
+
+test('close revokes queued actions and a failed park can be retried without terminating', async () => {
+  const backend = fakeBackend([native('codex', 'attached', 11)]);
+  const host = manager(backend);
+  const original = backend.park;
+  backend.park = async () => { throw new Error('compositor unavailable'); };
+  await assert.rejects(host.closeChat(), /unavailable/);
+  await assert.rejects(host.manage(request('codex', 'attach')), /closed/);
+  backend.park = original;
+  await host.closeChat();
+  assert.equal(backend.windows[0].place, 'parked');
+});

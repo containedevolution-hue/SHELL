@@ -96,6 +96,7 @@
       "../node-sidecar/index.js": "node-sidecar/index.js",
       "../node-sidecar/package.json": "node-sidecar/package.json",
       "../node-sidecar/lib": "node-sidecar/lib",
+      "../node-sidecar/config/native-desk-clients.json": "node-sidecar/config/native-desk-clients.json",
       "../node-sidecar/mcp": "node-sidecar/mcp",
       "../node-sidecar/node_modules": "node-sidecar/node_modules",
       "../node-sidecar/catalog": "node-sidecar/catalog"

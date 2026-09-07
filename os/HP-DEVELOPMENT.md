@@ -53,6 +53,14 @@ its results do not qualify the MSI hardware.
 
 ## Resume and stopping point
 
+Chat Slice 3 now has a [separate Hyprland test-session plan](CHAT-HYPRLAND-TEST.md).
+Its in-process authentication and geometry validation are implemented in the
+Windows checkout, but no HP access, Hyprland session, downloaded-provider identity,
+or outside/inside capability comparison was observed in that pass. Keep KDE,
+the working browser host, and provider/remote sessions intact. Establish the
+physical recovery prerequisites below before adding a test session. Tauri IPC,
+canonical Chat launch, and actual native geometry/liveness wiring remain pending.
+
 The HP runs Arch/KDE plus the SHELL browser app host, not a native SHELL OS
 session. The host currently requires a terminal and manual startup:
 
@@ -79,7 +87,7 @@ Remaining hardware checks include audio/microphone, camera, suspend/resume,
 Ethernet, battery and thermal behavior. Browser document export and a recovery
 procedure should be established before treating this as a daily-use machine.
 
-The user requested ending this session and resuming later. Normal shutdown was
+At the earlier HP milestone, the user requested ending the session and resuming later. Normal shutdown was
 explained, but final power-off was not observed. Do not assume the HP is powered
 off or that its app host is still running when resuming.
 
