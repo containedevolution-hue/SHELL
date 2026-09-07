@@ -12,7 +12,7 @@ function safeChild(root, relative) {
   return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep) ? resolved : null;
 }
 
-function normalizeManifest(input, directory) {
+function normalizeManifestFor(input, directory, requiredCapability) {
   if (!input || input.contractVersion !== MANIFEST_VERSION) return null;
   if (typeof input.name !== 'string' || !input.name.trim() || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(input.version || '')) return null;
   if (!/^[a-z][a-z0-9-]{1,62}$/.test(input.id || '')) return null;
@@ -21,7 +21,7 @@ function normalizeManifest(input, directory) {
   if (!safeChild(directory, input.entrypoints.web)) return null;
   const capabilities = Array.isArray(input.capabilities) ? input.capabilities : [];
   if (capabilities.some(item => !item || !item.id || !['required', 'optional'].includes(item.requirement))) return null;
-  if (capabilities.some(item => item.requirement === 'required' && item.id !== 'storage.documents.local')) return null;
+  if (capabilities.some(item => item.requirement === 'required' && item.id !== requiredCapability)) return null;
   if (new Set(capabilities.map(item => item.id)).size !== capabilities.length) return null;
   return Object.freeze({
     contractVersion:MANIFEST_VERSION,
@@ -31,6 +31,17 @@ function normalizeManifest(input, directory) {
     entrypoints:{ web:input.entrypoints.web },
     capabilities:capabilities.map(item => ({ id:String(item.id), requirement:item.requirement })),
   });
+}
+
+function normalizeManifest(input, directory) {
+  return normalizeManifestFor(input, directory, 'storage.documents.local');
+}
+
+function normalizeChatAcceptanceManifest(input, directory) {
+  const result = normalizeManifestFor(input, directory, 'storage.chat.preferences.local');
+  if (!result || result.id !== 'chat' || result.version !== '0.1.0-dev' ||
+      !result.capabilities.some(item => item.id === 'storage.chat.preferences.local' && item.requirement === 'required')) return null;
+  return result;
 }
 
 function createRegistry(appsDir) {
@@ -78,7 +89,7 @@ function createRegistry(appsDir) {
   return Object.freeze({ list, router });
 }
 
-module.exports = { MANIFEST_VERSION, createRegistry, normalizeManifest, safeChild };
+module.exports = { MANIFEST_VERSION, createRegistry, normalizeChatAcceptanceManifest, normalizeManifest, safeChild };
 
 function safeFile(directory, relative) {
   try {

@@ -32,6 +32,7 @@ const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-po
 const capabilities = require('./lib/capabilities');
 const { createRegistry } = require('./lib/app-registry');
 const { createAppStore } = require('./lib/app-store');
+const { createChatAcceptanceAssets } = require('./lib/chat-acceptance-install');
 const { initializeInheritedWindowsNativeDeskDriver } = require('./lib/windows-native-desk-transport');
 
 // This object stays inside the sidecar process. It is not mounted on HTTP or
@@ -46,6 +47,7 @@ let httpsServer = null;
 const HOST = process.env.LOCALHUB_HOST || '127.0.0.1';
 const DATA_DIR = dataDir();
 const APPS_DIR = process.env.SHELL_APPS_DIR || path.join(DATA_DIR, 'apps');
+const CHAT_ACCEPTANCE_DIR = process.env.SHELL_CHAT_ACCEPTANCE_DIR || path.join(DATA_DIR, 'chat-acceptance');
 const TENARI_INTEGRATION_ENABLED = process.env.SHELL_TENARI_INTEGRATION === 'enabled';
 
 migrateIfNeeded(DATA_DIR, SIDECAR_ROOT);
@@ -188,6 +190,7 @@ app.use('/access', loopbackOnly, accessControl.router({ mutationGuard: localAuth
 app.use('/v1/capabilities', loopbackOnly, capabilities.router());
 app.use('/v1/apps', loopbackOnly, createRegistry(APPS_DIR).router());
 app.use('/v1/app-store', loopbackOnly, createAppStore({ catalogDirectory:path.join(__dirname, 'catalog'), appsDirectory:APPS_DIR, localAuthority }));
+app.use('/__shell/chat-acceptance', loopbackOnly, createChatAcceptanceAssets(CHAT_ACCEPTANCE_DIR).router);
 
 app.get('/local/docs', loopbackOnly, async (_req, res) => {
   try {

@@ -29,6 +29,7 @@
 // Compiled on Windows but intentionally not exposed through invoke_handler.
 // The driver is reachable only through the exact inherited Node sidecar pipes;
 // canonical Chat host authority and runtime acceptance remain separate gates.
+mod chat_acceptance;
 #[cfg(windows)]
 mod native_desk_windows;
 
@@ -443,6 +444,9 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri::plugin::Builder::<tauri::Wry, ()>::new("chat-acceptance-navigation")
+            .on_navigation(|webview, url| chat_acceptance::navigation_allowed(webview.label(), url))
+            .build())
         // DA1 — launches the bundled Node externalBin as the sidecar.
         .plugin(tauri_plugin_shell::init())
         // Flow: OS-level push-to-talk. On press we reveal the HUD overlay and

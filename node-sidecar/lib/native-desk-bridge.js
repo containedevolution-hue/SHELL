@@ -11,7 +11,7 @@ const { resolveNativeDeskSlot } = require('./native-desk-geometry');
 // Canonical Chat still must authenticate its native caller before reaching this
 // port. Object identity does not authenticate serialized IPC by itself.
 function createNativeDeskBridge({ peer, chatIdentity, readLayout, backend, hostId,
-  registry, registryFile, acceptancePassed = false, now = Date.now } = {}) {
+  readChatWindow = null, registry, registryFile, acceptancePassed = false, now = Date.now } = {}) {
   if (!peer || typeof peer !== 'object' || !chatIdentity || typeof readLayout !== 'function' || !backend) throw new Error('Trusted Chat bootstrap is required.');
   const identity = Object.freeze(structuredClone(chatIdentity));
   let tail = Promise.resolve();
@@ -29,8 +29,8 @@ function createNativeDeskBridge({ peer, chatIdentity, readLayout, backend, hostI
   }
   async function synchronize() {
     try {
-      const windows = await backend.listWindows();
-      const window = windows.find(item => item.windowId === identity.windowId);
+      const window = readChatWindow ? await readChatWindow() :
+        (await backend.listWindows()).find(item => item.windowId === identity.windowId);
       const slot = resolveNativeDeskSlot({ window, identity, layout: await readLayout(), now: now() });
       if (!service) service = createNativeDeskService({ backend, registry, registryFile, slot, hostId, hostSessionId, acceptancePassed, now });
       else await service.updateSlot(slot);

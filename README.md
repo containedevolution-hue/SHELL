@@ -20,6 +20,7 @@ Legacy Tenari pairing code remains as a disabled adapter seam. It performs no re
 - Local data is authoritative. Optional SHELL Cloud storage and sync belong to SHELL.
 - General-purpose utilities are Contained Evolution Apps. SHELL discovers released app manifests and supplies a local host adapter; app behavior, portable data models, and releases stay with each app.
 - Chat is the neutral, independently installable conversation home owned by Apps. SHELL will launch the canonical Chat release, supply the adaptive Status Bar and bounded host capabilities, and provide Chat's one-slot [native desk](docs/surfaces/Chat-Native-Desk.md). Slice 3 has a default-off cross-platform registry, controller, exercised Hyprland adapter, authenticated in-process bridge, native geometry validator, deterministic Windows backend, private Rust Windows driver, and a process-bound inherited Rust-to-Node channel. Windows still has no provider registration, canonical Chat host wiring, or runtime acceptance and therefore reports unavailable. The canonical Chat launcher, live geometry producer, and hardware acceptance remain pending. The accepted desk will summon and switch complete downloaded provider applications without replacing them, preserve remote execution, and never become a Shell-specific Chat fork.
+- A separately pinned private Chat `0.1.0-dev` acceptance artifact can be installed only through `scripts/install-chat-acceptance.js`. It is stored outside public apps, never appears in the starter catalog or `/v1/apps`, and is served only from its fixed loopback asset path after every installed file still matches its receipt. Its exact Tauri label/origin/navigation lifecycle is fail-closed, but no production Chat acceptance window is opened automatically.
 - FETCH is SHELL's browser and evidence-first research system. Its first engine may embed Chromium without requiring Chrome to be installed.
 - SEED — Secured Environment Educated Development — is an independently owned, opt-in local capability hosted through Memory Box inside SHELL's Core. Its corpus, curation, retrieval, dataset, backup, and restore remain off by default, permission-gated, and outside cloud sync or implicit integration reach. Chat's Seed Station is the primary planned human control surface; Shell owns local execution, receiving, staging, permissions, and storage rather than a competing SEED conversation surface.
 - Tenari is optional: Companion, Stardust intelligence, autobiographical Memory, and Tenari World. It may use explicitly granted SHELL capabilities but never owns SHELL data.
@@ -77,6 +78,8 @@ start the full sidecar, install a system service, or provide native Linux SHELL.
 Stop it before starting another host that uses port 5984.
 
 Rust-only checks use `cargo check --manifest-path dedup-engine/Cargo.toml` and `cargo check --manifest-path src-tauri/Cargo.toml`.
+
+The private Chat acceptance browser proof is `BROWSER_CHANNEL=msedge npm run test:chat-acceptance -- PATH_TO_PINNED_ARTIFACT` on Windows. The script installs only into a disposable directory and blocks external browser requests.
 
 For direct installation of a reviewed artifact:
 

@@ -5,11 +5,12 @@ const { createHash, randomUUID } = require('node:crypto');
 const { normalizeManifest } = require('./app-registry');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
-function validateRelease(bytes, expectedHash) {
+function validateRelease(bytes, expectedHash, { manifestNormalizer = normalizeManifest, releaseValidator = null } = {}) {
   if (bytes.length > 20 * 1024 * 1024) throw new Error('Release exceeds size limit');
   if (!/^[a-f0-9]{64}$/.test(expectedHash) || hash(bytes) !== expectedHash) throw new Error('Release digest mismatch');
   const input = JSON.parse(bytes.toString('utf8'));
   if (input.contractVersion !== 1 || input.kind !== 'ce.app.release' || !Array.isArray(input.files) || !input.files.length || input.files.length > 1000) throw new Error('Unsupported release');
+  if (releaseValidator) releaseValidator(input);
   const files = new Map();
   const names = new Set();
   let total = 0;
@@ -23,12 +24,12 @@ function validateRelease(bytes, expectedHash) {
     if (body.toString('base64') !== file.content || hash(body) !== file.sha256 || total > 15 * 1024 * 1024) throw new Error('Invalid release content');
     files.set(file.path, body); names.add(file.path.toLowerCase());
   }
-  const manifest = normalizeManifest(JSON.parse(files.get('app.manifest.json')?.toString() || 'null'), path.resolve('release'));
+  const manifest = manifestNormalizer(JSON.parse(files.get('app.manifest.json')?.toString() || 'null'), path.resolve('release'));
   if (!manifest || manifest.id !== input.id || manifest.version !== input.version || !files.has(manifest.entrypoints.web)) throw new Error('Invalid release manifest');
   return { manifest, files };
 }
-function installRelease(bytes, expectedHash, appsDirectory) {
-  const { manifest, files } = validateRelease(bytes, expectedHash);
+function installRelease(bytes, expectedHash, appsDirectory, options) {
+  const { manifest, files } = validateRelease(bytes, expectedHash, options);
   const root = path.resolve(appsDirectory);
   fs.mkdirSync(root, { recursive: true });
   const destination = path.join(root, manifest.id);
