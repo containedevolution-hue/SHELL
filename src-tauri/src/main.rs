@@ -26,6 +26,12 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// Compiled on Windows but intentionally not exposed through invoke_handler.
+// The port stays disconnected until the canonical Chat host can authenticate a
+// private native-to-sidecar channel and supply registry-resolved identities.
+#[cfg(windows)]
+mod native_desk_windows;
+
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem, Submenu};
@@ -191,7 +197,8 @@ struct LocalAuthBootstrap(String);
 
 fn generate_local_auth_bootstrap() -> Result<String, String> {
     let mut bytes = [0_u8; 32];
-    getrandom::getrandom(&mut bytes).map_err(|e| format!("local authentication entropy unavailable: {e}"))?;
+    getrandom::getrandom(&mut bytes)
+        .map_err(|e| format!("local authentication entropy unavailable: {e}"))?;
     Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
@@ -200,7 +207,9 @@ fn shell_local_auth_bootstrap(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, LocalAuthBootstrap>,
 ) -> Result<String, String> {
-    let url = window.url().map_err(|_| "Shell could not verify this surface URL".to_string())?;
+    let url = window
+        .url()
+        .map_err(|_| "Shell could not verify this surface URL".to_string())?;
     if trusted_local_auth_surface(window.label(), &url) {
         Ok(state.inner().0.clone())
     } else {
@@ -367,7 +376,8 @@ fn main() {
     let command_sc = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Period);
     let (hd, hc) = (dictate_sc.clone(), command_sc.clone());
 
-    let local_auth_bootstrap = generate_local_auth_bootstrap().expect("secure local authentication bootstrap");
+    let local_auth_bootstrap =
+        generate_local_auth_bootstrap().expect("secure local authentication bootstrap");
     let app = tauri::Builder::default()
         .manage(LocalAuthBootstrap(local_auth_bootstrap))
         // single-instance MUST be registered before deep-link so a second
@@ -542,7 +552,8 @@ mod tests {
     #[test]
     fn local_auth_bootstrap_is_bound_to_exact_bundled_surfaces() {
         let bundled = tauri::Url::parse("http://tauri.localhost/flow-hud.html").unwrap();
-        let installed = tauri::Url::parse("http://127.0.0.1:5984/v1/apps/notes/web/index.html").unwrap();
+        let installed =
+            tauri::Url::parse("http://127.0.0.1:5984/v1/apps/notes/web/index.html").unwrap();
         let provider = tauri::Url::parse("https://app.tenari.world/").unwrap();
         assert!(trusted_local_auth_surface("flow-hud", &bundled));
         assert!(trusted_local_auth_surface("main", &bundled));

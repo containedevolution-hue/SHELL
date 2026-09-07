@@ -2205,6 +2205,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-single-instance",
  "trash",
+ "windows 0.61.3",
 ]
 
 [[package]]

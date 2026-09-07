@@ -76,16 +76,17 @@ URL, window title, or page storage is not this boundary.
 
 Linux packaging, native IPC, the geometry producer, crash recovery after loss of
 the entire host process, and physical multi-monitor/provider comparisons remain
-unproven. Windows also has only a default-off JavaScript backend boundary: its
-trusted Rust driver, authenticated caller wiring, mixed-DPI geometry, focus
-behavior, and live provider comparison remain unimplemented. It must never be
-replaced by a page-visible generic HWND/AUMID command. General capability
+unproven. Windows now has a private compiled Rust driver behind an OS trait and
+fake tests, but its production port is explicitly disconnected. Authenticated
+caller wiring, mixed-DPI geometry, focus behavior, and live provider comparison
+remain unimplemented. The port must never be replaced by a page-visible generic
+HWND/AUMID command. General capability
 discovery remains planned, and the bundled provider registry remains empty. See
 [the test-session procedure](../../os/CHAT-HYPRLAND-TEST.md).
 
 ## Verification boundary
 
-The current Windows continuation passes all 124 Shell repository tests. The last
+The current Windows continuation passes the full Shell repository test suite. The last
 recorded Windows Tauri release binary and NSIS installer build also passed.
 Changed-document local links resolve. Tests exercise forged peer objects,
 revoked/queued calls, close during dispatch, stale/native-frame geometry,
