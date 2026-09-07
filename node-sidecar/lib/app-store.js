@@ -45,21 +45,24 @@ function createAppStore({ catalogDirectory, appsDirectory, remote = false, local
     try {
       await refreshCatalog();
       const installed = registry.list();
+      const entries = list();
       for (const [key, grant] of installGrants) if (grant.used || now() >= grant.expiresAt) installGrants.delete(key);
       const token = randomBytes(32).toString('hex');
-      const installGrant = { token, expiresAt:now() + 2 * 60 * 1000, used:false };
+      const installGrant = { token, expiresAt:now() + 2 * 60 * 1000, used:false, releases:new Map(entries.map(app=>[app.id,app.sha256])) };
       installGrants.set(token, installGrant);
-      res.json({ contractVersion:1, sourceUrl:CATALOG_URL, sourceStatus, installToken:installGrant.token, installTokenExpiresAt:installGrant.expiresAt, apps:list().map(({id,name,description,version}) => {
+      res.json({ contractVersion:1, sourceUrl:CATALOG_URL, sourceStatus, installToken:installGrant.token, installTokenExpiresAt:installGrant.expiresAt, apps:entries.map(({id,name,description,version,sha256}) => {
         const current = installed.find(app => app.id === id);
-        return { id,name,description,version, updateAvailable:!!current && newer(version,current.version), installedVersion:current?.version || null, launchUrl:current?.launchUrl || null };
+        return { id,name,description,version,sha256, updateAvailable:!!current && newer(version,current.version), installedVersion:current?.version || null, launchUrl:current?.launchUrl || null };
       }) });
     } catch { res.status(503).json({ error:'catalog_unavailable' }); }
   });
   router.post('/:id/install', (req, res) => {
     const authorization = req.get('Authorization');
+    let reviewedHash;
     if (authorization) {
       const result = localAuthority?.authenticate(req, 'app-store.install');
       if (!result?.ok) return res.status(result?.status || 401).json({ error:result?.error || 'installation_not_authorized' });
+      reviewedHash = req.get('X-Shell-Release');
     } else {
       const candidate = req.get('X-Shell-Install');
       const installGrant = installGrants.get(candidate);
@@ -67,10 +70,12 @@ function createAppStore({ catalogDirectory, appsDirectory, remote = false, local
       if (now() >= installGrant.expiresAt) return res.status(401).json({ error:'install_token_expired' });
       if (installGrant.used) return res.status(409).json({ error:'install_token_replayed' });
       installGrant.used = true;
+      reviewedHash = installGrant.releases.get(req.params.id);
     }
     try {
       const app = list().find(item => item.id === req.params.id);
       if (!app) return res.status(404).json({ error:'app_not_in_catalog' });
+      if (app.sha256 !== reviewedHash) return res.status(409).json({error:'release_changed',message:'The release changed. Review the refreshed catalog before installing.'});
       const installed = registry.list().find(item => item.id === app.id);
       if (installed) {
         if (installed.version !== app.version) {

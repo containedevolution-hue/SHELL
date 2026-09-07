@@ -40,7 +40,7 @@ test('store requires a local surface and install token, then installs and opens 
   assert.equal((await fetch(url+'/unknown/install',{method:'POST',headers:{'X-Shell-Install':installed.installToken,Origin:origin}})).status,404);
   assert.equal(installed.apps[0].installedVersion,'0.2.0');
   const exactCaller = localAuthority.issue('main',['app-store.install']);
-  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers:{Authorization:`Bearer ${exactCaller.token}`,'X-Shell-Caller':'main','X-Shell-Request-Id':'install-local-a',Origin:origin}})).status,200);
+  assert.equal((await fetch(url+'/scribble/install',{method:'POST',headers:{Authorization:`Bearer ${exactCaller.token}`,'X-Shell-Caller':'main','X-Shell-Request-Id':'install-local-a','X-Shell-Release':hash(release),Origin:origin}})).status,200);
   assert.equal(await (await fetch(origin+installed.apps[0].launchUrl)).text(),'<h1>Scribble</h1>');
   fs.appendFileSync(path.join(catalogDirectory,'scribble.ceapp.json'),'tampered');
   assert.equal((await fetch(url)).status,503);

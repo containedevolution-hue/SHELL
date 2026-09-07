@@ -40,7 +40,7 @@
       button.disabled = true; button.textContent = app.updateAvailable ? 'Updating…' : 'Installing…';
       try {
         const localHeaders = await localMutationHeaders('app-store.install');
-        const response = await fetch(origin + '/v1/app-store/' + encodeURIComponent(app.id) + '/install', {method:'POST',headers:localHeaders || {'X-Shell-Install':token}});
+        const response = await fetch(origin + '/v1/app-store/' + encodeURIComponent(app.id) + '/install', {method:'POST',headers:{...(localHeaders || {'X-Shell-Install':token}),'X-Shell-Release':app.sha256}});
         if (!response.ok) throw new Error('Installation could not finish. Your existing apps were kept.');
         await refresh(); message(`${app.name} is installed. Open it here or from My apps.`);
       } catch (error) {
