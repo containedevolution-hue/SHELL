@@ -2,12 +2,20 @@
 //!
 //! This module is deliberately not a Tauri command. Its registry records,
 //! bridge context, verified HWND tokens, and mutation methods are private to
-//! trusted native code. The production Rust-to-Node port remains disconnected.
+//! trusted native code. Its only production transport is the inherited sidecar pipe.
 
 #![allow(dead_code)]
 
+use hmac::{Hmac, Mac};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use sha2::Sha256;
+use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+
+const PIPE_PREFIX: &str = "@@SHELL_NATIVE_DESK_V1@@";
+const MAX_PIPE_FRAME: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RegisteredWindowsClient {
@@ -367,16 +375,451 @@ fn relative_from_root(root: &Path, executable: &Path) -> Option<String> {
     normalize_relative(&exe_text[prefix.len()..]).ok()
 }
 
-struct PortState {
-    available: bool,
-    reason: &'static str,
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct PipeRequest {
+    v: u8,
+    session_id: String,
+    parent_pid: u32,
+    child_pid: u32,
+    request_id: String,
+    nonce: String,
+    op: String,
+    body: Value,
 }
 
-fn production_port_state() -> PortState {
-    PortState {
-        available: false,
-        reason: "Authenticated Rust-to-Node native-desk transport is not connected.",
+#[derive(Deserialize)]
+struct PipeEnvelope {
+    payload: String,
+    mac: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegistryDocument {
+    contract: String,
+    version: u32,
+    clients: Vec<RegistryClient>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RegistryClient {
+    client_id: String,
+    label: String,
+    identities: RegistryIdentities,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegistryIdentities {
+    #[serde(rename = "linux")]
+    _linux: Option<Value>,
+    windows: Option<RegistryWindows>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RegistryWindows {
+    package_family_name: String,
+    application_user_model_id: String,
+    relative_executables: Vec<String>,
+    window_classes: Vec<String>,
+    validation: RegistryValidation,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RegistryValidation {
+    status: String,
+    validated_at: String,
+    evidence: String,
+}
+
+struct PipeWindow {
+    verified: VerifiedWindow,
+    original: WindowPlacement,
+}
+
+pub(crate) struct NativeDeskPipe {
+    secret: Vec<u8>,
+    session_id: String,
+    parent_pid: u32,
+    child_pid: u32,
+    driver: WindowsNativeDriver<native::NativeWindowsOs>,
+    context: AuthenticatedBridgeContext,
+    clients: HashMap<String, RegisteredWindowsClient>,
+    windows: HashMap<String, PipeWindow>,
+    seen_nonces: HashSet<String>,
+    replies: HashMap<String, (String, String)>,
+}
+
+impl NativeDeskPipe {
+    pub(crate) fn from_registry(
+        path: &Path,
+        secret: String,
+        session_id: String,
+        parent_pid: u32,
+        child_pid: u32,
+    ) -> Result<Self, String> {
+        let parsed: RegistryDocument = serde_json::from_slice(
+            &std::fs::read(path)
+                .map_err(|_| "Native client registry is unavailable.".to_string())?,
+        )
+        .map_err(|_| "Native client registry is invalid.".to_string())?;
+        if parsed.contract != "com.containedevolution.shell.native-clients"
+            || parsed.version != 2
+            || parsed.clients.len() > 30
+        {
+            return Err("Native client registry is invalid.".into());
+        }
+        let mut clients = HashMap::new();
+        for item in parsed.clients {
+            if let Some(value) = item.identities.windows {
+                if item.label.is_empty()
+                    || value.validation.status != "passed"
+                    || value.validation.validated_at.is_empty()
+                    || value.validation.evidence.is_empty()
+                {
+                    return Err("Native client registry is invalid.".into());
+                }
+                let executables = value
+                    .relative_executables
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>();
+                let classes = value
+                    .window_classes
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>();
+                let record = RegisteredWindowsClient::from_registry(
+                    &item.client_id,
+                    &value.package_family_name,
+                    &value.application_user_model_id,
+                    &executables,
+                    &classes,
+                )?;
+                if clients.insert(item.client_id, record).is_some() {
+                    return Err("Duplicate native client id.".into());
+                }
+            }
+        }
+        let (driver, context) = WindowsNativeDriver::bind(native::NativeWindowsOs);
+        Ok(Self {
+            secret: secret.into_bytes(),
+            session_id,
+            parent_pid,
+            child_pid,
+            driver,
+            context,
+            clients,
+            windows: HashMap::new(),
+            seen_nonces: HashSet::new(),
+            replies: HashMap::new(),
+        })
     }
+
+    pub(crate) fn handle_line(&mut self, line: &[u8]) -> Option<Vec<u8>> {
+        if line.len() > MAX_PIPE_FRAME || !line.starts_with(PIPE_PREFIX.as_bytes()) {
+            return None;
+        }
+        let envelope: PipeEnvelope = serde_json::from_slice(&line[PIPE_PREFIX.len()..]).ok()?;
+        if envelope.payload.len() > MAX_PIPE_FRAME * 2 || envelope.payload.len() % 2 != 0 {
+            return None;
+        }
+        let expected = hmac_hex(&self.secret, envelope.payload.as_bytes());
+        if !constant_time_equal(expected.as_bytes(), envelope.mac.as_bytes()) {
+            return None;
+        }
+        let payload = decode_hex(&envelope.payload)?;
+        let request: PipeRequest = serde_json::from_slice(&payload).ok()?;
+        if request.v != 1
+            || request.session_id != self.session_id
+            || request.parent_pid != self.parent_pid
+            || request.child_pid != self.child_pid
+            || !valid_pipe_id(&request.request_id)
+            || !valid_pipe_id(&request.nonce)
+        {
+            return None;
+        }
+        if let Some((prior, response)) = self.replies.get(&request.request_id) {
+            return if prior == &envelope.payload {
+                Some(response.as_bytes().to_vec())
+            } else {
+                None
+            };
+        }
+        if !self.seen_nonces.insert(request.nonce.clone()) {
+            return None;
+        }
+        let result = self.dispatch(&request.op, &request.body);
+        let response = json!({ "v": 1, "sessionId": self.session_id, "parentPid": self.parent_pid,
+            "childPid": self.child_pid, "requestId": request.request_id, "nonce": request.nonce,
+            "ok": result.is_ok(), "result": result.as_ref().ok(), "error": result.err() });
+        let framed = encode_pipe(&self.secret, &response)?;
+        if self.replies.len() >= 1024 {
+            self.replies.clear();
+            self.seen_nonces.clear();
+        }
+        self.replies
+            .insert(request.request_id, (envelope.payload, framed.clone()));
+        Some(framed.into_bytes())
+    }
+
+    pub(crate) fn owns_line(&self, line: &[u8]) -> bool {
+        line.starts_with(PIPE_PREFIX.as_bytes())
+    }
+
+    fn client(&self, body: &Value) -> Result<&RegisteredWindowsClient, String> {
+        let id = exact_string_body(body, &["clientId"], "clientId")?;
+        self.clients
+            .get(id)
+            .ok_or_else(|| "Native client is not registered.".into())
+    }
+
+    fn refresh_windows(&mut self) -> Result<Vec<Value>, String> {
+        let mut result = Vec::new();
+        let mut next = HashMap::new();
+        for client in self.clients.values() {
+            for window in self.driver.inventory(&self.context, client)? {
+                let reference = window_reference(&self.secret, &window);
+                let original = self
+                    .windows
+                    .get(&reference)
+                    .map(|item| item.original.clone())
+                    .unwrap_or_else(|| window.raw.placement.clone());
+                result.push(raw_json(client, &reference, &window));
+                next.insert(
+                    reference,
+                    PipeWindow {
+                        verified: window,
+                        original,
+                    },
+                );
+            }
+        }
+        self.windows = next;
+        Ok(result)
+    }
+
+    fn dispatch(&mut self, op: &str, body: &Value) -> Result<Value, String> {
+        match op {
+            "probe" if empty_body(body) => {
+                Ok(json!({ "available": true, "name": "Windows private native desk" }))
+            }
+            "listWindows" if empty_body(body) => Ok(Value::Array(self.refresh_windows()?)),
+            "applicationFound" => Ok(Value::Bool(
+                self.driver
+                    .application_found(&self.context, self.client(body)?)?,
+            )),
+            "activate" => {
+                self.driver.activate(&self.context, self.client(body)?)?;
+                Ok(Value::Bool(true))
+            }
+            "minimize" | "focus" => {
+                let (client_id, reference) = window_body(body, &["clientId", "windowRef"])?;
+                let item = self.take_window(&client_id, &reference)?;
+                let verified = if op == "minimize" {
+                    self.driver.minimize(&self.context, &item.verified)?
+                } else {
+                    self.driver.focus(&self.context, &item.verified)?
+                };
+                self.windows.insert(
+                    reference,
+                    PipeWindow {
+                        verified,
+                        original: item.original,
+                    },
+                );
+                Ok(Value::Bool(true))
+            }
+            "restore" => {
+                if !body_keys(body, &["clientId", "windowRef", "mode"]) {
+                    return Err("Invalid native desk request.".into());
+                }
+                let (client_id, reference) = window_body(body, &["clientId", "windowRef", "mode"])?;
+                let mode = body
+                    .get("mode")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "Invalid native desk request.".to_string())?;
+                if mode != "normal" && mode != "standalone" {
+                    return Err("Invalid native desk request.".into());
+                }
+                let item = self.take_window(&client_id, &reference)?;
+                let placement = if mode == "standalone" {
+                    Some(&item.original)
+                } else {
+                    None
+                };
+                let verified = self
+                    .driver
+                    .restore(&self.context, &item.verified, placement)?;
+                self.windows.insert(
+                    reference,
+                    PipeWindow {
+                        verified,
+                        original: item.original,
+                    },
+                );
+                Ok(Value::Bool(true))
+            }
+            "place" => {
+                if !body_keys(body, &["clientId", "windowRef", "rect"]) {
+                    return Err("Invalid native desk request.".into());
+                }
+                let (client_id, reference) = window_body(body, &["clientId", "windowRef", "rect"])?;
+                let rect = body
+                    .get("rect")
+                    .and_then(Value::as_object)
+                    .ok_or_else(|| "Invalid native desk geometry.".to_string())?;
+                if rect.len() != 4
+                    || !["x", "y", "width", "height"]
+                        .iter()
+                        .all(|key| rect.contains_key(*key))
+                {
+                    return Err("Invalid native desk geometry.".into());
+                }
+                let number = |key: &str| {
+                    rect.get(key)
+                        .and_then(Value::as_i64)
+                        .and_then(|v| i32::try_from(v).ok())
+                        .ok_or_else(|| "Invalid native desk geometry.".to_string())
+                };
+                let geometry = PhysicalRect::checked(
+                    number("x")?,
+                    number("y")?,
+                    number("width")?,
+                    number("height")?,
+                )?;
+                let item = self.take_window(&client_id, &reference)?;
+                let verified = self.driver.place(&self.context, &item.verified, geometry)?;
+                self.windows.insert(
+                    reference,
+                    PipeWindow {
+                        verified,
+                        original: item.original,
+                    },
+                );
+                Ok(Value::Bool(true))
+            }
+            _ => Err("Invalid native desk request.".into()),
+        }
+    }
+
+    fn take_window(&mut self, client_id: &str, reference: &str) -> Result<PipeWindow, String> {
+        let item = self
+            .windows
+            .remove(reference)
+            .ok_or_else(|| "Native desk window reference is absent or stale.".to_string())?;
+        if item.verified.client.client_id != client_id {
+            self.windows.insert(reference.to_string(), item);
+            return Err("Native desk window reference is absent or stale.".into());
+        }
+        Ok(item)
+    }
+}
+
+fn empty_body(body: &Value) -> bool {
+    body.as_object().is_some_and(|value| value.is_empty())
+}
+fn body_keys(body: &Value, keys: &[&str]) -> bool {
+    body.as_object().is_some_and(|value| {
+        value.len() == keys.len() && keys.iter().all(|key| value.contains_key(*key))
+    })
+}
+fn exact_string_body<'a>(body: &'a Value, keys: &[&str], key: &str) -> Result<&'a str, String> {
+    if !body_keys(body, keys) {
+        return Err("Invalid native desk request.".into());
+    }
+    body.get(key)
+        .and_then(Value::as_str)
+        .filter(|value| valid_pipe_id(value))
+        .ok_or_else(|| "Invalid native desk request.".into())
+}
+fn window_body(body: &Value, keys: &[&str]) -> Result<(String, String), String> {
+    if !body_keys(body, keys) {
+        return Err("Invalid native desk request.".into());
+    }
+    let client = body
+        .get("clientId")
+        .and_then(Value::as_str)
+        .filter(|v| valid_pipe_id(v))
+        .ok_or_else(|| "Invalid native desk request.".to_string())?;
+    let reference = body
+        .get("windowRef")
+        .and_then(Value::as_str)
+        .filter(|v| valid_pipe_id(v))
+        .ok_or_else(|| "Invalid native desk request.".to_string())?;
+    Ok((client.to_string(), reference.to_string()))
+}
+fn valid_pipe_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 160
+        && value
+            .bytes()
+            .all(|ch| ch.is_ascii_alphanumeric() || b"._:-".contains(&ch))
+}
+fn constant_time_equal(left: &[u8], right: &[u8]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .fold(0u8, |out, (a, b)| out | (a ^ b))
+            == 0
+}
+fn hmac_hex(secret: &[u8], payload: &[u8]) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret).expect("HMAC key");
+    mac.update(payload);
+    mac.finalize()
+        .into_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+fn decode_hex(value: &str) -> Option<Vec<u8>> {
+    if value.len() % 2 != 0 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    (0..value.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&value[i..i + 2], 16).ok())
+        .collect()
+}
+fn encode_pipe(secret: &[u8], value: &Value) -> Option<String> {
+    let payload: String = serde_json::to_vec(value)
+        .ok()?
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let frame = format!(
+        "{PIPE_PREFIX}{}\n",
+        json!({ "payload": payload, "mac": hmac_hex(secret, payload.as_bytes()) })
+    );
+    (frame.len() <= MAX_PIPE_FRAME).then_some(frame)
+}
+fn window_reference(secret: &[u8], window: &VerifiedWindow) -> String {
+    format!(
+        "w-{}",
+        &hmac_hex(
+            secret,
+            format!(
+                "{}:{}:{}:{}",
+                window.client.client_id,
+                window.token.pid,
+                window.token.process_start_time,
+                window.token.hwnd
+            )
+            .as_bytes()
+        )[..32]
+    )
+}
+fn raw_json(client: &RegisteredWindowsClient, reference: &str, window: &VerifiedWindow) -> Value {
+    let r = &window.raw;
+    json!({ "clientId": client.client_id, "windowRef": reference, "pid": r.pid, "processStartTime": r.process_start_time.to_string(),
+        "hwnd": format!("0x{:x}", r.hwnd), "rootHwnd": format!("0x{:x}", r.root_hwnd), "ownerHwnd": r.owner_hwnd.map(|v| format!("0x{v:x}")).unwrap_or_else(|| "0x0".into()),
+        "packageFamilyName": r.package_family_name, "applicationUserModelId": r.application_user_model_id, "packageFullName": r.package_full_name,
+        "packageInstallRoot": r.package_install_root, "processExecutable": r.process_executable, "packageStatus": "ok", "signatureTrusted": true,
+        "windowClass": r.window_class, "userWindow": true, "visible": r.visible, "iconic": r.iconic, "cloaked": r.cloaked,
+        "elevated": r.elevated, "onCurrentDesktop": r.on_current_desktop, "controllable": true,
+        "visualBounds": [r.bounds.x, r.bounds.y, r.bounds.width, r.bounds.height], "dpi": r.dpi, "focused": r.focused,
+        "placement": { "flags": r.placement.flags, "showCommand": r.placement.show_command } })
 }
 
 mod native {
@@ -985,10 +1428,61 @@ mod tests {
         assert!(driver.one(&context, &client()).is_err());
     }
 
+    fn empty_pipe() -> NativeDeskPipe {
+        let (driver, context) = WindowsNativeDriver::bind(native::NativeWindowsOs);
+        NativeDeskPipe {
+            secret: b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_vec(),
+            session_id: "session-a".into(),
+            parent_pid: 41,
+            child_pid: 42,
+            driver,
+            context,
+            clients: HashMap::new(),
+            windows: HashMap::new(),
+            seen_nonces: HashSet::new(),
+            replies: HashMap::new(),
+        }
+    }
+
+    fn request(op: &str, request_id: &str, nonce: &str) -> String {
+        encode_pipe(
+            b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            &json!({
+                "v": 1, "sessionId": "session-a", "parentPid": 41, "childPid": 42,
+                "requestId": request_id, "nonce": nonce, "op": op, "body": {}
+            }),
+        )
+        .unwrap()
+    }
+
     #[test]
-    fn production_port_is_explicitly_disconnected() {
-        let state = production_port_state();
-        assert!(!state.available);
-        assert!(state.reason.contains("not connected"));
+    fn private_pipe_authenticates_session_and_replays_exact_request_only() {
+        let mut pipe = empty_pipe();
+        let frame = request("probe", "request-1", "nonce-1");
+        let first = pipe.handle_line(frame.trim_end().as_bytes()).unwrap();
+        let replay = pipe.handle_line(frame.trim_end().as_bytes()).unwrap();
+        assert_eq!(first, replay);
+        let decoded = String::from_utf8(first).unwrap();
+        assert!(!decoded.contains("aaaaaaaaaaaaaaaa"));
+        let collision = request("listWindows", "request-1", "nonce-2");
+        assert!(pipe.handle_line(collision.trim_end().as_bytes()).is_none());
+    }
+
+    #[test]
+    fn private_pipe_refuses_wrong_mac_session_process_malformed_and_oversize_frames() {
+        let mut pipe = empty_pipe();
+        assert!(pipe.handle_line(b"not-a-frame").is_none());
+        assert!(pipe
+            .handle_line(format!("{PIPE_PREFIX}{{\"payload\":\"00\",\"mac\":\"bad\"}}").as_bytes())
+            .is_none());
+        let wrong = encode_pipe(&pipe.secret, &json!({ "v": 1, "sessionId": "wrong", "parentPid": 41,
+            "childPid": 42, "requestId": "request-2", "nonce": "nonce-2", "op": "probe", "body": {} })).unwrap();
+        assert!(pipe.handle_line(wrong.trim_end().as_bytes()).is_none());
+        assert!(pipe.handle_line(&vec![b'x'; MAX_PIPE_FRAME + 1]).is_none());
+        let wrong_child = encode_pipe(&pipe.secret, &json!({ "v": 1, "sessionId": "session-a", "parentPid": 41,
+            "childPid": 99, "requestId": "request-3", "nonce": "nonce-3", "op": "probe", "body": {} })).unwrap();
+        assert!(pipe
+            .handle_line(wrong_child.trim_end().as_bytes())
+            .is_none());
     }
 }

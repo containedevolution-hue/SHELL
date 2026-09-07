@@ -15,6 +15,7 @@ test('Windows native desk compiles as an internal module with no page-visible co
   const handlers = main.match(/invoke_handler\(tauri::generate_handler!\[([\s\S]*?)\]\)/)?.[1] || '';
   assert.doesNotMatch(handlers, /native_desk|window_(?:place|minimize|restore|focus)|activate_application/i);
   assert.doesNotMatch(rust, /\bpub\s+(?:fn|struct|trait|enum)\b/);
+  assert.match(rust, /pub\(crate\) struct NativeDeskPipe/);
 });
 
 test('native driver surface contains no terminate, hidden-window, parenting, input, or arbitrary shell escape', () => {
@@ -23,6 +24,6 @@ test('native driver surface contains no terminate, hidden-window, parenting, inp
   }
   const registry = JSON.parse(fs.readFileSync(path.join(root, 'node-sidecar', 'config', 'native-desk-clients.json'), 'utf8'));
   assert.deepEqual(registry.clients, []);
-  assert.match(rust, /available:\s*false/);
-  assert.match(rust, /transport is not connected/);
+  assert.match(main, /SHELL_NATIVE_DESK_SECRET/);
+  assert.match(main, /child\.write\(&response\)/);
 });

@@ -27,12 +27,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 // Compiled on Windows but intentionally not exposed through invoke_handler.
-// The port stays disconnected until the canonical Chat host can authenticate a
-// private native-to-sidecar channel and supply registry-resolved identities.
+// The driver is reachable only through the exact inherited Node sidecar pipes;
+// canonical Chat host authority and runtime acceptance remain separate gates.
 #[cfg(windows)]
 mod native_desk_windows;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Emitter, Manager};
@@ -190,7 +190,7 @@ async fn flow_copy_selection() -> Result<String, String> {
 /// kill it. Held in Tauri state because the sidecar is spawned in setup() (where
 /// the AppHandle exists) rather than in main(). A `CommandChild` from the shell
 /// plugin. TODO(#258): route its shutdown through a single `on_before_exit` path.
-struct SidecarChild(Mutex<Option<CommandChild>>);
+struct SidecarChild(Arc<Mutex<Option<CommandChild>>>);
 
 #[derive(Clone)]
 struct LocalAuthBootstrap(String);
@@ -240,7 +240,7 @@ fn spawn_sidecar(
     app: &tauri::AppHandle,
     data_dir: Option<&std::path::Path>,
     local_auth_bootstrap: &str,
-) -> Result<CommandChild, String> {
+) -> Result<Arc<Mutex<Option<CommandChild>>>, String> {
     // Bundled resources (packaged) → source tree (dev). `../node-sidecar` and
     // `../whisper` are mapped to `node-sidecar`/`whisper` under the resource dir
     // by tauri.conf.json's bundle.resources.
@@ -275,6 +275,9 @@ fn spawn_sidecar(
 
     let script = resolve("node-sidecar/index.js")
         .ok_or_else(|| "sidecar index.js not found in resources or source tree".to_string())?;
+    #[cfg(windows)]
+    let native_registry = resolve("node-sidecar/config/native-desk-clients.json")
+        .ok_or_else(|| "native desk registry not found in resources or source tree".to_string())?;
     println!(
         "[localhub] spawning bundled-node sidecar: {}",
         script.display()
@@ -307,6 +310,22 @@ fn spawn_sidecar(
     cmd = cmd
         .env("LOCALHUB_PARENT_PID", std::process::id().to_string())
         .env("SHELL_LOCAL_AUTH_BOOTSTRAP", local_auth_bootstrap);
+    #[cfg(windows)]
+    let (native_secret, native_session) = (
+        generate_local_auth_bootstrap()?,
+        format!("native-{}", generate_local_auth_bootstrap()?),
+    );
+    #[cfg(windows)]
+    {
+        cmd = cmd
+            .env("SHELL_NATIVE_DESK_PIPE", "enabled")
+            .env("SHELL_NATIVE_DESK_SECRET", &native_secret)
+            .env("SHELL_NATIVE_DESK_SESSION", &native_session)
+            .env(
+                "SHELL_NATIVE_DESK_PARENT_PID",
+                std::process::id().to_string(),
+            );
+    }
 
     if std::env::var_os("WHISPER_BIN").is_none() {
         if let Some(w) = whisper_bin {
@@ -339,6 +358,27 @@ fn spawn_sidecar(
     let (mut rx, child) = cmd
         .spawn()
         .map_err(|e| format!("failed to spawn sidecar: {e}"))?;
+    let child_pid = child.pid();
+    let shared_child = Arc::new(Mutex::new(Some(child)));
+    let response_child = shared_child.clone();
+    #[cfg(windows)]
+    let mut native_pipe = match native_desk_windows::NativeDeskPipe::from_registry(
+        &native_registry,
+        native_secret,
+        native_session,
+        std::process::id(),
+        child_pid,
+    ) {
+        Ok(pipe) => pipe,
+        Err(error) => {
+            if let Ok(mut guard) = shared_child.lock() {
+                if let Some(child) = guard.take() {
+                    let _ = child.kill();
+                }
+            }
+            return Err(error);
+        }
+    };
 
     // Drain stdout/stderr so the pipe never backpressures and the sidecar's logs
     // surface in the app console. Ends when the child terminates (channel closes).
@@ -346,6 +386,17 @@ fn spawn_sidecar(
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stdout(line) => {
+                    #[cfg(windows)]
+                    if native_pipe.owns_line(&line) {
+                        if let Some(response) = native_pipe.handle_line(&line) {
+                            if let Ok(mut guard) = response_child.lock() {
+                                if let Some(child) = guard.as_mut() {
+                                    let _ = child.write(&response);
+                                }
+                            }
+                        }
+                        continue;
+                    }
                     print!("[sidecar] {}", String::from_utf8_lossy(&line))
                 }
                 CommandEvent::Stderr(line) => {
@@ -361,7 +412,7 @@ fn spawn_sidecar(
         }
     });
 
-    Ok(child)
+    Ok(shared_child)
 }
 
 fn main() {
@@ -437,7 +488,9 @@ fn main() {
             let local_auth_bootstrap = app.state::<LocalAuthBootstrap>().inner().0.clone();
             let child = match spawn_sidecar(app.handle(), data_dir.as_deref(), &local_auth_bootstrap) {
                 Ok(c) => {
-                    println!("[localhub] sidecar pid: {}", c.pid());
+                    if let Ok(guard) = c.lock() {
+                        if let Some(child) = guard.as_ref() { println!("[localhub] sidecar pid: {}", child.pid()); }
+                    }
                     Some(c)
                 }
                 Err(e) => {
@@ -452,7 +505,7 @@ fn main() {
                     None
                 }
             };
-            app.manage(SidecarChild(Mutex::new(child)));
+            app.manage(SidecarChild(child.unwrap_or_else(|| Arc::new(Mutex::new(None)))));
 
             // Flow: register the global hotkeys + make the HUD click-through
             // (an always-on-top pill that never steals focus/clicks from the app

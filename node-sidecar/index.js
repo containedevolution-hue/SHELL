@@ -32,6 +32,11 @@ const { privateNetworkPreflight, createCorsMiddleware } = require('./lib/cors-po
 const capabilities = require('./lib/capabilities');
 const { createRegistry } = require('./lib/app-registry');
 const { createAppStore } = require('./lib/app-store');
+const { initializeInheritedWindowsNativeDeskDriver } = require('./lib/windows-native-desk-transport');
+
+// This object stays inside the sidecar process. It is not mounted on HTTP or
+// exported to page content; the future canonical Chat host bridge may consume it.
+const inheritedWindowsNativeDesk = initializeInheritedWindowsNativeDeskDriver();
 
 const PORT       = parseInt(process.env.LOCALHUB_PORT,       10) || 5984;
 const HTTPS_PORT = parseInt(process.env.LOCALHUB_HTTPS_PORT, 10) || 8443;
@@ -209,6 +214,7 @@ app.use('/', requireSyncToken, requirePairedDatabase, expressPouchDB(StoreCtor, 
 }));
 
 parentWatch.start((pid) => {
+  inheritedWindowsNativeDesk?.close();
   console.log(`[localhub-sidecar] parent ${pid} is gone — shutting down so the port and store are released`);
   process.exit(0);
 });

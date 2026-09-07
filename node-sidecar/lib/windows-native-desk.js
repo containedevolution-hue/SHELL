@@ -69,7 +69,8 @@ function createWindowsBackend({
     const eligibleWindow = raw.userWindow === true && (raw.visible === true || raw.iconic === true) && (raw.cloaked !== true || raw.iconic === true);
     const packageTrusted = raw.packageStatus === 'ok' && raw.signatureTrusted === true;
     return Object.freeze({
-      platform: 'win32', pid: raw.pid, processStartTime: raw.processStartTime, rawHwnd: hwnd,
+      platform: 'win32', clientId: typeof raw.clientId === 'string' ? raw.clientId : null,
+      pid: raw.pid, processStartTime: raw.processStartTime, rawHwnd: hwnd,
       windowId: `hwnd-${hwnd.slice(2)}-${sessionHash}`, nativeSessionId: `process-${raw.pid}-${sessionHash}`,
       packageFamilyName: raw.packageFamilyName, applicationUserModelId: raw.applicationUserModelId,
       packageFullName: raw.packageFullName, relativeExecutable, windowClass: raw.windowClass,
@@ -99,7 +100,7 @@ function createWindowsBackend({
   }
 
   function guard(window) {
-    return Object.freeze({ hwnd: window.rawHwnd, pid: window.pid, processStartTime: window.processStartTime,
+    return Object.freeze({ clientId: window.clientId, hwnd: window.rawHwnd, pid: window.pid, processStartTime: window.processStartTime,
       packageFamilyName: window.packageFamilyName, applicationUserModelId: window.applicationUserModelId,
       packageFullName: window.packageFullName, relativeExecutable: window.relativeExecutable, windowClass: window.windowClass });
   }
@@ -162,13 +163,13 @@ function createWindowsBackend({
 
   async function applicationFound(entry) {
     if (!(await probe()).available || entry?.platform !== 'win32') return false;
-    return (await driver.applicationFound(Object.freeze({ packageFamilyName: entry.packageFamilyName,
+    return (await driver.applicationFound(Object.freeze({ clientId: entry.clientId, packageFamilyName: entry.packageFamilyName,
       applicationUserModelId: entry.applicationUserModelId, relativeExecutables: [...entry.relativeExecutables] }))) === true;
   }
 
   async function launch(entry) {
     if (!await applicationFound(entry)) throw new Error('Registered packaged Windows application is unavailable.');
-    await driver.activate(Object.freeze({ packageFamilyName: entry.packageFamilyName, applicationUserModelId: entry.applicationUserModelId }));
+    await driver.activate(Object.freeze({ clientId: entry.clientId, packageFamilyName: entry.packageFamilyName, applicationUserModelId: entry.applicationUserModelId }));
   }
 
   async function waitForWindow(_entry, predicate) {

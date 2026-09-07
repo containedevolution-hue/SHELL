@@ -77,9 +77,11 @@ URL, window title, or page storage is not this boundary.
 Linux packaging, native IPC, the geometry producer, crash recovery after loss of
 the entire host process, and physical multi-monitor/provider comparisons remain
 unproven. Windows now has a private compiled Rust driver behind an OS trait and
-fake tests, but its production port is explicitly disconnected. Authenticated
-caller wiring, mixed-DPI geometry, focus behavior, and live provider comparison
-remain unimplemented. The port must never be replaced by a page-visible generic
+an authenticated, size-bounded inherited pipe to the exact Node child. It uses a
+random per-launch secret/session, binds both process ids, deduplicates request ids,
+and exposes only registered client ids, opaque window references, fixed lifecycle
+operations, and bounded geometry. Canonical Chat caller wiring, mixed-DPI geometry,
+focus behavior, and live provider comparison remain unimplemented. The port must never be replaced by a page-visible generic
 HWND/AUMID command. General capability
 discovery remains planned, and the bundled provider registry remains empty. See
 [the test-session procedure](../../os/CHAT-HYPRLAND-TEST.md).

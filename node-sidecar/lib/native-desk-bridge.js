@@ -7,8 +7,9 @@ const { resolveNativeDeskSlot } = require('./native-desk-geometry');
 // Object-capability boundary for a trusted in-process Chat host. The bootstrap,
 // peer object and native layout reader must NEVER be exported to page content,
 // IPC registration, an HTTP route, a global callback, or a query parameter.
-// A future Tauri transport must authenticate its native caller before reaching
-// this port. Object identity does not authenticate serialized IPC by itself.
+// The inherited Tauri transport authenticates its exact Node child separately.
+// Canonical Chat still must authenticate its native caller before reaching this
+// port. Object identity does not authenticate serialized IPC by itself.
 function createNativeDeskBridge({ peer, chatIdentity, readLayout, backend, hostId,
   registry, registryFile, acceptancePassed = false, now = Date.now } = {}) {
   if (!peer || typeof peer !== 'object' || !chatIdentity || typeof readLayout !== 'function' || !backend) throw new Error('Trusted Chat bootstrap is required.');
