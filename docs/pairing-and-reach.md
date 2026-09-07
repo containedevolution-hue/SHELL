@@ -1,6 +1,6 @@
 # Pairing and Reach
 
-Settings pairs a local SHELL with a Tenari account. Local/LAN storage remains free; remote Companion access through the public tunnel is PASS-gated.
+Settings pairs a local SHELL with a Tenari account. Local/LAN access and remote Companion access through the public tunnel are both free to reach; a paired account is the only requirement and there is no PASS gate. The tunnel carries no per-turn cost of its own — any AI a remote turn invokes settles like any other turn: the account's daily energy grant, then Stardust, or a connected BYOK provider.
 
 ## Contract
 
