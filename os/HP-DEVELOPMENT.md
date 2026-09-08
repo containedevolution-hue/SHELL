@@ -51,6 +51,41 @@ its results do not qualify the MSI hardware.
   confirmed all installed apps and "hello sky!" remained. Full-machine restart
   persistence is user-verified. This is the accepted stopping milestone.
 
+## 2026-09-07 physical delivery checkpoint
+
+- `./os/guest/bin/verify-shell-sidecar` passed on the HP with system Node
+  `v26.8.1`. Both `leveldown` copies resolved their Linux x64 glibc prebuilds;
+  the PouchDB roundtrip, full sidecar loopback boot on port 5985, capability
+  probe, clean stop, and untouched browser-host check all passed.
+- A manual top-level Btrfs recovery set was created before security changes at
+  `recovery/pre-native-packaging-2026-09-07`: read-only snapshots of `@`,
+  `@home`, `@log`, and `@pkg`, plus a 67 MB archive of the separate FAT32
+  `/boot` partition. A second post-firewall set at
+  `recovery/pre-linux-build-2026-09-07` contains the same four read-only
+  snapshots and a 67 MB boot archive. These same-disk snapshots are a local
+  rollback aid, not a substitute for an external backup or tested restore.
+- `install-shell-firewall` completed. Every `verify-shell-firewall` check
+  passed live and again after a full reboot: startup enablement, active service,
+  policy/recovery rules, DNS, and outbound connectivity.
+- Native build prerequisites `base-devel`, `rust`, `webkit2gtk-4.1`, `gtk3`,
+  and later `xdotool` were installed from Arch repositories. `xdotool` supplied
+  the missing `libxdo.so` found by the first link attempt.
+- `scripts/fetch-node-binary.mjs` downloaded and checksum-verified the pinned
+  Linux x64 Node `v24.18.0`; the resulting external binary is a valid x86-64
+  ELF and runs with that version.
+- The optimized native executable builds successfully at
+  `src-tauri/target/release/localhub`. AppImage wrapping remains open:
+  `linuxdeploy` still fails while inspecting foreign `leveldown` prebuilds in
+  its generated AppDir, including the unused musl binary that requests
+  `libc.musl-x86_64.so.1`. Commit `06146b5d` added host-native resource staging
+  and reports two included versus eighteen excluded addons, but the generated
+  AppDir continued to contain foreign addons even after its prior directory was
+  removed. Do not install musl to mask this; inspect Tauri resource assembly.
+- A new unmanaged gigabit switch negotiated a 1000 Mb/s physical link to
+  `enp1s0`, but NetworkManager DHCP timed out with no address. The switch/eero
+  uplink and the saved `Wired connection 1` profile need diagnosis when the HP
+  is next available; Wi-Fi/hotspot connectivity remains the recovery path.
+
 ## Resume and stopping point
 
 Chat Slice 3 now has a [separate Hyprland test-session plan](CHAT-HYPRLAND-TEST.md).
@@ -75,14 +110,10 @@ Export important documents; browser storage is not a portable backup.
 Resume directly from this record; no conversation handoff is needed. Do not
 repeat installation or erase the working HP. First inspect its current Git
 status/revision and pending system updates, preserving local work and data.
-Run the existing isolated ./os/guest/bin/verify-shell-sidecar on the HP; its VM
-pass is not HP runtime proof. Before applying system security changes, establish a physical-machine recovery
-checkpoint; the MSI VM checkpoints do not cover this HDD. Btrfs support alone
-does not establish automated snapshots or tested rollback.
-
-Then install and verify the existing SHELL base firewall, including verification
-after reboot and working DNS/outbound access. Continue native Linux packaging
-work only from the current owning build plan and with KDE recovery available.
+The HP sidecar proof, manual Btrfs recovery sets, and firewall persistence now
+pass as recorded above. Resume with the AppImage resource-assembly defect, not
+by repeating those gates or reinstalling Arch. Continue native Linux packaging
+only from the current owning build plan and with KDE recovery available.
 Remaining hardware checks include audio/microphone, camera, suspend/resume,
 Ethernet, battery and thermal behavior. Browser document export and a recovery
 procedure should be established before treating this as a daily-use machine.
@@ -91,9 +122,8 @@ At the earlier HP milestone, the user requested ending the session and resuming 
 explained, but final power-off was not observed. Do not assume the HP is powered
 off or that its app host is still running when resuming.
 
-SHELL firewall installation on this HP is not yet verified. Native Linux
-packaging and independent session work follow BUILD-PLAN.md; do not infer that
-the VM's sidecar or firewall proof has also run on this machine.
+Native Linux packaging and independent session work follow BUILD-PLAN.md. The
+native executable is built, but no AppImage has yet been produced or launched.
 
 An SSD replacement and later optical-bay/chassis/Brics experiments are planned,
 not prerequisites for this working development milestone.

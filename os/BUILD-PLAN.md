@@ -178,8 +178,9 @@ SHELL packaging, full sidecar operation, or the Tenari mobile WebView.
 For the physical HP laptop, resume from [HP development](HP-DEVELOPMENT.md).
 Its Arch/KDE installation, 51-test repository pass, touchscreen app use, and
 browser-app persistence across a full reboot were verified on 2026-09-06.
-HP recovery, firewall, and full-sidecar runtime checks remain separate from
-the MSI VM evidence below. The user has paused HP work at this milestone.
+HP recovery, firewall, full-sidecar runtime, and native-build evidence are now
+recorded in that document. AppImage assembly and wired DHCP remain its active
+open defects; the MSI VM evidence below remains separate.
 
 The Linux guest repository suite also passed on 2026-09-06: screenshot
 `codex-clipboard-206c3c83-d3a6-4e72-8b87-8c8d0bc49dce.png` shows 45 tests passed,
@@ -329,8 +330,8 @@ Ordered plan:
 
 This is the native-packaging dependency path. The MSI VM has passed
 `verify-shell-sidecar` and the `sidecar-linux-deps-verified` checkpoint exists;
-the HP has passed browser-app persistence but not yet `verify-shell-sidecar`,
-the firewall, or a physical recovery checkpoint. Steps 1-2 landed on 2026-09-07
+the HP has now passed browser-app persistence, `verify-shell-sidecar`, two manual
+Btrfs recovery checkpoints, and firewall verification across reboot. Steps 1-2 landed on 2026-09-07
 as Windows-side repo edits. Step 3 is the first build and should run on the HP
 (x86_64 Arch, the real packaging target) once its resume checklist in
 [HP development](HP-DEVELOPMENT.md) is done; it pulls `rust`, `webkit2gtk-4.1`,
@@ -348,7 +349,10 @@ bundle staging directory and retains only native addons for the current host
 (`linux-x64` glibc on this HP; `win32-x64` on Windows). Tauri packages that
 staging directory while development and browser hosts continue using the
 untouched source install. Pull that fix, then rerun `npm run build`; successful
-AppImage creation and launch remain the open gate.
+The first staging attempt still left foreign addons in linuxdeploy's generated
+AppDir even after that directory was removed and rebuilt. AppImage creation and
+launch remain the open gate; inspect Tauri resource assembly rather than adding
+musl to the glibc target.
 
 If WHPX pauses with `Unexpected VP exit code 4`, close and relaunch QEMU, record
 the recurrence, and continue the same firewall verification. Do not restore a
