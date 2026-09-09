@@ -1,20 +1,11 @@
-# Local HTTP authentication
+# Local HTTP Authentication
 
-Loopback is a transport boundary, not caller authentication. Shell applies these authorities to the sidecar:
+Loopback is a transport boundary, not caller authentication — the authority model the sidecar actually enforces per route.
 
-| Surface | Read or mutation authority | Current first-party caller |
-| --- | --- | --- |
-| `/v1/capabilities`, `/v1/apps`, `/local/docs`, `/access/state`, `/access/browse`, `/access/audit`, `/access/trash` | loopback-only read | bundled Shell surfaces |
-| `/access/folders`, `/access/folders/write`, `/access/websites`, `/access/trash/restore` | `access.mutate` local session | bundled `main` window; no settings UI is shipped yet |
-| `/v1/app-store/:id/install` | `app-store.install` local session, or expiring single-use grant returned to the standalone browser surface | bundled `main` window or `start:apps` browser surface |
-| `/flow`, `/speak`, `/asset-forge` | paired sync credential, or `sync.invoke` local session | exact bundled `flow-hud` window; legacy paired client where supported |
-| `/mcp` | paired MCP credential | configured MCP client and documented appliance verification command |
-| PouchDB-compatible root | paired sync credential, then paired database binding for non-loopback callers | legacy paired synchronization client |
-| `/pair/confirm` | pairing identity credential | legacy provider pairing flow when explicitly enabled |
-| `/v1/pairing-management` mutations | `pairing.manage` local session | exact bundled `main` window |
+**Built:**
+- A per-route authority table implemented: read-only loopback routes vs. `access.mutate`/`app-store.install`/`sync.invoke`/paired-MCP-credential/paired-sync-credential/pairing-identity-credential/`pairing.manage` gated routes, each mapped to its current first-party caller
+- A Tauri bootstrap exchange implemented: a random per-process bootstrap passed only to the exact bundled `main`/`flow-hud` window labels, exchanged for a five-minute caller- and scope-bound session; every mutation carries a unique request id; replay, wrong-caller, wrong-scope, expiry, and revocation fail closed; the bootstrap and sessions are never persisted to disk or logged
+- Isolation proven: an app opened from the loopback host, a provider page, another Tauri window, or an arbitrary local process cannot invoke the bootstrap; Flow pins requests to the exact local port
 
-Tauri generates a random bootstrap for each desktop process and passes it directly to its child sidecar. Only the exact bundled `main` and `flow-hud` window labels at a Tauri asset origin can request that bootstrap. The sidecar exchanges it for a five-minute, caller- and scope-bound session. Every local mutation carries a unique request id; replay, wrong caller, wrong scope, expiry, and revocation fail closed. The bootstrap and local sessions are never written to disk or logged.
-
-An installed app opened from the loopback app host, a provider page, another Tauri window, and an arbitrary local process cannot invoke the bootstrap command. Flow pins authenticated local requests to `127.0.0.1:5984`; event data cannot redirect its credential.
-
-This migration does not expose phone or remote execution. Pairing credentials remain the legacy optional integration boundary and should be rotated through pairing if disclosed.
+**Not built yet:**
+None — this describes the implemented current auth boundary; remote/phone execution is explicitly out of scope here (see the pairing docs).

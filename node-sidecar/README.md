@@ -1,53 +1,12 @@
 # SHELL Node Sidecar
 
 The CouchDB-protocol-compatible HTTP host that runs alongside the Tauri shell.
-Part of the SHELL local agent — see [`../docs/extraction-manifest.md`](../docs/extraction-manifest.md).
 
-## What it is
+**Built:**
+- The sidecar implemented: one Node process (express + express-pouchdb + PouchDB's Node adapter) on `localhost:5984`, storage under `./data/`, started and killed automatically by Tauri
+- An auth model implemented: loopback identifies transport only, not authority; bundled windows exchange a process bootstrap for short-lived caller/scope-bound sessions; PouchDB/Flow/speech/asset routes need a sync credential, MCP uses a separate credential; mutations carry unique request ids and fail closed on replay/expiry/revocation
+- Pairing and local-doc routes implemented: `GET /pair` (status only), `GET /local/docs` and `/local/docs/:id` (loopback-only, serving only the most-recently-used store's `doc:*` rows)
+- C3 same-network sync implemented: a per-user PouchDB replicates over HTTPS on the LAN after code pairing
 
-- One Node process. `express` + `express-pouchdb` middleware + PouchDB's Node
-  adapter (LevelDB-backed, persistent on disk).
-- Listens on `http://localhost:5984/` (the CouchDB default port).
-- Storage: `./data/` next to this script. One subfolder per PouchDB database.
-- Started + killed by Tauri's `src-tauri/src/main.rs` automatically.
-- Loopback identifies transport location; it is not mutation authority. The
-  bundled Tauri `main` and `flow-hud` windows exchange a process bootstrap for
-  short-lived, caller- and scope-bound local sessions. Mutations require a
-  unique request id, and replay, expiry, revocation, caller mismatch, or scope
-  mismatch fail closed. PouchDB, Flow, speech, and asset requests otherwise need
-  the sync-only credential; MCP uses its separate credential. Remote PouchDB
-  paths are bound to the paired user.
-- `GET /pair` returns status only. Pair through the Railway beacon plus the
-  ten-minute local code. Credential v3 hashes inbound bearers, expires each
-  generation after 30 days, and supports authenticated local rotate/unpair.
-- `GET /local/docs` and `GET /local/docs/:id` are loopback-only and feed the
-  bundled offline shell. The list carries a 200-character snippet; the single
-  read carries the whole body. Both serve `doc:*` rows from the most recently
-  used store only, so a `mem:*` cloud cache row is never returned as local data.
-
-## Run standalone (dev / verify)
-
-```powershell
-cd node-sidecar
-npm install     # one-time; pulls express + express-pouchdb + pouchdb-node
-node index.js
-```
-
-Then in another shell:
-
-```powershell
-$env:SHELL_SYNC_TOKEN = node -p "require('./lib/pairing').getSyncToken()"
-Invoke-RestMethod http://localhost:5984/ -Headers @{ Authorization = "Bearer $env:SHELL_SYNC_TOKEN" }
-```
-
-PouchDB and MCP routes require their respective bearer credentials even on
-loopback. Read-only Shell discovery routes remain loopback-only.
-The complete route/caller inventory is [local HTTP authentication](../docs/local-http-auth.md).
-
-## Sync status
-
-- **C3 — same-network sync is built.** The PWA's per-user PouchDB
-  (`ce-memories-{id}`) replicates over HTTPS on the LAN after code pairing.
-- **C2c — bundling.** Today the sidecar uses the *system* Node (which is fine
-  for dev on the developer's machine). For a shippable `.exe`, C2c bundles a
-  Node binary and runs the sidecar via Tauri's proper "sidecar" pattern.
+**Not built yet:**
+- C2c: bundling a Node binary via Tauri's proper sidecar pattern for a shippable executable (currently uses the system Node)

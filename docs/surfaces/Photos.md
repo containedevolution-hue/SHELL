@@ -1,16 +1,11 @@
 # Photos
 
-Photos is SHELL's system surface for owner-controlled image and album storage. It is a sibling of Files, not a Contained Evolution portfolio app, because its core behavior depends on SHELL's local disk, deduplication, and phone-to-computer pairing capabilities.
+SHELL's system surface for owner-controlled image and album storage — a sibling of Files, not a portfolio app, because it depends on SHELL's local disk, dedup, and phone-pairing capabilities.
 
-## Contract
+**Built:**
+- Ownership decided: Photos owns its album catalog, thumbnails, organization, and image metadata; SHELL capabilities supply store/organize/dedupe/export/access-on-connect (the existing Rust dedup engine supplies the dedupe path); phone pairing grants only explicitly approved image access/transfer scope; Core projects albums by custody without becoming their store
+- A provenance rule enforced: uploading, importing, browsing, or analyzing a photo never creates User Memory by itself
 
-- Photos owns its album catalog, thumbnails, organization, and image-specific metadata.
-- SHELL capabilities provide store, organize, deduplicate, export, and access-on-connect operations. The existing Rust deduplication component supplies the dedupe path.
-- Phone pairing grants only the explicitly approved image access and transfer scope.
-- SHELL's Core projects albums by custody through the Photos & Videos globe without becoming their store.
-- Uploading, importing, browsing, or analyzing a photo never creates User Memory. A deliberate request to remember something uses the ordinary Memory admission path with provenance.
-
-## Limits
-
-- Photos does not own general file browsing, cloud quota, assistant memory, Contacts, or SEED.
-- An assistant needs an explicit SHELL capability grant to inspect or act on an image.
+**Not built yet:**
+- The actual store/organize/dedupe/export/pairing implementation — this document states the contract, not a shipped feature
+- General file browsing, cloud quota, assistant memory, Contacts, and SEED explicitly stay out of Photos' ownership

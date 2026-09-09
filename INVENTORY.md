@@ -1,5 +1,9 @@
-# Company inventory
+# Company Inventory
 
-The workspace [inventory](../inventory/README.md) owns company accounts, service providers, subscription levels and costs, equipment availability, machinery, software, domains and purchasing status. Edit its record source once; do not maintain a second company inventory here.
+Where Shell's equipment, purchasing, and account records actually live.
 
-This repository retains its implementation, engineering requirements, operating procedures and product assets. Shared machines and providers are linked to their inventory IDs. Missing values and unknown ownership remain explicit.
+**Built:**
+- A pointer established: the workspace inventory (accounts, providers, subscriptions, equipment, machinery, software, domains, purchasing) is the single source; Shell keeps only its own implementation/engineering/procedure/asset docs, linked to inventory IDs
+
+**Not built yet:**
+None — this is a pointer document, not a feature.
