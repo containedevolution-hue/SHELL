@@ -1,10 +1,12 @@
 # SHELL's Core
 
-SHELL's Core is the operating environment's central surface: a multi-window desktop object that rests at the top centre of the desktop and expands to full screen when opened. It projects the stores, applications, connections, and system activity beneath it and owns none of them; admission, storage, retrieval, and deletion stay with each projected owner.
+SHELL's Core is the operating environment's central computer and filesystem entry point. Its desktop representation is now an intact cartoon seed labelled **Core**, with bright solid smooth colours and blinking eyes in the visual style of the CE Apps animals. It has no crack, root or sprout. Its placement is being reviewed in the [desktop layout](surfaces/Desktop.md); the fixed top-centre control is Home, not Core.
 
-The Core renders the Contained Evolution mark literally: an engraved base cube, a trunk, and a canopy of linked globes.
+Opening the seed enters Core. Core projects stores, applications, connections and system activity; admission, storage, retrieval and deletion stay with each projected owner. The seed's appearance does not enable the separate SEED feature.
 
-## Anatomy
+The owner's 2026-09-09 decision starts with Desktop and necessary menus before redesigning the interiors. The Box/Trunk/Canopy anatomy and full-screen composition below are retained as an earlier interior exploration, not an approved constraint on the new desktop or opening animation. Their underlying navigation, custody, connection-state, accessibility and recovery requirements remain relevant.
+
+## Earlier interior exploration — awaiting design review
 
 **The Box** is the base cube: the boot surface and the origin of every connection. It carries the environment identity, the boot process, and the point from which connection conduits rise into the trunk. Opening the Core places the Box at the bottom of the full-screen view.
 
@@ -28,7 +30,7 @@ A conduit count never implies file or memory authority. One red conduit never hi
 
 Globes may carry decorative depth such as galaxies; that ornament never encodes meaning. A new category surface attaches as another globe without disturbing the globes already present.
 
-## Full-screen view
+## Earlier full-screen composition — awaiting design review
 
 Opening the Core fills the screen: the Box at the bottom, connection conduits animating up the trunk, and every canopy globe shown with its category label. The filesystem and application graph underneath stays real; a list-and-details mode is available for precision, accessibility, bulk operations, and recovery. Moving a visual node never moves bytes unless the owner invokes an explicit file operation.
 

@@ -1,10 +1,10 @@
 # SHELL's Core
 
-Build SHELL's Core as the operating environment's central desktop surface: an engraved Box, a Trunk of live connection conduits, and a Canopy of labelled category globes, with a customisable gauge layer over the full-screen view. Product behaviour is owned by `../shells-core.md`; this order owns only the unfinished cross-system sequence.
+Build SHELL's Core from the owner's revised [desktop direction](../surfaces/Desktop.md): an intact, blinking cartoon seed opens the computer's Core. First establish Desktop, the fixed central Home globe, and page-specific menus in the shared Status Bar; then design Files and deeper Core navigation. Product behaviour is owned by `../shells-core.md`; this order owns only the unfinished cross-system sequence. The earlier Box/Trunk/Canopy interior is an exploration awaiting review, not a prerequisite for the desktop layout.
 
 ## Current seam
 
-- The desktop already presents a central tree metaphor, local documents, app bubbles, capability discovery, jailed filesystem access, audit, and default-deny browser reach.
+- The live `web/index.html` presents the app launcher. The separate `design/desktop/` study demonstrates the revised desktop and navigation without live services. Capability discovery, jailed filesystem access, audit and default-deny browser reach exist independently of this visual study.
 - Tenari already exposes bounded Memory MCP reads and evidence proposals, but the Core, Memory Box, assistant-memory slots, and SEED are not one coherent surface.
 - SEED has a local append-only corpus and ingest importer; backup lanes, restore, curation, the sealed Memory Box mount, and the host contract consumed by Chat's Seed Station are not built.
 - System Dashboard defines gauge behaviour, but there is no free-placed gauge layer over the Core.
@@ -13,10 +13,10 @@ Build SHELL's Core as the operating environment's central desktop surface: an en
 
 ## Build order
 
-1. **Freeze names and node types.** Introduce the Core, the Box, the Trunk, the Canopy, and Memory Box in schemas and UI copy while preserving compatibility routes. Define typed nodes for physical path, app record, project, link, mount, assistant-memory slot, Memory Grove export, and SEED artifact.
+1. **Establish desktop navigation and node types.** Review the Core seed, fixed Home globe and contextual Status Bar first. Then define typed nodes for physical path, app record, project, link, mount, assistant-memory slot, Memory Grove export and SEED artifact. Do not freeze earlier interior metaphors before their review.
 2. **Publish the index contract.** Index canonical paths and manifests without becoming their store. Define stable node identity, custody, parent/link relations, availability, permissions, size, freshness, and rebuild behaviour.
-3. **Build the Box and boot surface.** Render the base cube as the boot origin: environment identity, boot process, and the anchor every connection conduit rises from. Prove the Core rebuilds from canonical state with no unique data in the visual layer.
-4. **Build the accessible Canopy navigator.** Implement globe expansion, zoom, breadcrumbs, search, keyboard and screen-reader traversal, reduced motion, high contrast, and a precision list/details mode over the same model.
+3. **Build the Core opening surface.** Implement the reviewed seed-to-Core navigation, then determine how environment identity and boot state appear in the revised interior. Prove the Core rebuilds from canonical state with no unique data in the visual layer.
+4. **Build accessible Files and category navigation.** Implement the reviewed interior with breadcrumbs, search, keyboard and screen-reader traversal, reduced motion, high contrast, and a precision list/details mode over the same model. Expansion and zoom follow the selected visual design.
 5. **Separate system and aftermarket globes.** Inventory pre-installed system components and owner-installed items from package and application manifests. Prove protected system paths cannot be reclassified or modified through a visual drag.
 6. **Mount apps and projects.** Add project roots, entry instruction files, app-owned records, aliases, removable media, network stores, and cloud stores without collapsing their ownership or moving bytes implicitly.
 7. **Unify connection status into the Trunk.** Publish one connection-state contract for MCP, provider APIs, paired devices, storage mounts, app integrations, and local models. Draw one conduit per connection and drive its green/red/yellow state, the live count, repair routes, and audit from that contract.

@@ -6,6 +6,7 @@ This repository was extracted from Tenari with the complete history of the forme
 
 ## Current state
 
+- The revised [desktop layout](docs/surfaces/Desktop.md) starts with contextual top-bar menus, a fixed central Home globe and an intact seed character opening Core. `npm run preview:desktop` serves the independent layout study on `http://127.0.0.1:4176`; it does not replace the installed frontend or connect live services.
 - `web/` contains My apps and Contained Evolution Apps. Users install reviewed packages from the bundled starter collection, then open installed versioned apps.
 - `node-sidecar/` is the current local agent: data host, permission jail, audited file/browser tools, local Flow seam, and legacy Tenari pairing adapters.
 - `src-tauri/` packages the Windows bridge and owns sidecar lifecycle, native commands, global shortcuts, and deep links.

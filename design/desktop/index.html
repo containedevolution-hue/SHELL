@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SHELL — Desktop layout study</title>
+  <link rel="stylesheet" href="./layout.css">
+</head>
+<body>
+  <svg class="symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+      <symbol id="i-view" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 10v10"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="m9 3-1 3-3 1v3l-2 2 2 2v3l3 1 1 3h6l1-3 3-1v-3l2-2-2-2V7l-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4ZM10 21h4"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5h7l2 3h9v12H3ZM3 8h9"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 8 3-3a4 4 0 0 1 6 6l-3 3M14 16l-3 3a4 4 0 0 1-6-6l3-3M8 16l8-8"/></symbol>
+      <symbol id="i-memory" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 1v4m6-4v4M9 19v4m6-4v4M1 9h4m-4 6h4m14-6h4m-4 6h4"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24"><path d="M2 13h5l3-8 4 14 3-6h5"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="m14 5-7 7 7 7M7 12h14"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="status-bar" aria-label="Shell status bar">
+    <svg class="bar-shape" preserveAspectRatio="none" aria-hidden="true"><path id="bar-fill"/><path id="bar-line"/></svg>
+    <div class="bar-side bar-left">
+      <span class="wordmark">SHELL</span>
+      <span id="context-name">Desktop</span>
+      <nav id="page-menus" aria-label="Desktop menus"></nav>
+    </div>
+    <button class="home" id="home" aria-label="Home — Desktop" title="Home — Desktop">
+      <svg class="home-globe" viewBox="0 0 72 72" aria-hidden="true">
+        <circle class="ocean" cx="36" cy="36" r="33"/>
+        <path class="land" d="m15 13 14-7 7 5-3 9-11 3-5 9-9-2ZM44 9l13 5 9 15-12 1-5-7-8-4ZM45 39l15-5 6 10-9 15-10 5-7-8 5-8ZM12 40l13 1 5 7-6 14-11-10Z"/>
+        <ellipse class="globe-grid" cx="36" cy="36" rx="16" ry="33"/>
+        <path class="globe-grid" d="M4 36h64M10 19h52M10 53h52"/>
+        <rect class="desktop-square" x="18" y="18" width="36" height="36" rx="3"/>
+        <path class="home-house" d="m23 34 13-11 13 11h-4v14H28V34Zm10 5v9h7v-9Z"/>
+      </svg>
+    </button>
+    <nav class="bar-side bar-right" aria-label="Context settings and Shell notifications">
+      <button class="bar-button" id="search" aria-label="Search Desktop" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button>
+      <button class="bar-button" id="settings" aria-label="Desktop settings" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
+      <button class="bar-button" id="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-bell"/></svg></button>
+    </nav>
+  </header>
+
+  <main id="surface">
+    <section id="desktop" class="desktop" aria-label="Desktop">
+      <button class="core-launcher" id="open-core" aria-label="Open Core — files and computer">
+        <svg class="seed" viewBox="0 0 220 240" aria-hidden="true">
+          <path class="seed-body" d="M145 15C147 49 190 73 193 124C199 183 162 219 109 221C53 224 22 193 26 144C31 91 82 44 145 15Z"/>
+          <path class="seed-light" d="M133 33C88 64 59 92 51 130C43 159 52 186 67 197C30 180 31 143 47 112C65 78 94 51 133 33Z"/>
+          <g class="seed-eyes">
+            <ellipse cx="90" cy="139" rx="14" ry="20" fill="#292333"/>
+            <ellipse cx="136" cy="137" rx="14" ry="20" fill="#292333"/>
+            <ellipse cx="94" cy="132" rx="4.5" ry="6" fill="#fff9e9"/>
+            <ellipse cx="140" cy="130" rx="4.5" ry="6" fill="#fff9e9"/>
+          </g>
+          <ellipse cx="67" cy="163" rx="10" ry="5" fill="#ff936d"/>
+          <ellipse cx="158" cy="161" rx="10" ry="5" fill="#ff936d"/>
+        </svg>
+        <span class="core-name">Core</span>
+        <span class="core-caption">Your files. Your computer.</span>
+      </button>
+    </section>
+
+    <section id="core" class="page" aria-labelledby="core-title" hidden>
+      <p class="eyebrow">Your computer</p>
+      <h1 id="core-title" tabindex="-1">Core</h1>
+      <p class="page-intro">Everything has a place.</p>
+      <div id="core-places" class="places"></div>
+      <p class="study-note">Opening layout only. These places show the proposed navigation; no files or system readings are loaded.</p>
+    </section>
+
+    <section id="place" class="page" aria-labelledby="place-title" hidden>
+      <p class="eyebrow">Core / <span id="place-crumb"></span></p>
+      <h1 id="place-title" tabindex="-1"></h1>
+      <p class="page-intro" id="place-copy"></p>
+      <div class="empty-place"><svg aria-hidden="true"><use id="place-icon" href="#i-folder"/></svg><p id="place-empty"></p></div>
+    </section>
+
+    <section id="scribble" class="page scribble-page" aria-labelledby="scribble-title" hidden>
+      <p class="eyebrow">App context example</p>
+      <h1 id="scribble-title" tabindex="-1">Scribble</h1>
+      <div class="paper"><span class="paper-line"></span><p>A space for your words.</p><span class="paper-line short"></span><span class="paper-line"></span></div>
+      <p class="study-note">Only the Shell frame is demonstrated here. Open Settings above to see its Scribble context.</p>
+    </section>
+  </main>
+
+  <aside id="flyout" class="flyout" aria-labelledby="flyout-title" hidden>
+    <div class="flyout-heading"><div><p id="flyout-context" class="eyebrow"></p><h2 id="flyout-title"></h2></div><button id="close-flyout" class="close-button" aria-label="Close menu">×</button></div>
+    <div id="flyout-content"></div>
+  </aside>
+  <p class="preview-label">Desktop layout study <span>01</span></p>
+  <p id="announcement" class="sr-only" role="status"></p>
+  <script src="./layout.js"></script>
+</body>
+</html>
