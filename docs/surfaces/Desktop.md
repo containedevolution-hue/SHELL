@@ -15,7 +15,7 @@ The [Status Bar contract](Status-Bar.md) owns shared system behaviour. [Core](..
 
 ## First layout study
 
-Run `npm run preview:desktop` in Shell and open `http://127.0.0.1:4176`. Source is [design/desktop](../../design/desktop/index.html). It is also directly openable as a local file. The study is separate from the installed Shell frontend and does not load any app, file, connection, notification, or system data.
+Run `npm run preview:desktop` in Shell and open `http://127.0.0.1:4176`. Shared source is [web/desktop](../../web/desktop/index.html); the old [design link](../../design/desktop/index.html) forwards there. The browser mode is a design study and has no native data access. The same surface now runs in the native host with `SHELL_DESKTOP=enabled`: see [native desktop and Files](../acceptance/native-desktop-files.md) for its implemented scope, build, launcher and HP acceptance steps.
 
 The study exercises Desktop → Core → a proposed destination → Home, page-specific settings, search over study destinations, menu dismissal and a Scribble **context example**. The example has no Scribble implementation or document behaviour. Real integration must consume Apps' published capabilities and canonical releases.
 
@@ -25,7 +25,7 @@ Desktop currently proposes Apps and View on the left, with Search, contextual Se
 
 ## Next design step
 
-Review the desktop's geometry and seed first. Then design the Files opening view, folder navigation and necessary menus, keeping the same centre Home and contextual bar. Core's expanded visual treatment, app switching/window controls, the system/session menu and live service integration remain subsequent work.
+The owner accepted the desktop as a good base and requested native use. The first Files view now supports native folder navigation and document opening; the next device step is its HP acceptance. Core's expanded visual treatment, file mutations, app switching/window controls, the system/session menu and further service integration remain subsequent work.
 
 ## Verification
 

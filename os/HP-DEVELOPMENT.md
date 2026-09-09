@@ -88,6 +88,10 @@ its results do not qualify the MSI hardware.
 
 ## Resume and stopping point
 
+The owner subsequently reported that wired LAN connected after adjusting IP configuration and reseating the Ethernet cable on 2026-09-09. Screenshots then showed a successful Shell fast-forward to `5beaaf9` and the local desktop-preview server running. A later screenshot showed the HP controlling the MSI through RustDesk. These observations establish a working connection in that session; they do not establish persistence across reboot or a verified private Claw server.
+
+The current interface continuation is [native desktop and Files](../docs/acceptance/native-desktop-files.md). It adds an opt-in native desktop window and read-only filesystem navigation. Its HP delivery uses a native `--no-bundle` build and per-user KDE launcher; AppImage wrapping and independent-session acceptance remain open. Do not substitute the browser preview for this native acceptance.
+
 Chat Slice 3 now has a [separate Hyprland test-session plan](CHAT-HYPRLAND-TEST.md).
 Its in-process authentication and geometry validation are implemented in the
 Windows checkout, but no HP access, Hyprland session, downloaded-provider identity,

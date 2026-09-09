@@ -1,6 +1,13 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const invoke = window.__TAURI__?.core?.invoke;
+  const native = typeof invoke === 'function';
+  async function nativeAction(command) {
+    closeMenu();
+    try { await invoke(command); }
+    catch(error) { const node=$('announcement');node.classList.remove('sr-only');node.classList.add('desktop-error');node.textContent=typeof error==='string'?error:error.message; }
+  }
   const places = [
     { id:'files', name:'Files', icon:'folder', summary:'Folders, drives & storage', copy:'Browse the files and storage connected to this computer.', empty:'The file listing will be designed next. This layout does not read or change your files.' },
     { id:'apps', name:'Applications', icon:'grid', summary:'System & installed apps', copy:'A place for the applications on your computer.', empty:'Application discovery is not connected in this layout study.' },
@@ -40,6 +47,8 @@
   }
   function contextName() { return current === 'desktop' ? 'Desktop' : current === 'scribble' ? 'Scribble' : current === 'core' ? 'Core' : currentPlace.name; }
   function go(next, place = null, focus = true) {
+    window.ShellFiles.hide();
+    $('announcement').className='sr-only';
     closeMenu(); current = next; currentPlace = place;
     for (const id of ['desktop','core','scribble','place']) $(id).hidden = id !== next;
     const name = contextName(); $('context-name').textContent = name;
@@ -58,16 +67,32 @@
       $('place-title').textContent=place.name; $('place-crumb').textContent=place.name;
       $('place-copy').textContent=place.copy; $('place-empty').textContent=place.empty;
       $('place-icon').setAttribute('href',`#i-${place.icon}`);
+      const files=native && place.id==='files';
+      document.querySelector('.empty-place').hidden=files;
+      $('place').classList.toggle('files-page',files);
+      if(files){$('place-copy').textContent='Browse this computer. Open files in their default applications.';window.ShellFiles.show();}
+      if(native && place.id==='apps') {
+        $('place-empty').replaceChildren(row('Open applications','Installed CE apps and the app collection','grid',()=>nativeAction('desktop_open_apps')));
+      }
     }
     window.scrollTo(0,0); $('announcement').textContent=`${name}. Settings now opens ${next === 'desktop' ? 'base' : name} settings.`;
     if (focus) (next === 'desktop' ? $('open-core') : $(`${next}-title`)).focus({preventScroll:true});
   }
   function showApps(trigger) {
+    if(native){nativeAction('desktop_open_apps');return;}
     const content = container('<p>Open a context example.</p>');
     content.append(row('Scribble','Demonstrates app menus and settings','grid',()=>go('scribble')));
     openMenu('apps','Applications','Desktop',trigger,content,true);
   }
   function showOutline(title, context, items, trigger) {
+    if(native){
+      if(current==='place' && currentPlace.id==='files'){
+        const content=container(`<label class="view-choice"><input id="menu-hidden-files" type="checkbox" ${$('files-hidden').checked?'checked':''}> Show hidden files</label><p>Files are listed with their type and size. Select a file for details.</p>`);
+        content.querySelector('input').onchange=e=>{$('files-hidden').checked=e.target.checked;$('files-hidden').dispatchEvent(new Event('change'));};
+        openMenu(title,title,context,trigger,content,true);return;
+      }
+      openMenu(title,title,context,trigger,container('<p>This surface uses its default layout. Additional views are not available yet.</p>'),true);return;
+    }
     const content=container(`<ul class="settings-list">${items.map(item=>`<li>${item}</li>`).join('')}</ul><p>Menu outline. These actions are not connected in this study.</p>`);
     openMenu(title,title,context,trigger,content,true);
   }
@@ -79,13 +104,21 @@
   }
   function showSettings() {
     const isDesktop=current==='desktop', name=contextName();
+    if(native){
+      if(isDesktop || current==='core'){nativeAction('desktop_system_settings');return;}
+      if(current==='place' && currentPlace.id==='files'){
+        const content=container('<p>Use Hidden files and the folder filter in Files to choose what is shown. Added folder locations last for this Shell session.</p>');
+        openMenu('settings','Files settings','Files',$('settings'),content);return;
+      }
+    }
     const items=isDesktop ? ['Appearance','Display & accessibility','Sound','Network & devices','Storage & permissions'] : current==='scribble' ? ['Writing preferences','Page appearance','Spelling & language','Keyboard shortcuts'] : ['Layout & navigation','Search & indexing','Visible details'];
     const content=container(`<ul class="settings-list">${items.map(item=>`<li>${item}</li>`).join('')}</ul><p>Proposed settings categories. No device or app settings are changed here.</p>`);
     openMenu('settings',isDesktop?'Base settings':`${name} settings`,name,$('settings'),content);
   }
   function showSearch() {
     const content=container('<label class="search-label" for="layout-search">Find a destination in this study</label><input class="search-input" id="layout-search" type="search" placeholder="Core, Files, Scribble…"><div id="search-results"></div>');
-    const targets=[{name:'Desktop',description:'Return home',icon:'view',action:()=>go('desktop')},{name:'Core',description:'Files and computer',icon:'folder',action:()=>go('core')},...places.map(place=>({name:place.name,description:place.summary,icon:place.icon,action:()=>go('place',place)})),{name:'Scribble',description:'App context example',icon:'grid',action:()=>go('scribble')}];
+    if(native){content.querySelector('label').textContent='Find a Shell destination';content.querySelector('input').placeholder='Core, Files, Applications…';}
+    const targets=[{name:'Desktop',description:'Return home',icon:'view',action:()=>go('desktop')},{name:'Core',description:'Files and computer',icon:'folder',action:()=>go('core')},...places.map(place=>({name:place.name,description:place.summary,icon:place.icon,action:()=>go('place',place)})),...(native?[]:[{name:'Scribble',description:'App context example',icon:'grid',action:()=>go('scribble')}])];
     const render=query=>{const results=content.querySelector('#search-results');results.replaceChildren();const matches=targets.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()));for(const item of matches)results.append(row(item.name,item.description,item.icon,item.action));if(!matches.length)results.textContent='No matching destinations.';};
     render(''); content.querySelector('input').oninput=e=>render(e.target.value);
     openMenu('search',`Search ${contextName()}`,contextName(),$('search'),content);
@@ -106,4 +139,8 @@
     $('bar-fill').setAttribute('d',`${contour}V0H0Z`); $('bar-line').setAttribute('d',contour);
   }
   new ResizeObserver(drawBar).observe(document.documentElement); drawBar(); go('desktop',null,false);
+  if(native){
+    $('desktop-caption').textContent='SHELL · Development';
+    $('core-note').textContent='Files and the application launcher are connected. Connections, Memory Box and system activity are still being built.';
+  }
 })();

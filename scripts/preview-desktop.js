@@ -3,12 +3,13 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const root = path.resolve(__dirname, '../design/desktop');
+const root = path.resolve(__dirname, '../web/desktop');
 const files = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
   ['/layout.css', ['layout.css', 'text/css; charset=utf-8']],
   ['/layout.js', ['layout.js', 'text/javascript; charset=utf-8']],
+  ['/files.js', ['files.js', 'text/javascript; charset=utf-8']],
 ]);
 const server = http.createServer((request, response) => {
   const file = files.get(request.url);

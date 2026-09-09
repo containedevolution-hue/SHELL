@@ -5,6 +5,9 @@
   "description": "SHELL — a free, local-first operating environment by Contained Evolution",
   "scripts": {
     "preview:desktop": "node scripts/preview-desktop.js",
+    "dev:desktop": "node scripts/start-native-desktop.js --dev",
+    "start:desktop": "node scripts/start-native-desktop.js",
+    "install:desktop": "node scripts/install-desktop-launcher.js",
     "start:apps": "node scripts/start-app-host.js",
     "test:app-store": "node scripts/test-app-store-browser.js",
     "test:chat-acceptance": "node scripts/test-chat-acceptance-browser.js",

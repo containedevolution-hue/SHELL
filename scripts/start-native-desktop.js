@@ -1,0 +1,15 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+const args = process.argv.slice(2);
+const dev = args.length === 1 && args[0] === '--dev';
+if (args.length && !dev) throw new Error('Usage: node scripts/start-native-desktop.js [--dev]');
+const binary = path.join(root, 'src-tauri/target/release', process.platform === 'win32' ? 'localhub.exe' : 'localhub');
+if (!dev && !fs.existsSync(binary)) throw new Error('Build the native desktop first: npm run build -- --no-bundle');
+const executable = dev ? process.execPath : binary;
+const childArgs = dev ? [require.resolve('@tauri-apps/cli/tauri.js'), 'dev'] : [];
+const child = spawn(executable, childArgs, { cwd:root, stdio:'inherit', env:{...process.env, SHELL_DESKTOP:'enabled'} });
+child.on('error', error => { console.error(error.message); process.exitCode=1; });
+child.on('exit', code => { process.exitCode=code ?? 1; });

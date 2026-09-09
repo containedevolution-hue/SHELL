@@ -30,6 +30,7 @@
 // The driver is reachable only through the exact inherited Node sidecar pipes;
 // canonical Chat host authority and runtime acceptance remain separate gates.
 mod chat_acceptance;
+mod desktop;
 #[cfg(windows)]
 mod native_desk_windows;
 
@@ -442,6 +443,11 @@ fn main() {
         // process instead of spawning a fresh Tauri shell.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             println!("[localhub] single-instance trigger: {:?}", args);
+            if let Some(window) = app.get_webview_window("desktop") {
+                let _ = window.show();
+                let _ = window.set_focus();
+                return;
+            }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
             }
@@ -485,6 +491,12 @@ fn main() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            desktop::desktop_roots,
+            desktop::desktop_list,
+            desktop::desktop_pick_folder,
+            desktop::desktop_open_file,
+            desktop::desktop_open_apps,
+            desktop::desktop_system_settings,
             scan_duplicates,
             delete_to_trash,
             inject_text,
@@ -492,6 +504,7 @@ fn main() {
             shell_local_auth_bootstrap
         ])
         .setup(move |app| {
+            desktop::start(app.handle())?;
             // DA0: spawn the sidecar here so app_local_data_dir() is resolvable.
             // Point the sidecar at "<app_local_data_dir>/data" — a writable per-user
             // location an app update won't wipe. If it can't be resolved, spawn
