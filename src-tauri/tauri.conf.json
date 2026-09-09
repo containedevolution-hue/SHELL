@@ -36,18 +36,6 @@
         "visible": false
       },
       {
-        "label": "typing-trainer",
-        "title": "SHELL — Typing Trainer",
-        "url": "typing-trainer.html",
-        "width": 1220,
-        "height": 860,
-        "minWidth": 760,
-        "minHeight": 620,
-        "resizable": true,
-        "center": true,
-        "visible": false
-      },
-      {
         "label": "flow-hud",
         "title": "Flow",
         "url": "flow-hud.html",
@@ -67,25 +55,35 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     }
   },
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["com.containedevolution.localhub", "localhub"]
+        "schemes": [
+          "com.containedevolution.localhub",
+          "localhub"
+        ]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "appimage"],
+    "targets": [
+      "nsis",
+      "appimage"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "languages": ["English"]
+        "languages": [
+          "English"
+        ]
       }
     },
     "linux": {
@@ -96,7 +94,9 @@
     "category": "Utility",
     "shortDescription": "SHELL — a free, local-first operating environment",
     "longDescription": "SHELL provides a local-first desktop, core apps, files, browser capabilities, and optional integrations without requiring an account or Tenari.",
-    "externalBin": ["binaries/node"],
+    "externalBin": [
+      "binaries/node"
+    ],
     "resources": {
       "../node-sidecar/index.js": "node-sidecar/index.js",
       "../node-sidecar/package.json": "node-sidecar/package.json",

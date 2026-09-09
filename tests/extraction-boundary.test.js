@@ -21,8 +21,9 @@ function filesUnder(relativeRoot) {
   return files;
 }
 
-test('recovered Tenari source is quarantined from SHELL runtime', () => {
-  assert.equal(fs.existsSync(path.join(root, 'legacy-tenari')), true);
+test('utility source belongs to Apps and Shell uses only its host interfaces', () => {
+  const former=path.join(root,'legacy-tenari');
+  assert.equal(fs.existsSync(former)?fs.readdirSync(former,{recursive:true,withFileTypes:true}).filter(entry=>entry.isFile()).length:0,0);
   for (const area of ['node-sidecar', 'src-tauri', 'web', 'contracts']) {
     for (const file of filesUnder(area)) {
       const source = fs.readFileSync(file, 'utf8');

@@ -1,29 +1,3 @@
-// LocalHub — the Tauri desktop shell
-// (see docs/extraction-manifest.md).
-//
-// It:
-//   - Opens a desktop window pointing at the live PWA
-//     (https://app.tenari.world/) — see tauri.conf.json.
-//   - Spawns the Node sidecar (../node-sidecar/index.js), which runs an
-//     express-pouchdb host on http://localhost:5984/. That is the
-//     CouchDB-protocol endpoint the PWA's PouchDB clients replicate to.
-//   - Registers the `localhub://` custom protocol via the deep-link plugin so
-//     Google's OAuth callback can return into this app from the user's system
-//     browser, and forwards that URL into the webview as an `oauth-callback`
-//     event carrying `?code=&state=`. single-instance is what makes the
-//     callback reach the EXISTING process instead of a second shell.
-//   - Loads tauri-plugin-opener so the PWA can call
-//     `window.__TAURI__.opener.openUrl(...)` to launch the OAuth URL in that
-//     system browser in the first place.
-//   - Kills the sidecar on ExitRequested so we never leave a zombie holding
-//     port 5984.
-//
-// Dev + Build: both launch the sidecar via the bundled Node externalBin
-// (`app.shell().sidecar("node")`, DA1). Run `node localhub/scripts/fetch-node-binary.mjs`
-// once to place `src-tauri/binaries/node-<target-triple>.exe`; `tauri build`
-// bundles it plus the node-sidecar/ + whisper/ resources so the installed app
-// runs on a machine with no system Node.
-
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 // Compiled on Windows but intentionally not exposed through invoke_handler.
@@ -553,12 +527,10 @@ fn main() {
             // scan_duplicates / delete_to_trash directly (capabilities/dedup.json).
             let open_dedup =
                 MenuItem::with_id(app, "open_dedup", "Photo Duplicates", true, None::<&str>)?;
-            let open_typing =
-                MenuItem::with_id(app, "open_typing", "Typing Trainer", true, None::<&str>)?;
             let acceptance_enabled = std::env::var("SHELL_CHAT_ACCEPTANCE_WINDOW").as_deref() == Ok("enabled");
             let open_chat_acceptance = MenuItem::with_id(app, "open_chat_acceptance", "Open disposable Chat acceptance", acceptance_enabled, None::<&str>)?;
             let close_chat_acceptance = MenuItem::with_id(app, "close_chat_acceptance", "Close disposable Chat acceptance", acceptance_enabled, None::<&str>)?;
-            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup, &open_typing, &open_chat_acceptance, &close_chat_acceptance])?;
+            let tools = Submenu::with_items(app, "Tools", true, &[&open_dedup, &open_chat_acceptance, &close_chat_acceptance])?;
             let menu = Menu::with_items(app, &[&tools])?;
             app.set_menu(menu)?;
             let menu_chat_runtime = setup_chat_runtime.clone();
@@ -567,12 +539,6 @@ fn main() {
                 match event.id().0.as_str() {
                     "open_dedup" => {
                         if let Some(w) = app_handle.get_webview_window("dedup") {
-                            let _ = w.show();
-                            let _ = w.set_focus();
-                        }
-                    }
-                    "open_typing" => {
-                        if let Some(w) = app_handle.get_webview_window("typing-trainer") {
                             let _ = w.show();
                             let _ = w.set_focus();
                         }
