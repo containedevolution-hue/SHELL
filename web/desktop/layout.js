@@ -9,11 +9,12 @@
     catch(error) { const node=$('announcement');node.classList.remove('sr-only');node.classList.add('desktop-error');node.textContent=typeof error==='string'?error:error.message; }
   }
   const places = [
-    { id:'files', name:'Files', icon:'folder', summary:'Folders, drives & storage', copy:'Browse the files and storage connected to this computer.', empty:'The file listing will be designed next. This layout does not read or change your files.' },
-    { id:'apps', name:'Applications', icon:'grid', summary:'System & installed apps', copy:'A place for the applications on your computer.', empty:'Application discovery is not connected in this layout study.' },
-    { id:'connections', name:'Connections', icon:'link', summary:'Devices, mounts & integrations', copy:'See where your computer connects.', empty:'Connection state is unavailable in this layout study.' },
-    { id:'memory', name:'Memory Box', icon:'memory', summary:'Assistant memory & boot files', copy:'Inspect assistant memory and boot configuration under CEE OS custody.', empty:'Memory Box and its optional SEED source are not connected in this layout study.' },
-    { id:'system', name:'System activity', icon:'activity', summary:'Resources & running work', copy:'Understand the activity on your computer.', empty:'Live system readings are unavailable in this layout study.' }
+    { id:'files', name:'Files', icon:'folder', summary:'Folders and personal files', copy:'Browse the files connected to this computer.', empty:'Native file access becomes available in the installed CEE OS desktop.', menus:[['File','folder',['New folder','Add location','Properties']],['View','view',['List','Grid','Details']]] },
+    { id:'security', name:'Security', icon:'shield', summary:'Protection, firewall and VPN', copy:'Review protection, network policy, updates and recovery.', empty:'Security controls will report local evidence and require clear approval before changing the system.', menus:[['Protection','shield',['Overview','Firewall','Updates']],['VPN','link',['Direct','Prefer VPN','Require VPN','Recovery']]] },
+    { id:'powerhouses', name:'Powerhouses', icon:'powerhouse', summary:'Specialized container environments', copy:'Start, stop and inspect the environments assembled for your work.', empty:'Powerhouses will show installed environments, their containers and the capabilities each one can use.', menus:[['Powerhouses','powerhouse',['Start','Stop','Create']],['View','view',['Running','Installed','Available']]] },
+    { id:'storage', name:'Storage', icon:'storage', summary:'Devices, space and retained data', copy:'See where system, application and personal data lives.', empty:'Storage will separate this device, removable media and optional synchronized storage.', menus:[['Storage','storage',['This device','Removable','Synchronized']],['View','view',['Usage','Locations','Health']]] },
+    { id:'connections', name:'Connections', icon:'link', summary:'Network, devices and integrations', copy:'See what CEE OS connects to and what each connection can access.', empty:'Connections will show network, devices, mounts and approved integrations in one place.', menus:[['Connect','link',['Network','Device','Integration']],['View','view',['Active','Available','History']]] },
+    { id:'activity', name:'Activity', icon:'activity', summary:'Resources and running work', copy:'Understand what is running and how the computer is responding.', empty:'Activity will show processes, powerhouse workloads, resource use and system events.', menus:[['Processes','activity',['Running work','Background services','Powerhouses']],['View','view',['Live','History','Limits']]] }
   ];
   let current = 'desktop', currentPlace = null, opened = null, opener = null;
   const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -61,7 +62,9 @@
     } else {
       const back = button(next === 'place' ? 'Back to Core' : 'Desktop','back',()=>go(next === 'place' ? 'core' : 'desktop'));
       back.removeAttribute('aria-expanded'); back.removeAttribute('aria-controls');
-      $('page-menus').append(back,button('View','view',trigger=>showOutline('View',name,['List','Grid','Details'],trigger)));
+      $('page-menus').append(back);
+      const menus=next==='place' ? place.menus : [['View','view',['Map','Status','Details']]];
+      for(const [label,symbol,items] of menus) $('page-menus').append(button(label,symbol,trigger=>showOutline(label,name,items,trigger)));
     }
     if (next === 'place') {
       $('place-title').textContent=place.name; $('place-crumb').textContent=place.name;
@@ -71,7 +74,7 @@
       document.querySelector('.empty-place').hidden=files;
       $('place').classList.toggle('files-page',files);
       if(files){$('place-copy').textContent='Browse this computer. Open files in their default applications.';window.ShellFiles.show();}
-      if(native && place.id==='apps') {
+      if(native && place.id==='powerhouses') {
         $('place-empty').replaceChildren(row('Open applications','Installed CE apps and the app collection','grid',()=>nativeAction('desktop_open_apps')));
       }
     }
@@ -118,14 +121,14 @@
   function showSearch() {
     const content=container('<label class="search-label" for="layout-search">Find a destination in this study</label><input class="search-input" id="layout-search" type="search" placeholder="Core, Files, Scribble…"><div id="search-results"></div>');
     if(native){content.querySelector('label').textContent='Find a CEE OS destination';content.querySelector('input').placeholder='Core, Files, Applications…';}
-    const targets=[{name:'Desktop',description:'Return home',icon:'view',action:()=>go('desktop')},{name:'Core',description:'Files and computer',icon:'folder',action:()=>go('core')},...places.map(place=>({name:place.name,description:place.summary,icon:place.icon,action:()=>go('place',place)})),...(native?[]:[{name:'Scribble',description:'App context example',icon:'grid',action:()=>go('scribble')}])];
+    const targets=[{name:'Desktop',description:'Return home',icon:'view',action:()=>go('desktop')},{name:'Core',description:'System foundation',icon:'shield',action:()=>go('core')},...places.map(place=>({name:place.name,description:place.summary,icon:place.icon,action:()=>go('place',place)})),...(native?[]:[{name:'Scribble',description:'App context example',icon:'grid',action:()=>go('scribble')}])];
     const render=query=>{const results=content.querySelector('#search-results');results.replaceChildren();const matches=targets.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()));for(const item of matches)results.append(row(item.name,item.description,item.icon,item.action));if(!matches.length)results.textContent='No matching destinations.';};
     render(''); content.querySelector('input').oninput=e=>render(e.target.value);
     openMenu('search',`Search ${contextName()}`,contextName(),$('search'),content);
   }
   $('core-places').replaceChildren(...places.map(place=>{
     const node=document.createElement('button');node.className='place-button';node.type='button';
-    node.innerHTML=`${icon(place.icon)}<span><strong>${place.name}</strong><small>${place.summary}</small></span>${icon('arrow')}`;
+    node.dataset.place=place.id;node.innerHTML=`${icon(place.icon)}<span><strong>${place.name}</strong><small>${place.summary}</small></span>${icon('arrow')}`;
     node.onclick=()=>go('place',place);return node;
   }));
   $('home').onclick=()=>go('desktop'); $('open-core').onclick=()=>go('core'); $('settings').onclick=showSettings; $('search').onclick=showSearch;
@@ -141,6 +144,6 @@
   new ResizeObserver(drawBar).observe(document.documentElement); drawBar(); go('desktop',null,false);
   if(native){
     $('desktop-caption').textContent='CEE OS · Development';
-    $('core-note').textContent='Files and the application launcher are connected. Connections, Memory Box and system activity are still being built.';
+    $('core-note').textContent='Files and the application launcher are connected. Security, storage, connections and activity remain preview surfaces.';
   }
 })();
