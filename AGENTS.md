@@ -1,10 +1,9 @@
-# Shell Agent Instructions
+# AGENTS.md
 
-Boot instructions and ownership scope for the Shell repo.
+Work from the Contained Evolution workspace root and follow its `AGENTS.md`.
 
-**Built:**
-- Boot order: workspace root → this repo's README and the owning Shell document
-- Ownership: the operating environment, native browser-engine and storage capabilities, permissions, devices, windows, automation execution. Apps owns FETCH, portable utilities, the app store, and CE Account cloud storage/sync. Shell installs only user-selected apps. Seed owns SEED. Tenari is an optional downloadable app. Use explicit capability contracts, never copied product source.
+This repository owns the local operating environment and native host capabilities. Use the root `Applications/` catalog only for discovery; inspect this repository’s current code, configuration, tests, and live behavior before answering or changing anything.
 
-**Not built yet:**
-None — this document defines process and ownership, not a feature.
+The user’s latest direct decision is authoritative. Do not use old plans or Git history to redirect current work, and do not create memory logs, work orders, build orders, roadmaps, handoffs, or chat recaps. Keep brainstorming in the chat.
+
+Preserve unrelated and concurrent changes. Verify the work, then commit only intentional files to this repository.
