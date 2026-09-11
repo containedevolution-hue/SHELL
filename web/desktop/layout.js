@@ -12,7 +12,7 @@
     { id:'files', name:'Files', icon:'folder', summary:'Folders, drives & storage', copy:'Browse the files and storage connected to this computer.', empty:'The file listing will be designed next. This layout does not read or change your files.' },
     { id:'apps', name:'Applications', icon:'grid', summary:'System & installed apps', copy:'A place for the applications on your computer.', empty:'Application discovery is not connected in this layout study.' },
     { id:'connections', name:'Connections', icon:'link', summary:'Devices, mounts & integrations', copy:'See where your computer connects.', empty:'Connection state is unavailable in this layout study.' },
-    { id:'memory', name:'Memory Box', icon:'memory', summary:'Assistant memory & boot files', copy:'Inspect assistant memory and boot configuration under Shell custody.', empty:'Memory Box and its optional SEED source are not connected in this layout study.' },
+    { id:'memory', name:'Memory Box', icon:'memory', summary:'Assistant memory & boot files', copy:'Inspect assistant memory and boot configuration under CEE OS custody.', empty:'Memory Box and its optional SEED source are not connected in this layout study.' },
     { id:'system', name:'System activity', icon:'activity', summary:'Resources & running work', copy:'Understand the activity on your computer.', empty:'Live system readings are unavailable in this layout study.' }
   ];
   let current = 'desktop', currentPlace = null, opened = null, opener = null;
@@ -97,9 +97,9 @@
     openMenu(title,title,context,trigger,content,true);
   }
   function showView(trigger) {
-    const content=container(`<label class="view-choice"><input id="compact-seed" type="checkbox" ${document.body.dataset.seedSize === 'small' ? 'checked' : ''}> Smaller Core icon</label><label class="view-choice"><input id="blink-seed" type="checkbox" ${document.body.dataset.blink !== 'off' ? 'checked' : ''}> Blinking eyes</label><p>Preview preferences last until this page reloads. Reduced-motion settings always disable blinking.</p>`);
-    content.querySelector('#compact-seed').onchange=e=>document.body.dataset.seedSize=e.target.checked?'small':'normal';
-    content.querySelector('#blink-seed').onchange=e=>document.body.dataset.blink=e.target.checked?'on':'off';
+    const content=container(`<label class="view-choice"><input id="compact-core" type="checkbox" ${document.body.dataset.coreSize === 'small' ? 'checked' : ''}> Smaller Core emblem</label><label class="view-choice"><input id="pulse-core" type="checkbox" ${document.body.dataset.corePulse !== 'off' ? 'checked' : ''}> Core energy pulse</label><p>Preview preferences last until this page reloads. Reduced-motion settings always disable the pulse.</p>`);
+    content.querySelector('#compact-core').onchange=e=>document.body.dataset.coreSize=e.target.checked?'small':'normal';
+    content.querySelector('#pulse-core').onchange=e=>document.body.dataset.corePulse=e.target.checked?'on':'off';
     openMenu('view','Desktop view','Desktop',trigger,content,true);
   }
   function showSettings() {
@@ -107,7 +107,7 @@
     if(native){
       if(isDesktop || current==='core'){nativeAction('desktop_system_settings');return;}
       if(current==='place' && currentPlace.id==='files'){
-        const content=container('<p>Use Hidden files and the folder filter in Files to choose what is shown. Added folder locations last for this Shell session.</p>');
+        const content=container('<p>Use Hidden files and the folder filter in Files to choose what is shown. Added folder locations last for this CEE OS session.</p>');
         openMenu('settings','Files settings','Files',$('settings'),content);return;
       }
     }
@@ -117,7 +117,7 @@
   }
   function showSearch() {
     const content=container('<label class="search-label" for="layout-search">Find a destination in this study</label><input class="search-input" id="layout-search" type="search" placeholder="Core, Files, Scribble…"><div id="search-results"></div>');
-    if(native){content.querySelector('label').textContent='Find a Shell destination';content.querySelector('input').placeholder='Core, Files, Applications…';}
+    if(native){content.querySelector('label').textContent='Find a CEE OS destination';content.querySelector('input').placeholder='Core, Files, Applications…';}
     const targets=[{name:'Desktop',description:'Return home',icon:'view',action:()=>go('desktop')},{name:'Core',description:'Files and computer',icon:'folder',action:()=>go('core')},...places.map(place=>({name:place.name,description:place.summary,icon:place.icon,action:()=>go('place',place)})),...(native?[]:[{name:'Scribble',description:'App context example',icon:'grid',action:()=>go('scribble')}])];
     const render=query=>{const results=content.querySelector('#search-results');results.replaceChildren();const matches=targets.filter(item=>item.name.toLowerCase().includes(query.toLowerCase()));for(const item of matches)results.append(row(item.name,item.description,item.icon,item.action));if(!matches.length)results.textContent='No matching destinations.';};
     render(''); content.querySelector('input').oninput=e=>render(e.target.value);
@@ -129,7 +129,7 @@
     node.onclick=()=>go('place',place);return node;
   }));
   $('home').onclick=()=>go('desktop'); $('open-core').onclick=()=>go('core'); $('settings').onclick=showSettings; $('search').onclick=showSearch;
-  $('notifications').onclick=()=>openMenu('notifications','Notifications','Shell',$('notifications'),container('<p>System notifications will stay here across pages.</p><p>No live notification feed is connected in this study.</p>'));
+  $('notifications').onclick=()=>openMenu('notifications','Notifications','CEE OS',$('notifications'),container('<p>System notifications stay here across pages.</p><p>No live notification feed is connected in this preview.</p>'));
   $('close-flyout').onclick=()=>closeMenu(true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape' && opened){event.preventDefault();closeMenu(true);}});
   document.addEventListener('pointerdown',event=>{if(opened && !$('flyout').contains(event.target) && !(opener && opener.contains(event.target))) closeMenu();});
@@ -140,7 +140,7 @@
   }
   new ResizeObserver(drawBar).observe(document.documentElement); drawBar(); go('desktop',null,false);
   if(native){
-    $('desktop-caption').textContent='SHELL · Development';
+    $('desktop-caption').textContent='CEE OS · Development';
     $('core-note').textContent='Files and the application launcher are connected. Connections, Memory Box and system activity are still being built.';
   }
 })();

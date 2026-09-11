@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "SHELL",
+  "productName": "CEE OS",
   "version": "0.1.1",
   "identifier": "com.containedevolution.localhub",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "SHELL",
+        "title": "CEE OS",
         "url": "index.html",
         "width": 1280,
         "height": 800,
@@ -25,7 +25,7 @@
       },
       {
         "label": "dedup",
-        "title": "SHELL — Photo Duplicates",
+        "title": "CEE OS — Photo Duplicates",
         "url": "dedup.html",
         "width": 1100,
         "height": 820,
@@ -92,8 +92,8 @@
       }
     },
     "category": "Utility",
-    "shortDescription": "SHELL — a free, local-first operating environment",
-    "longDescription": "SHELL provides a local-first desktop, core apps, files, browser capabilities, and optional integrations without requiring an account or Tenari.",
+    "shortDescription": "CEE OS — a free, local-first operating environment",
+    "longDescription": "CEE OS provides a local-first desktop, Core, files, browser capabilities, and optional integrations without requiring Tenari.",
     "externalBin": [
       "binaries/node"
     ],

@@ -2,7 +2,7 @@
   "name": "shell",
   "version": "0.1.1",
   "private": false,
-  "description": "SHELL — a free, local-first operating environment by Contained Evolution",
+  "description": "CEE OS — a free, local-first operating environment by Contained Evolution",
   "scripts": {
     "preview:desktop": "node scripts/preview-desktop.js",
     "dev:desktop": "node scripts/start-native-desktop.js --dev",

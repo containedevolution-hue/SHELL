@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SHELL — Desktop</title>
+  <title>CEE OS — Desktop</title>
   <link rel="stylesheet" href="./layout.css">
 </head>
 <body>
@@ -23,10 +23,10 @@
     </defs>
   </svg>
 
-  <header class="status-bar" aria-label="Shell status bar">
+  <header class="status-bar" aria-label="CEE OS status bar">
     <svg class="bar-shape" preserveAspectRatio="none" aria-hidden="true"><path id="bar-fill"/><path id="bar-line"/></svg>
     <div class="bar-side bar-left">
-      <span class="wordmark">SHELL</span>
+      <span class="wordmark"><span class="cee-mark" aria-hidden="true">C<span>›</span><span>›</span></span><span>CEE OS</span></span>
       <span id="context-name">Desktop</span>
       <nav id="page-menus" aria-label="Desktop menus"></nav>
     </div>
@@ -40,7 +40,7 @@
         <path class="home-house" d="m23 34 13-11 13 11h-4v14H28V34Zm10 5v9h7v-9Z"/>
       </svg>
     </button>
-    <nav class="bar-side bar-right" aria-label="Context settings and Shell notifications">
+    <nav class="bar-side bar-right" aria-label="Context settings and CEE OS notifications">
       <button class="bar-button" id="search" aria-label="Search Desktop" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button>
       <button class="bar-button" id="settings" aria-label="Desktop settings" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
       <button class="bar-button" id="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-bell"/></svg></button>
@@ -50,20 +50,10 @@
   <main id="surface">
     <section id="desktop" class="desktop" aria-label="Desktop">
       <button class="core-launcher" id="open-core" aria-label="Open Core — files and computer">
-        <svg class="seed" viewBox="0 0 220 240" aria-hidden="true">
-          <path class="seed-body" d="M145 15C147 49 190 73 193 124C199 183 162 219 109 221C53 224 22 193 26 144C31 91 82 44 145 15Z"/>
-          <path class="seed-light" d="M133 33C88 64 59 92 51 130C43 159 52 186 67 197C30 180 31 143 47 112C65 78 94 51 133 33Z"/>
-          <g class="seed-eyes">
-            <ellipse cx="90" cy="139" rx="14" ry="20" fill="#292333"/>
-            <ellipse cx="136" cy="137" rx="14" ry="20" fill="#292333"/>
-            <ellipse cx="94" cy="132" rx="4.5" ry="6" fill="#fff9e9"/>
-            <ellipse cx="140" cy="130" rx="4.5" ry="6" fill="#fff9e9"/>
-          </g>
-          <ellipse cx="67" cy="163" rx="10" ry="5" fill="#ff936d"/>
-          <ellipse cx="158" cy="161" rx="10" ry="5" fill="#ff936d"/>
-        </svg>
+        <span class="ember-aura" aria-hidden="true"></span>
+        <img class="core-ember" src="./assets/cee-core-ember-v1.png" alt="">
         <span class="core-name">Core</span>
-        <span class="core-caption">Your files. Your computer.</span>
+        <span class="core-caption">Files · Security · Powerhouses</span>
       </button>
     </section>
 
@@ -106,7 +96,7 @@
       <p class="eyebrow">App context example</p>
       <h1 id="scribble-title" tabindex="-1">Scribble</h1>
       <div class="paper"><span class="paper-line"></span><p>A space for your words.</p><span class="paper-line short"></span><span class="paper-line"></span></div>
-      <p class="study-note">Only the Shell frame is demonstrated here. Open Settings above to see its Scribble context.</p>
+      <p class="study-note">Only the CEE OS frame is demonstrated here. Open Settings above to see its Scribble context.</p>
     </section>
   </main>
 
@@ -114,7 +104,7 @@
     <div class="flyout-heading"><div><p id="flyout-context" class="eyebrow"></p><h2 id="flyout-title"></h2></div><button id="close-flyout" class="close-button" aria-label="Close menu">×</button></div>
     <div id="flyout-content"></div>
   </aside>
-  <p class="preview-label" id="desktop-caption">Desktop layout study <span>01</span></p>
+  <p class="preview-label" id="desktop-caption">CEE OS <span>Desktop preview</span></p>
   <p id="announcement" class="sr-only" role="status"></p>
   <script src="./files.js"></script>
   <script src="./layout.js"></script>

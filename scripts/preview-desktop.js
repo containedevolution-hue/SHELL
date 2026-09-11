@@ -10,6 +10,8 @@ const files = new Map([
   ['/layout.css', ['layout.css', 'text/css; charset=utf-8']],
   ['/layout.js', ['layout.js', 'text/javascript; charset=utf-8']],
   ['/files.js', ['files.js', 'text/javascript; charset=utf-8']],
+  ['/assets/cee-mesh-desktop-v1.png', ['assets/cee-mesh-desktop-v1.png', 'image/png']],
+  ['/assets/cee-core-ember-v1.png', ['assets/cee-core-ember-v1.png', 'image/png']],
 ]);
 const server = http.createServer((request, response) => {
   const file = files.get(request.url);
@@ -20,5 +22,5 @@ const server = http.createServer((request, response) => {
     response.end(request.method === 'HEAD' ? undefined : data);
   });
 });
-server.listen(4176, '127.0.0.1', () => console.log('SHELL desktop layout: http://127.0.0.1:4176'));
+server.listen(4176, '127.0.0.1', () => console.log('CEE OS desktop: http://127.0.0.1:4176'));
 server.on('error', error => { console.error(`Could not start desktop preview: ${error.message}`); process.exitCode = 1; });
