@@ -46,6 +46,24 @@
     node.innerHTML=`${icon(symbol)}<span><strong>${name}</strong><small>${description}</small></span>`;
     node.onclick=action; return node;
   }
+  function securitySurface() {
+    const node=container(`<div class="security-overview">
+      <section class="security-summary"><div><span class="status-dot"></span><p class="eyebrow">Core security</p><h2>Protection center</h2><p>Local protection, network policy and recovery controls stay together inside Core.</p></div><span class="preview-pill">Preview data</span></section>
+      <section class="security-section"><div class="section-heading"><div><p class="eyebrow">Network route</p><h3>VPN policy</h3></div><p id="vpn-policy-copy">Use the VPN when it is available and return to the direct connection when it is not.</p></div><div class="policy-grid" role="radiogroup" aria-label="VPN policy">
+        <button type="button" role="radio" aria-checked="false" data-policy="Direct" data-copy="Use the direct network connection without starting a VPN tunnel."><strong>Direct</strong><small>No tunnel required</small></button>
+        <button type="button" role="radio" aria-checked="true" data-policy="Prefer VPN" data-copy="Use the VPN when it is available and return to the direct connection when it is not."><strong>Prefer VPN</strong><small>Balanced default</small></button>
+        <button type="button" role="radio" aria-checked="false" data-policy="Require VPN" data-copy="Block ordinary network traffic whenever the approved VPN tunnel is unavailable."><strong>Require VPN</strong><small>Fail closed</small></button>
+        <button type="button" role="radio" aria-checked="false" data-policy="Recovery" data-copy="Temporarily restore direct access so a broken VPN profile can be repaired."><strong>Recovery</strong><small>Repair access</small></button>
+      </div></section>
+      <div class="security-cards"><section><span>Firewall</span><strong>Local policy</strong><small>Inbound denied unless a named service is approved.</small></section><section><span>System integrity</span><strong>Evidence first</strong><small>Changes are reported with their source and impact.</small></section><section><span>Updates</span><strong>Complete transactions</strong><small>Prepare recovery before applying a system update.</small></section></div>
+    </div>`);
+    node.querySelectorAll('[data-policy]').forEach(button=>button.onclick=()=>{
+      node.querySelectorAll('[data-policy]').forEach(item=>item.setAttribute('aria-checked','false'));
+      button.setAttribute('aria-checked','true');$('vpn-policy-copy').textContent=button.dataset.copy;
+      $('announcement').textContent=`${button.dataset.policy} selected for this preview.`;
+    });
+    return node;
+  }
   function contextName() { return current === 'desktop' ? 'Desktop' : current === 'scribble' ? 'Scribble' : current === 'core' ? 'Core' : currentPlace.name; }
   function go(next, place = null, focus = true) {
     window.ShellFiles.hide();
@@ -74,6 +92,7 @@
       document.querySelector('.empty-place').hidden=files;
       $('place').classList.toggle('files-page',files);
       if(files){$('place-copy').textContent='Browse this computer. Open files in their default applications.';window.ShellFiles.show();}
+      if(place.id==='security') $('place-empty').replaceChildren(securitySurface());
       if(native && place.id==='powerhouses') {
         $('place-empty').replaceChildren(row('Open applications','Installed CE apps and the app collection','grid',()=>nativeAction('desktop_open_apps')));
       }
