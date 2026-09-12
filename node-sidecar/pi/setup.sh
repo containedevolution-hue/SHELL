@@ -2,7 +2,7 @@
 # SHELL — Pi bring-up script.
 #
 # Run on a fresh Pi OS Lite install AFTER you've cloned the SHELL repo:
-#   git clone <repo-url> ~/SHELL
+#   git clone https://github.com/containedevolution-hue/SHELL.git ~/SHELL
 #   cd ~/SHELL/node-sidecar/pi
 #   ./setup.sh
 #   sudo reboot
