@@ -10,6 +10,7 @@ test('CEE OS is the public name while Shell remains an internal compatibility na
   assert.match(read('web/desktop/index.html'),/<title>CEE OS/);
   assert.match(read('web/index.html'),/<title>CEE OS<\/title>/);
   assert.match(read('web/index.html'),/<strong>CEE OS<\/strong>/);
+  assert.match(read('README.md'),/Contained Evolution Ecosystem, pronounced “see”/);
   assert.match(read('README.md'),/Shell.*internal compatibility namespace/i);
 });
 
@@ -27,4 +28,9 @@ test('Powerhouse builder exposes assembly, inventory and rolling recovery meanin
   assert.match(layout,/container-conveyor/);
   assert.match(layout,/session start and successful endpoint/);
   assert.match(layout,/user documents remain outside/i);
+  const operatingSystem=read('os/README.md');
+  assert.match(operatingSystem,/immutable clean Powerhouse source/);
+  assert.match(operatingSystem,/last successfully closed state/);
+  assert.match(operatingSystem,/quarantined Session Trail/);
+  assert.match(operatingSystem,/validates and promotes/);
 });
