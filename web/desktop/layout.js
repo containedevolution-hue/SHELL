@@ -79,6 +79,36 @@
     loadSecurityEvidence(node);
     return node;
   }
+  async function loadPowerhouses(node) {
+    if(!native)return;
+    const source=node.querySelector('[data-powerhouse-source]');source.textContent='Reading engine';
+    try{
+      const status=await invoke('desktop_powerhouse_status');
+      source.textContent=status.platformSupported?'Live system':'Unavailable here';
+      node.querySelector('[data-engine]').textContent=status.engine;
+      node.querySelector('[data-rootless]').textContent=status.rootless===true?'Enabled':status.rootless===false?'Disabled':'Unavailable';
+      node.querySelector('[data-count]').textContent=String(status.entries.length);
+      const list=node.querySelector('[data-powerhouse-list]');list.replaceChildren();
+      if(status.entries.length){
+        for(const entry of status.entries){
+          const item=document.createElement('article');item.className='powerhouse-row';
+          item.innerHTML=`${icon('powerhouse')}<span><strong></strong><small></small></span><em></em>`;
+          item.querySelector('strong').textContent=entry.name;item.querySelector('small').textContent=entry.image;item.querySelector('em').textContent=entry.state;list.append(item);
+        }
+      }else{
+        const empty=document.createElement('p');empty.className='powerhouse-empty';empty.textContent=status.problem||'No Powerhouses are installed on this device.';list.append(empty);
+      }
+    }catch(error){source.textContent='Discovery unavailable';node.querySelector('[data-powerhouse-list]').textContent='The local container engine could not be read.';}
+  }
+  function powerhouseSurface() {
+    const node=container(`<div class="powerhouse-overview">
+      <section class="powerhouse-summary"><div><p class="eyebrow">Core orchestration</p><h2>Powerhouses</h2><p>Specialized environments stay independently contained and connect through Core.</p></div><span class="preview-pill" data-powerhouse-source>${native?'Reading engine':'Preview data'}</span></section>
+      <div class="powerhouse-metrics"><section><span>Engine</span><strong data-engine>${native?'Reading…':'Podman'}</strong></section><section><span>Rootless</span><strong data-rootless>${native?'Reading…':'Required'}</strong></section><section><span>Installed</span><strong data-count>0</strong></section></div>
+      <section class="powerhouse-list"><div class="section-heading"><div><p class="eyebrow">This device</p><h3>Environments</h3></div>${native?'<button type="button" class="file-action" data-open-apps>Open app collection</button>':''}</div><div data-powerhouse-list><p class="powerhouse-empty">${native?'Reading local Powerhouses…':'Native container discovery appears in the installed Linux desktop.'}</p></div></section>
+    </div>`);
+    node.querySelector('[data-open-apps]')?.addEventListener('click',()=>nativeAction('desktop_open_apps'));
+    loadPowerhouses(node);return node;
+  }
   function contextName() { return current === 'desktop' ? 'Desktop' : current === 'scribble' ? 'Scribble' : current === 'core' ? 'Core' : currentPlace.name; }
   function go(next, place = null, focus = true) {
     window.ShellFiles.hide();
@@ -108,9 +138,7 @@
       $('place').classList.toggle('files-page',files);
       if(files){$('place-copy').textContent='Browse this computer. Open files in their default applications.';window.ShellFiles.show();}
       if(place.id==='security') $('place-empty').replaceChildren(securitySurface());
-      if(native && place.id==='powerhouses') {
-        $('place-empty').replaceChildren(row('Open applications','Installed CE apps and the app collection','grid',()=>nativeAction('desktop_open_apps')));
-      }
+      if(place.id==='powerhouses') $('place-empty').replaceChildren(powerhouseSurface());
     }
     window.scrollTo(0,0); $('announcement').textContent=`${name}. Settings now opens ${next === 'desktop' ? 'base' : name} settings.`;
     if (focus) (next === 'desktop' ? $('open-core') : $(`${next}-title`)).focus({preventScroll:true});

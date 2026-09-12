@@ -61,6 +61,23 @@ pub struct SecurityStatus {
     vpn: SecurityComponent,
     firewall: SecurityComponent,
 }
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerhouseEntry {
+    name: String,
+    image: String,
+    state: String,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerhouseStatus {
+    platform_supported: bool,
+    engine_available: bool,
+    engine: String,
+    rootless: Option<bool>,
+    entries: Vec<PowerhouseEntry>,
+    problem: Option<String>,
+}
 
 fn display(path: &Path) -> String {
     path.to_string_lossy().into_owned()
@@ -185,6 +202,20 @@ fn private_connection_names(active_connections: &str) -> Vec<String> {
         .collect()
 }
 
+#[cfg(any(target_os = "linux", test))]
+fn parse_powerhouses(rows: &str) -> Vec<PowerhouseEntry> {
+    rows.lines()
+        .filter_map(|line| {
+            let mut fields = line.splitn(3, '\t');
+            Some(PowerhouseEntry {
+                name: fields.next()?.to_string(),
+                state: fields.next()?.to_string(),
+                image: fields.next()?.to_string(),
+            })
+        })
+        .collect()
+}
+
 #[cfg(target_os = "linux")]
 fn linux_security_status() -> SecurityStatus {
     let network_state = output("nmcli", &["-t", "-f", "STATE", "general"]);
@@ -256,6 +287,56 @@ fn linux_security_status() -> SecurityStatus {
             state: firewall_state,
             detail: firewall_detail,
         },
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn linux_powerhouse_status() -> PowerhouseStatus {
+    let Some(version) = output("podman", &["--version"]) else {
+        return PowerhouseStatus {
+            platform_supported: true,
+            engine_available: false,
+            engine: "Podman unavailable".into(),
+            rootless: None,
+            entries: Vec::new(),
+            problem: Some("Install Podman to run local Powerhouses.".into()),
+        };
+    };
+    let rootless = output(
+        "podman",
+        &["info", "--format", "{{.Host.Security.Rootless}}"],
+    )
+    .and_then(|value| value.parse::<bool>().ok());
+    let rows = output(
+        "podman",
+        &[
+            "ps",
+            "--all",
+            "--format",
+            "{{.Names}}\t{{.Status}}\t{{.Image}}",
+        ],
+    );
+    PowerhouseStatus {
+        platform_supported: true,
+        engine_available: true,
+        engine: version,
+        rootless,
+        entries: rows.as_deref().map(parse_powerhouses).unwrap_or_default(),
+        problem: rows
+            .is_none()
+            .then(|| "Podman is installed, but its container list could not be read.".into()),
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn linux_powerhouse_status() -> PowerhouseStatus {
+    PowerhouseStatus {
+        platform_supported: false,
+        engine_available: false,
+        engine: "Unavailable".into(),
+        rootless: None,
+        entries: Vec::new(),
+        problem: Some("Native Powerhouses run on CEE OS Linux.".into()),
     }
 }
 
@@ -452,6 +533,13 @@ pub async fn desktop_security_status(window: WebviewWindow) -> Result<SecuritySt
         .map_err(|_| "Security evidence collection was interrupted.".to_string())
 }
 #[tauri::command]
+pub async fn desktop_powerhouse_status(window: WebviewWindow) -> Result<PowerhouseStatus, String> {
+    authorize(&window)?;
+    tauri::async_runtime::spawn_blocking(linux_powerhouse_status)
+        .await
+        .map_err(|_| "Powerhouse discovery was interrupted.".to_string())
+}
+#[tauri::command]
 pub fn desktop_system_settings(window: WebviewWindow, app: tauri::AppHandle) -> Result<(), String> {
     authorize(&window)?;
     #[cfg(target_os = "linux")]
@@ -638,5 +726,14 @@ mod tests {
             ),
             vec!["Home tunnel", "Work"]
         );
+    }
+    #[test]
+    fn powerhouse_rows_keep_name_state_and_image_bounded() {
+        let entries =
+            parse_powerhouses("research\tUp 2 hours\tcee/research:1\nstudio\tExited\tcee/studio:2");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name, "research");
+        assert_eq!(entries[0].state, "Up 2 hours");
+        assert_eq!(entries[1].image, "cee/studio:2");
     }
 }
