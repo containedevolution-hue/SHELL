@@ -46,22 +46,37 @@
     node.innerHTML=`${icon(symbol)}<span><strong>${name}</strong><small>${description}</small></span>`;
     node.onclick=action; return node;
   }
+  async function loadSecurityEvidence(node) {
+    if(!native)return;
+    const pill=node.querySelector('[data-security-source]');pill.textContent='Reading system';
+    try{
+      const status=await invoke('desktop_security_status');
+      pill.textContent=status.platformSupported?'Live system':'Unavailable here';
+      pill.classList.toggle('unavailable',!status.platformSupported);
+      for(const [key,value] of Object.entries({network:status.network,vpn:status.vpn,firewall:status.firewall})){
+        node.querySelector(`[data-${key}-state]`).textContent=value.state;
+        node.querySelector(`[data-${key}-detail]`).textContent=value.detail;
+        node.querySelector(`[data-${key}]`).classList.toggle('unavailable',!value.available);
+      }
+    }catch(error){pill.textContent='Evidence unavailable';pill.classList.add('unavailable');}
+  }
   function securitySurface() {
     const node=container(`<div class="security-overview">
-      <section class="security-summary"><div><span class="status-dot"></span><p class="eyebrow">Core security</p><h2>Protection center</h2><p>Local protection, network policy and recovery controls stay together inside Core.</p></div><span class="preview-pill">Preview data</span></section>
+      <section class="security-summary"><div><span class="status-dot"></span><p class="eyebrow">Core security</p><h2>Protection center</h2><p>Local protection, network policy and recovery controls stay together inside Core.</p></div><span class="preview-pill" data-security-source>${native?'Reading system':'Preview data'}</span></section>
       <section class="security-section"><div class="section-heading"><div><p class="eyebrow">Network route</p><h3>VPN policy</h3></div><p id="vpn-policy-copy">Use the VPN when it is available and return to the direct connection when it is not.</p></div><div class="policy-grid" role="radiogroup" aria-label="VPN policy">
         <button type="button" role="radio" aria-checked="false" data-policy="Direct" data-copy="Use the direct network connection without starting a VPN tunnel."><strong>Direct</strong><small>No tunnel required</small></button>
         <button type="button" role="radio" aria-checked="true" data-policy="Prefer VPN" data-copy="Use the VPN when it is available and return to the direct connection when it is not."><strong>Prefer VPN</strong><small>Balanced default</small></button>
         <button type="button" role="radio" aria-checked="false" data-policy="Require VPN" data-copy="Block ordinary network traffic whenever the approved VPN tunnel is unavailable."><strong>Require VPN</strong><small>Fail closed</small></button>
         <button type="button" role="radio" aria-checked="false" data-policy="Recovery" data-copy="Temporarily restore direct access so a broken VPN profile can be repaired."><strong>Recovery</strong><small>Repair access</small></button>
       </div></section>
-      <div class="security-cards"><section><span>Firewall</span><strong>Local policy</strong><small>Inbound denied unless a named service is approved.</small></section><section><span>System integrity</span><strong>Evidence first</strong><small>Changes are reported with their source and impact.</small></section><section><span>Updates</span><strong>Complete transactions</strong><small>Prepare recovery before applying a system update.</small></section></div>
+      <div class="security-cards"><section data-network><span>NetworkManager</span><strong data-network-state>${native?'Reading…':'Preview'}</strong><small data-network-detail>${native?'Reading the native network authority.':'Native evidence appears in the installed Linux desktop.'}</small></section><section data-vpn><span>Active VPN</span><strong data-vpn-state>${native?'Reading…':'No preview tunnel'}</strong><small data-vpn-detail>${native?'Reading active private connections.':'Policy choices above are interface-only in this browser preview.'}</small></section><section data-firewall><span>Firewall</span><strong data-firewall-state>${native?'Reading…':'Local policy'}</strong><small data-firewall-detail>${native?'Reading the managed nftables service.':'Inbound traffic is denied unless a named service is approved.'}</small></section></div>
     </div>`);
     node.querySelectorAll('[data-policy]').forEach(button=>button.onclick=()=>{
       node.querySelectorAll('[data-policy]').forEach(item=>item.setAttribute('aria-checked','false'));
       button.setAttribute('aria-checked','true');$('vpn-policy-copy').textContent=button.dataset.copy;
       $('announcement').textContent=`${button.dataset.policy} selected for this preview.`;
     });
+    loadSecurityEvidence(node);
     return node;
   }
   function contextName() { return current === 'desktop' ? 'Desktop' : current === 'scribble' ? 'Scribble' : current === 'core' ? 'Core' : currentPlace.name; }

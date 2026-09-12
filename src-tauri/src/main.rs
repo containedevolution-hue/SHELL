@@ -470,6 +470,7 @@ fn main() {
             desktop::desktop_pick_folder,
             desktop::desktop_open_file,
             desktop::desktop_open_apps,
+            desktop::desktop_security_status,
             desktop::desktop_system_settings,
             scan_duplicates,
             delete_to_trash,

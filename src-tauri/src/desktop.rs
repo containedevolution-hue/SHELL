@@ -1,5 +1,7 @@
 //! Native desktop entry and owner-driven file navigation. No HTTP or agent grants.
 use serde::Serialize;
+#[cfg(target_os = "linux")]
+use std::process::Command;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -42,6 +44,22 @@ pub struct Listing {
     parent: Option<String>,
     entries: Vec<Entry>,
     truncated: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecurityComponent {
+    available: bool,
+    state: String,
+    detail: String,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecurityStatus {
+    platform_supported: bool,
+    network: SecurityComponent,
+    vpn: SecurityComponent,
+    firewall: SecurityComponent,
 }
 
 fn display(path: &Path) -> String {
@@ -145,6 +163,115 @@ fn openable(path: &Path, meta: &fs::Metadata) -> bool {
             | "ods"
             | "odp"
     )
+}
+
+#[cfg(target_os = "linux")]
+fn output(program: &str, arguments: &[&str]) -> Option<String> {
+    let result = Command::new(program).args(arguments).output().ok()?;
+    if !result.status.success() {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&result.stdout).trim().to_string())
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn private_connection_names(active_connections: &str) -> Vec<String> {
+    active_connections
+        .lines()
+        .filter_map(|line| {
+            let (kind, name) = line.split_once(':')?;
+            matches!(kind, "vpn" | "wireguard").then(|| name.to_string())
+        })
+        .collect()
+}
+
+#[cfg(target_os = "linux")]
+fn linux_security_status() -> SecurityStatus {
+    let network_state = output("nmcli", &["-t", "-f", "STATE", "general"]);
+    let active_connections = output(
+        "nmcli",
+        &[
+            "-t",
+            "--escape",
+            "no",
+            "-f",
+            "TYPE,NAME",
+            "connection",
+            "show",
+            "--active",
+        ],
+    );
+    let vpn_names = private_connection_names(active_connections.as_deref().unwrap_or(""));
+    let vpn_available = active_connections.is_some();
+    let vpn_state = if !vpn_available {
+        "Unavailable"
+    } else if vpn_names.is_empty() {
+        "No active tunnel"
+    } else {
+        "Connected"
+    };
+    let vpn_detail = if vpn_names.is_empty() {
+        "No active VPN profile reported by NetworkManager.".into()
+    } else {
+        format!("Active: {}", vpn_names.join(", "))
+    };
+    let firewall_unit = ["shell-firewall.service", "nftables.service"]
+        .into_iter()
+        .find(|unit| output("systemctl", &["cat", unit]).is_some());
+    let (firewall_available, firewall_state, firewall_detail) = match firewall_unit {
+        Some(unit) => {
+            let enabled =
+                output("systemctl", &["is-enabled", unit]).unwrap_or_else(|| "unknown".into());
+            let active =
+                output("systemctl", &["is-active", unit]).unwrap_or_else(|| "unknown".into());
+            (true, active.clone(), format!("{unit}; startup: {enabled}"))
+        }
+        None => (
+            false,
+            "Unavailable".into(),
+            "No managed nftables service was found.".into(),
+        ),
+    };
+    SecurityStatus {
+        platform_supported: true,
+        network: SecurityComponent {
+            available: network_state.is_some(),
+            state: network_state
+                .clone()
+                .unwrap_or_else(|| "Unavailable".into()),
+            detail: if network_state.is_some() {
+                "Reported by NetworkManager."
+            } else {
+                "NetworkManager could not be read."
+            }
+            .into(),
+        },
+        vpn: SecurityComponent {
+            available: vpn_available,
+            state: vpn_state.into(),
+            detail: vpn_detail,
+        },
+        firewall: SecurityComponent {
+            available: firewall_available,
+            state: firewall_state,
+            detail: firewall_detail,
+        },
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn linux_security_status() -> SecurityStatus {
+    let unavailable = || SecurityComponent {
+        available: false,
+        state: "Unavailable".into(),
+        detail: "Native security evidence is connected on CEE OS Linux.".into(),
+    };
+    SecurityStatus {
+        platform_supported: false,
+        network: unavailable(),
+        vpn: unavailable(),
+        firewall: unavailable(),
+    }
 }
 fn listing(input: &str, roots: &[Root], hidden: bool) -> Result<Listing, String> {
     let path = resolve(input, roots)?;
@@ -318,6 +445,13 @@ pub fn desktop_open_apps(window: WebviewWindow, app: tauri::AppHandle) -> Result
         .map_err(|e| e.to_string())
 }
 #[tauri::command]
+pub async fn desktop_security_status(window: WebviewWindow) -> Result<SecurityStatus, String> {
+    authorize(&window)?;
+    tauri::async_runtime::spawn_blocking(linux_security_status)
+        .await
+        .map_err(|_| "Security evidence collection was interrupted.".to_string())
+}
+#[tauri::command]
 pub fn desktop_system_settings(window: WebviewWindow, app: tauri::AppHandle) -> Result<(), String> {
     authorize(&window)?;
     #[cfg(target_os = "linux")]
@@ -484,5 +618,25 @@ mod tests {
             fs::write(&p, b"data").unwrap();
             assert!(!openable(&p, &fs::metadata(&p).unwrap()));
         }
+    }
+    #[test]
+    fn non_linux_security_status_never_invents_live_state() {
+        #[cfg(not(target_os = "linux"))]
+        {
+            let status = linux_security_status();
+            assert!(!status.platform_supported);
+            assert!(!status.network.available);
+            assert!(!status.vpn.available);
+            assert!(!status.firewall.available);
+        }
+    }
+    #[test]
+    fn active_connection_parser_keeps_only_private_tunnels() {
+        assert_eq!(
+            private_connection_names(
+                "802-3-ethernet:LAN\nwireguard:Home tunnel\nvpn:Work\nloopback:lo"
+            ),
+            vec!["Home tunnel", "Work"]
+        );
     }
 }
