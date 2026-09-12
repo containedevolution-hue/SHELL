@@ -10,6 +10,7 @@ test('Linux launcher is per-user, quotes its checkout and never enables a login 
   const binary=path.join(root,'src-tauri/target/release/localhub');fs.mkdirSync(path.dirname(binary),{recursive:true});fs.writeFileSync(binary,Buffer.from([0x7f,0x45,0x4c,0x46]),{mode:0o755});
   const file=install({platform:'linux',root,home});assert(file.startsWith(home));
   const desktop=fs.readFileSync(file,'utf8');assert.match(desktop,/Terminal=false/);assert.match(desktop,/%%/);assert.doesNotMatch(desktop,/autostart|sudo|systemctl/);
+  assert.match(desktop,/Name=CEE OS \(Development\)/);assert.doesNotMatch(desktop,/Name=SHELL/);
   const launch=fs.readFileSync(path.join(home,'.local/share/contained-evolution/shell-desktop/launch'),'utf8');
   assert(launch.includes(shellQuote(binary)));assert.match(launch,/SHELL_DESKTOP=enabled/);
   fs.writeFileSync(binary,'not ELF');assert.throws(()=>install({platform:'linux',root,home}),/not a Linux ELF/);

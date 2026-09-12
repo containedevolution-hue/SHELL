@@ -1,6 +1,6 @@
-# SHELL
+# CEE OS
 
-Contained Evolution's free, local-first operating environment: owns its desktop, adaptive Status Bar, native browser-engine and filesystem capabilities, devices, settings, windows, automation, and integration permissions. Works without Tenari, an assistant, or an account.
+Contained Evolution's free, local-first operating environment: owns its desktop, adaptive Status Bar, native browser-engine and filesystem capabilities, devices, settings, windows, automation, and integration permissions. Works without Tenari, an assistant, or an account. **CEE OS is the single public product name.** `Shell` remains the repository name and internal compatibility namespace for paths, environment variables, and versioned contracts.
 
 **Built:**
 - Extracted into its own repository with full `localhub/` history; local app discovery/launch work with every integration absent; legacy Tenari pairing exists only as a disabled adapter seam
