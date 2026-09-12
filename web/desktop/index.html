@@ -28,11 +28,6 @@
 
   <header class="status-bar" aria-label="CEE OS status bar">
     <svg class="bar-shape" preserveAspectRatio="none" aria-hidden="true"><path id="bar-fill"/><path id="bar-line"/></svg>
-    <div class="bar-side bar-left">
-      <span class="wordmark"><span class="cee-mark" aria-hidden="true">C<span>›</span><span>›</span></span><span>CEE OS</span></span>
-      <span id="context-name">Desktop</span>
-      <nav id="page-menus" aria-label="Desktop menus"></nav>
-    </div>
     <button class="home" id="home" aria-label="Home — Desktop" title="Home — Desktop">
       <svg class="home-globe" viewBox="0 0 72 72" aria-hidden="true">
         <circle class="ocean" cx="36" cy="36" r="33"/>
@@ -43,9 +38,7 @@
         <path class="home-house" d="m23 34 13-11 13 11h-4v14H28V34Zm10 5v9h7v-9Z"/>
       </svg>
     </button>
-    <nav class="bar-side bar-right" aria-label="Context settings and CEE OS notifications">
-      <button class="bar-button" id="search" aria-label="Search Desktop" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-search"/></svg><span>Search</span></button>
-      <button class="bar-button" id="settings" aria-label="Desktop settings" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
+    <nav class="bar-side bar-right" aria-label="CEE OS notifications">
       <button class="bar-button" id="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-bell"/></svg></button>
     </nav>
   </header>
@@ -60,27 +53,27 @@
       </button>
     </section>
 
-    <section id="core" class="page" aria-labelledby="core-title" hidden>
-      <p class="eyebrow">Protected system center</p>
-      <h1 id="core-title" tabindex="-1">Core</h1>
-      <p class="page-intro">Everything in CEE OS connects here.</p>
+    <section id="core" class="page page-surface" aria-labelledby="core-title" hidden>
       <div class="core-map">
         <div class="core-orbit orbit-one" aria-hidden="true"></div>
         <div class="core-orbit orbit-two" aria-hidden="true"></div>
         <div class="core-heart" aria-label="CEE OS Core">
-          <img src="./assets/cee-core-ember-v1.png" alt="">
-          <strong>Core</strong>
-          <span>System foundation</span>
+          <p class="eyebrow">Protected system center</p>
+          <h1 id="core-title" tabindex="-1">Core</h1>
+          <span>Everything connects here</span>
         </div>
         <div id="core-places" class="places"></div>
       </div>
       <p class="study-note" id="core-note">Choose a Core system to open its controls.</p>
     </section>
 
-    <section id="place" class="page" aria-labelledby="place-title" hidden>
-      <p class="eyebrow">Core / <span id="place-crumb"></span></p>
-      <h1 id="place-title" tabindex="-1"></h1>
-      <p class="page-intro" id="place-copy"></p>
+    <section id="place" class="page page-surface" aria-labelledby="place-title" hidden>
+      <div class="page-identity">
+        <p class="eyebrow">Core / <span id="place-crumb"></span></p>
+        <h1 id="place-title" tabindex="-1"></h1>
+        <p class="page-intro" id="place-copy"></p>
+      </div>
+      <nav id="place-spheres" class="sphere-menu" aria-label="Page sections"></nav>
       <div class="empty-place"><svg aria-hidden="true"><use id="place-icon" href="#i-folder"/></svg><p id="place-empty"></p></div>
       <div id="native-files" hidden>
         <div class="file-controls">

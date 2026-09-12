@@ -5,7 +5,7 @@ CEE OS Core is the operating environment's central computer, security, orchestra
 **Built:**
 - A responsive ember launcher with a reduced-motion-safe energy pulse, kept separate from the fixed Home control and the optional SEED capture product
 - A responsive Core interior that connects Files, Security, Powerhouses, Storage, Connections, and Activity around the central ember
-- Contextual Core navigation: every system supplies its own bounded top-bar menus while the OS-owned Home, search, settings, and notifications remain fixed
+- Spherical Core navigation: six dimensional destination spheres surround the centered Core title, and each destination renders its section spheres inside the page while Home and Notifications remain fixed above
 - A first Security surface with explicit Direct, Prefer VPN, Require VPN, and Recovery policies plus firewall, integrity, and update sections; it labels its current values as preview data until native evidence is connected
 - A first Powerhouses surface backed by read-only native Podman discovery on Linux, including engine availability, rootless state, and installed container name/image/status; unsupported hosts remain explicitly unavailable
 - Memory Box: one entry per assistant model, isolated memory slots, SHELL custody, owner vs. assistant content stays provenance-tracked
