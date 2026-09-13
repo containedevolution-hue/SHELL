@@ -17,13 +17,22 @@ test('CEE OS is the public name while Shell remains an internal compatibility na
 test('activity keeps speedometers around selectable center views',()=>{
   const desktop=read('web/desktop/index.html');
   const layout=read('web/desktop/layout.js');
+  const statusBar=read('docs/surfaces/Status-Bar.md');
   for(const section of ['Status','Warnings','Workflows','Permissions','Limits','Priorities'])assert.match(layout,new RegExp(`['\"]${section}['\"]`));
   assert.match(layout,/instrument-board/);
   assert.match(layout,/gauge-rail/);
   assert.match(layout,/Protected Core services/);
   assert.match(desktop,/Active apps and background behavior/);
-  for(const policy of ['Rest when inactive','Rest when minimized','Deep sleep after a delay','While its Powerhouse is active','While this computer is on'])assert.match(layout,new RegExp(policy));
+  assert.match(desktop,/aria-label="Open Core"/);
+  assert.match(desktop,/id="backup-core"/);
+  assert.match(desktop,/id="checkpoint"/);
+  assert.match(statusBar,/fixed center control is the blue ember labeled Core/i);
+  assert.doesNotMatch(statusBar,/fixed Home control/);
+  for(const policy of ['Rest after','Rest when minimized','Deep sleep later','While its Powerhouse is active','While this computer is on'])assert.match(layout,new RegExp(policy));
   for(const action of ['Pause · fastest reload','Save state · free memory','Save endpoint · end session'])assert.match(layout,new RegExp(action));
+  for(const timing of ['2 minutes','5 minutes','15 minutes','30 minutes','1 hour','Never'])assert.match(layout,new RegExp(timing));
+  assert.match(layout,/Never sleep any app/);
+  assert.match(layout,/two alternating automatic savepoints/);
   assert.match(layout,/Visible does not mean running/);
   assert.match(layout,/Without Core access, an app starts with no knowledge of the user/);
   assert.match(layout,/CEE OS recommends/);
@@ -41,4 +50,6 @@ test('Powerhouse builder exposes assembly, inventory and rolling recovery meanin
   assert.match(operatingSystem,/last successfully closed state/);
   assert.match(operatingSystem,/quarantined Session Trail/);
   assert.match(operatingSystem,/validates and promotes/);
+  assert.match(operatingSystem,/exactly two alternating automatic savepoints/);
+  assert.match(operatingSystem,/receives no access to sibling Core data/);
 });

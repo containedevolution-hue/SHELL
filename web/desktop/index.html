@@ -31,17 +31,12 @@
     <nav class="bar-side bar-left" aria-label="CEE OS active applications">
       <button class="bar-button" id="active-apps" aria-label="Active apps and background behavior" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-grid"/></svg><span>Active apps</span></button>
     </nav>
-    <button class="home" id="home" aria-label="Home — Desktop" title="Home — Desktop">
-      <svg class="home-globe" viewBox="0 0 72 72" aria-hidden="true">
-        <circle class="ocean" cx="36" cy="36" r="33"/>
-        <path class="land" d="m15 13 14-7 7 5-3 9-11 3-5 9-9-2ZM44 9l13 5 9 15-12 1-5-7-8-4ZM45 39l15-5 6 10-9 15-10 5-7-8 5-8ZM12 40l13 1 5 7-6 14-11-10Z"/>
-        <ellipse class="globe-grid" cx="36" cy="36" rx="16" ry="33"/>
-        <path class="globe-grid" d="M4 36h64M10 19h52M10 53h52"/>
-        <rect class="desktop-square" x="18" y="18" width="36" height="36" rx="3"/>
-        <path class="home-house" d="m23 34 13-11 13 11h-4v14H28V34Zm10 5v9h7v-9Z"/>
-      </svg>
+    <button class="home core-status-control" id="home" aria-label="Open Core" title="Open Core">
+      <img src="./assets/cee-core-ember-v1.png" alt="">
+      <span>Core</span>
     </button>
     <nav class="bar-side bar-right" aria-label="CEE OS notifications">
+      <button class="bar-button checkpoint-button" id="checkpoint" aria-label="Save checkpoint" aria-expanded="false" aria-controls="flyout" hidden><svg aria-hidden="true"><use href="#i-storage"/></svg><span>Checkpoint</span></button>
       <button class="bar-button" id="notifications" aria-label="Notifications" aria-expanded="false" aria-controls="flyout"><svg aria-hidden="true"><use href="#i-bell"/></svg></button>
     </nav>
   </header>
@@ -64,6 +59,7 @@
           <p class="eyebrow">Protected system center</p>
           <h1 id="core-title" tabindex="-1">Core</h1>
           <span>Everything connects here</span>
+          <button id="backup-core" type="button" class="core-backup">Back up Core</button>
         </div>
         <div id="core-places" class="places"></div>
       </div>
