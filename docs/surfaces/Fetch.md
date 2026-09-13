@@ -11,5 +11,5 @@ FETCH is SHELL's browser and evidence-first research system — ordinary browsin
 - The surface decided: Home tile "Fetch," opened header "Fetch Research Lab," Home's day/night sky reused, a subtle seasonal decoration (e.g. Halloween) on the Status Bar contribution and Lab frame, with the schedule eventually owned by Calendar
 
 **Not built yet:**
-- A complete FETCH browser/Lab runtime and the Chat-to-Lab handoff contract (see `Fetch-Research-Lab.md` for the execution order)
-- Everything routed through that build order: the controlled Contractor connection, Calendar-owned seasonal schedule, Postgres-backed proof, and full rendered browser acceptance
+- A complete FETCH browser/Lab runtime and the Chat-to-Lab handoff contract; explicitly accepted unfinished delivery work lives only in the workspace-root next-items queue
+- The controlled Contractor connection, Calendar-owned seasonal schedule, PostgreSQL-backed proof, and full rendered browser acceptance remain unfinished in the workspace-root next-items queue
