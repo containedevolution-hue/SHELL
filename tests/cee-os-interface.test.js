@@ -22,7 +22,8 @@ test('activity keeps speedometers around selectable center views',()=>{
   assert.match(layout,/gauge-rail/);
   assert.match(layout,/Protected Core services/);
   assert.match(desktop,/Active apps and background behavior/);
-  for(const policy of ['Pause when inactive','Pause when minimized','Pause after a delay','While its Powerhouse is active','While this computer is on'])assert.match(layout,new RegExp(policy));
+  for(const policy of ['Rest when inactive','Rest when minimized','Deep sleep after a delay','While its Powerhouse is active','While this computer is on'])assert.match(layout,new RegExp(policy));
+  for(const action of ['Pause · fastest reload','Save state · free memory','Save endpoint · end session'])assert.match(layout,new RegExp(action));
   assert.match(layout,/Visible does not mean running/);
   assert.match(layout,/Without Core access, an app starts with no knowledge of the user/);
   assert.match(layout,/CEE OS recommends/);
