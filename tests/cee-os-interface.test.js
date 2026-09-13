@@ -15,11 +15,18 @@ test('CEE OS is the public name while Shell remains an internal compatibility na
 });
 
 test('activity keeps speedometers around selectable center views',()=>{
+  const desktop=read('web/desktop/index.html');
   const layout=read('web/desktop/layout.js');
   for(const section of ['Status','Warnings','Workflows','Permissions','Limits','Priorities'])assert.match(layout,new RegExp(`['\"]${section}['\"]`));
   assert.match(layout,/instrument-board/);
   assert.match(layout,/gauge-rail/);
   assert.match(layout,/Protected Core services/);
+  assert.match(desktop,/Active apps and background behavior/);
+  for(const policy of ['Pause when inactive','Pause when minimized','Pause after a delay','While its Powerhouse is active','While this computer is on'])assert.match(layout,new RegExp(policy));
+  assert.match(layout,/Visible does not mean running/);
+  assert.match(layout,/Without Core access, an app starts with no knowledge of the user/);
+  assert.match(layout,/CEE OS recommends/);
+  assert.match(layout,/without promoting this checkpoint to Last Good State/);
 });
 
 test('Powerhouse builder exposes assembly, inventory and rolling recovery meaning',()=>{
