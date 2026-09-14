@@ -4,6 +4,7 @@ How Tenari consumes local tools through SHELL, and how Tenari may expose scoped 
 
 **Built:**
 - Local-tools rules set: pairing discovers a tool surface but proves neither reachability nor permission; filesystem access is jailed to explicitly shared roots with separate read/write grants; browser access is default-deny; Local Access (not the Companion) controls machine grants, auditable and fail-closed; remote-tunnel entitlement and local/LAN capability are checked separately
+- Fetch can use the authenticated MCP endpoint as an optional home-server integration. `web_search` uses the server owner's Serper key, while `search_files`, `read_file`, and `write_file` retain the existing shared-root jail and separate write grant. Fetch never receives ambient filesystem access.
 - Tenari-as-MCP-server rules set: external access uses user-owned scoped revocable tokens stored as hashes; Memory reads use the canonical retrieval boundary; proposed Memory enters Ripening, never a direct canonical write by an external model
 
 **Not built yet:**
