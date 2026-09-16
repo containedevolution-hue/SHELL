@@ -4,6 +4,7 @@ const tools = [
   require('./tools/read-file'),
   require('./tools/list-directory'),
   require('./tools/search-files'),
+  require('./tools/web-search'),
   require('./tools/write-file'),
   require('./tools/create-directory'),
   require('./tools/move-file'),
