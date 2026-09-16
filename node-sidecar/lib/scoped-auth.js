@@ -1,0 +1,54 @@
+'use strict';
+
+function isLoopbackRequest(req) {
+  const ip = req?.socket?.remoteAddress || '';
+  const socketIsLoopback = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (!socketIsLoopback) return false;
+
+  const headers = req.headers || {};
+  if (headers['cf-connecting-ip'] || headers['cf-ray'] || headers['x-forwarded-for']
+      || headers.forwarded || headers['x-real-ip']) return false;
+  const host = String(headers.host || '').toLowerCase();
+  return /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host);
+}
+
+function createScopedTokenGuard(pairing, scope, { localAuthority = null, localScope = null } = {}) {
+  if (!pairing || typeof pairing.matchesToken !== 'function') {
+    throw new TypeError('pairing.matchesToken required');
+  }
+  if (scope !== 'sync' && scope !== 'mcp') throw new TypeError('scope must be sync|mcp');
+  return function scopedToken(req, res, next) {
+    const auth = req.headers.authorization || '';
+    const candidate = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    if (pairing.matchesToken(scope, candidate)) return next();
+    if (localAuthority && localScope) {
+      const result = localAuthority.authenticate(req, localScope);
+      if (result.ok) {
+        req.shellLocalSession = result;
+        return next();
+      }
+      if (candidate) return res.status(result.status).json({ error: result.error });
+    }
+    return res.status(401).json({ error: 'invalid_token' });
+  };
+}
+
+function createPairedDatabaseGuard(pairing) {
+  if (!pairing || typeof pairing.getUserId !== 'function') {
+    throw new TypeError('pairing.getUserId required');
+  }
+  return function pairedDatabase(req, res, next) {
+    if (isLoopbackRequest(req)) return next();
+    const userId = pairing.getUserId();
+    if (!userId) return res.status(403).json({ error: 'hub_not_paired' });
+    let first = '';
+    try { first = decodeURIComponent(String(req.path || '').split('/').filter(Boolean)[0] || ''); }
+    catch (_) { return res.status(400).json({ error: 'invalid_database_path' }); }
+    if (first !== `ce-memories-${String(userId)}`) {
+      return res.status(403).json({ error: 'database_not_authorized' });
+    }
+    return next();
+  };
+}
+
+module.exports = { isLoopbackRequest, createScopedTokenGuard, createPairedDatabaseGuard };

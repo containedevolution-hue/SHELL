@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SHELL — Photo Duplicates</title>
+  <!--
+    Local LocalHub tool window (label "dedup", see ../src-tauri/tauri.conf.json).
+    Loaded from the bundle, NOT the remote PWA, so it can call the app's own
+    Tauri commands directly (capabilities/dedup.json):
+      scan_duplicates(path, threshold) -> ScanReport   (engine: ce-dedup-engine)
+      delete_to_trash(paths)           -> {deleted, failed}   (Recycle Bin)
+    Thumbnails load local files via the asset protocol (convertFileSrc).
+    Views: Duplicates (visual grouping) + categorize-by-metadata (Date / Camera /
+    Location / EXIF status) from the engine's per-image EXIF. ⓘ shows full meta.
+    No network, no cloud: a purely local organize / de-dupe / mass-delete surface.
+  -->
+  <style>
+    :root {
+      --bg: #0a0e1a; --panel: #131a2e; --panel2: #1b2440; --line: #26314f;
+      --text: #d9e1f2; --muted: #8a97b8; --accent: #5bc0eb; --keep: #4ad991;
+      --danger: #ef5b6b; --danger-bg: #3a1620;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; }
+    body { display: flex; flex-direction: column; }
+    header, .toolbar, .viewbar { background: var(--panel); border-bottom: 1px solid var(--line);
+      padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 15px; font-weight: 600; margin: 0 8px 0 0; white-space: nowrap; }
+    input[type=text], input[type=number] { background: var(--panel2); border: 1px solid var(--line);
+      color: var(--text); border-radius: 7px; padding: 8px 10px; font-size: 13px; }
+    input[type=text] { flex: 1; min-width: 220px; }
+    input[type=number] { width: 64px; }
+    label.lbl { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    button { border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+      border-radius: 7px; padding: 8px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #04121b; border-color: var(--accent); font-weight: 600; }
+    button.danger { background: var(--danger-bg); border-color: var(--danger); color: #ffd7dd; font-weight: 600; }
+    button.danger:disabled { opacity: .4; cursor: not-allowed; border-color: var(--line); }
+    .status { color: var(--muted); font-size: 12px; }
+    .viewbar { display: none; padding: 8px 16px; }
+    .viewbar .lbl { margin-right: 2px; }
+    .seg { border-radius: 7px; padding: 6px 12px; font-size: 12px; }
+    .seg.active { background: var(--accent); color: #04121b; border-color: var(--accent); font-weight: 600; }
+    .toolbar { position: sticky; top: 0; z-index: 5; display: none; }
+    .toolbar .spacer { flex: 1; }
+    .sel-summary { color: var(--muted); font-size: 13px; }
+    .sel-summary b { color: var(--text); }
+    main { flex: 1; overflow-y: auto; padding: 16px; }
+    .empty { color: var(--muted); text-align: center; margin-top: 64px; line-height: 1.6; }
+    .group { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 16px; }
+    .group-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .group-head .gt { font-weight: 600; }
+    .group-head .gm { color: var(--muted); font-size: 12px; }
+    .group-head .ga { margin-left: auto; }
+    .group-head .ga button { padding: 5px 10px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .tile { position: relative; background: var(--panel2); border: 2px solid var(--line);
+      border-radius: 9px; overflow: hidden; cursor: pointer; user-select: none; }
+    .tile.keeper { cursor: default; border-color: var(--keep); }
+    .tile.checked { border-color: var(--danger); }
+    .tile .thumb { width: 100%; height: 130px; object-fit: cover; display: block; background: #05070f; }
+    .tile .meta { padding: 6px 8px; font-size: 11px; line-height: 1.4; }
+    .tile .meta .pathline { color: var(--muted); word-break: break-all; max-height: 2.8em; overflow: hidden; }
+    .tile .meta .sizeline { color: var(--text); margin-top: 2px; }
+    .badge { position: absolute; top: 6px; left: 6px; font-size: 10px; font-weight: 700;
+      padding: 3px 7px; border-radius: 999px; letter-spacing: .03em; }
+    .badge.keep { background: var(--keep); color: #04130c; }
+    .info { position: absolute; bottom: 38px; left: 6px; width: 22px; height: 22px; border-radius: 999px;
+      border: none; background: #000a; color: #fff; font-style: italic; font-weight: 700; font-size: 13px;
+      display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+    .info:hover { background: var(--accent); color: #04121b; }
+    .check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid #fff8; background: #0009; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #fff; }
+    .tile.checked .check { background: var(--danger); border-color: var(--danger); }
+    .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: var(--panel2); border: 1px solid var(--accent); color: var(--text);
+      padding: 10px 16px; border-radius: 9px; font-size: 13px; opacity: 0; transition: opacity .25s;
+      pointer-events: none; max-width: 80%; }
+    .toast.show { opacity: 1; }
+    body.dragging::after { content: 'Drop a folder to scan'; position: fixed; inset: 0;
+      background: #0a0e1aee; color: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 24px; font-weight: 600; z-index: 50;
+      pointer-events: none; outline: 3px dashed var(--accent); outline-offset: -16px; }
+    .modal-bg { position: fixed; inset: 0; background: #000a; display: none; align-items: center;
+      justify-content: center; z-index: 60; }
+    .modal-bg.show { display: flex; }
+    .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      max-width: 460px; width: 90%; max-height: 80%; overflow: auto; padding: 18px 20px; }
+    .modal h3 { margin: 0 0 12px; font-size: 14px; word-break: break-all; }
+    .modal dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 13px; }
+    .modal dt { color: var(--muted); }
+    .modal dd { margin: 0; word-break: break-all; }
+    .modal .close { margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Photo Duplicates</h1>
+    <input id="path" type="text" placeholder="Folder to scan — type a path, Browse…, or drag a folder onto the window" spellcheck="false" />
+    <button id="browse">Browse…</button>
+    <label class="lbl">similarity</label>
+    <input id="threshold" type="number" min="0" max="32" value="10" title="Max bit-difference treated as the same photo (lower = stricter)" />
+    <button id="scan" class="primary">Scan</button>
+    <span id="status" class="status"></span>
+  </header>
+
+  <div class="viewbar" id="viewbar">
+    <span class="lbl">View:</span>
+    <button class="seg active" data-mode="duplicates">Duplicates</button>
+    <button class="seg" data-mode="date">Date taken</button>
+    <button class="seg" data-mode="camera">Camera</button>
+    <button class="seg" data-mode="location">Location</button>
+    <button class="seg" data-mode="exif">EXIF status</button>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <button id="selAll">Select all</button>
+    <button id="selNone">Clear</button>
+    <button id="selInvert">Invert</button>
+    <span class="spacer"></span>
+    <span class="sel-summary" id="selSummary">0 selected</span>
+    <button id="del" class="danger" disabled>Delete selected → Recycle Bin</button>
+  </div>
+
+  <main>
+    <div class="empty" id="empty">
+      Enter a folder above and hit <b>Scan</b>.<br />
+      <b>Duplicates</b> groups the same photo at different sizes (largest/most-original kept, copies pre-selected).
+      <b>Date / Camera / Location / EXIF</b> re-group every photo by its metadata. Click <i>ⓘ</i> on any photo for details.
+      Nothing is moved or deleted until you say so.
+    </div>
+    <div id="groups"></div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script>
+    const tauri = window.__TAURI__;
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $('status');
+    let report = null;
+    let mode = 'duplicates';
+    const INFO = new Map(); // path -> { path, size_bytes, meta }
+
+    function humanBytes(b) {
+      const u = ['B', 'KB', 'MB', 'GB', 'TB']; let v = b, i = 0;
+      while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+      return i === 0 ? `${b} B` : `${v.toFixed(1)} ${u[i]}`;
+    }
+    function toast(msg) {
+      const t = $('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+    function infoOf(path) { return INFO.get(path) || { size_bytes: 0, meta: {} }; }
+
+    if (!tauri || !tauri.core) {
+      statusEl.textContent = 'Open this from SHELL (Tools → Photo Duplicates) — Tauri APIs unavailable here.';
+    }
+
+    async function scan() {
+      const path = $('path').value.trim();
+      if (!path) { statusEl.textContent = 'Enter a folder path first.'; return; }
+      const threshold = Math.max(0, parseInt($('threshold').value, 10) || 0);
+      $('scan').disabled = true;
+      statusEl.textContent = 'Scanning…';
+      $('groups').innerHTML = '';
+      $('empty').style.display = 'none';
+      try {
+        report = await tauri.core.invoke('scan_duplicates', { path, threshold });
+        INFO.clear();
+        (report.images || []).forEach((im) => INFO.set(im.path, im));
+        statusEl.textContent =
+          `${report.images_scanned} images · ${report.groups.length} dup group(s) · ` +
+          `${humanBytes(report.reclaimable_bytes)} reclaimable` +
+          (report.decode_errors ? ` · ${report.decode_errors} skipped (e.g. HEIC)` : '');
+        $('viewbar').style.display = 'flex';
+        renderMode();
+      } catch (e) {
+        statusEl.textContent = 'Scan failed: ' + e;
+        $('empty').style.display = '';
+        $('viewbar').style.display = 'none';
+        $('toolbar').style.display = 'none';
+      } finally {
+        $('scan').disabled = false;
+      }
+    }
+
+    function renderMode() {
+      const container = $('groups');
+      container.innerHTML = '';
+      $('empty').style.display = 'none';
+      if (!report) return;
+      if (mode === 'duplicates') renderDuplicates(container);
+      else renderCategory(container, mode);
+      updateSummary();
+    }
+
+    function renderDuplicates(container) {
+      const groups = report.groups || [];
+      if (!groups.length) {
+        $('empty').textContent = 'No duplicates found in that folder. Try a Date/Camera view to browse.';
+        $('empty').style.display = '';
+        $('toolbar').style.display = 'none';
+        return;
+      }
+      $('toolbar').style.display = 'flex';
+      groups.forEach((g, gi) => {
+        const reclaim = g.duplicates.reduce((s, d) => s + d.size_bytes, 0);
+        const card = makeCard(`Group ${gi + 1}`, `${g.duplicates.length} duplicate(s) · ${humanBytes(reclaim)} reclaimable`);
+        card.grid.appendChild(makeTile(g.keeper, g.keeper_size_bytes, 'largest', { keeper: true }));
+        g.duplicates.forEach((d) => card.grid.appendChild(makeTile(d.path, d.size_bytes, `${d.distance} bits`, {})));
+        container.appendChild(card.el);
+      });
+      selectAll(true); // duplicates pre-selected for deletion
+    }
+
+    function renderCategory(container, field) {
+      const buckets = buildBuckets(field);
+      if (!buckets.length) {
+        $('empty').textContent = 'No images to categorize.';
+        $('empty').style.display = '';
+        $('toolbar').style.display = 'none';
+        return;
+      }
+      $('toolbar').style.display = 'flex';
+      buckets.forEach((b) => {
+        const total = b.items.reduce((s, im) => s + im.size_bytes, 0);
+        const card = makeCard(b.title, `${b.items.length} photo(s) · ${humanBytes(total)}`);
+        b.items.forEach((im) => card.grid.appendChild(makeTile(im.path, im.size_bytes, subText(field, im.meta), {})));
+        container.appendChild(card.el);
+      });
+      // category views are for browsing — nothing pre-selected
+    }
+
+    function subText(field, m) {
+      if (field === 'camera') return m.camera || 'no camera';
+      if (field === 'location') return m.gps ? `${m.gps.lat.toFixed(3)}, ${m.gps.lon.toFixed(3)}` : 'no GPS';
+      if (field === 'exif') return m.has_exif ? 'EXIF' : 'stripped';
+      return m.taken || 'no date'; // date
+    }
+
+    function buildBuckets(field) {
+      const m = new Map();
+      const add = (key, im) => { if (!m.has(key)) m.set(key, []); m.get(key).push(im); };
+      (report.images || []).forEach((im) => {
+        const md = im.meta || {};
+        if (field === 'date') {
+          add(md.year ? (md.month ? `${md.year}-${String(md.month).padStart(2, '0')}` : `${md.year}`) : 'Unknown date', im);
+        } else if (field === 'camera') {
+          add(md.camera || 'No EXIF / unknown camera', im);
+        } else if (field === 'location') {
+          add(md.gps ? `~ ${md.gps.lat.toFixed(1)}, ${md.gps.lon.toFixed(1)}` : 'No location', im);
+        } else if (field === 'exif') {
+          add(md.has_exif ? 'Has EXIF (camera photos)' : 'Stripped / no EXIF', im);
+        }
+      });
+      const isCatchAll = (k) => /^(Unknown|No |Stripped)/.test(k);
+      const keys = [...m.keys()].sort((a, b) => {
+        const ca = isCatchAll(a), cb = isCatchAll(b);
+        if (ca !== cb) return ca ? 1 : -1;            // catch-all buckets last
+        return field === 'date' ? b.localeCompare(a) : a.localeCompare(b); // dates newest first
+      });
+      return keys.map((k) => ({ title: k, items: m.get(k) }));
+    }
+
+    function makeCard(title, meta) {
+      const el = document.createElement('div');
+      el.className = 'group';
+      el.innerHTML = `
+        <div class="group-head">
+          <span class="gt">${title}</span>
+          <span class="gm">${meta}</span>
+          <span class="ga"><button class="gAll">select all</button>
+            <button class="gNone">clear</button></span>
+        </div>
+        <div class="grid"></div>`;
+      return { el, grid: el.querySelector('.grid') };
+    }
+
+    function makeTile(path, size, sub, { keeper = false }) {
+      const tile = document.createElement('div');
+      tile.className = 'tile' + (keeper ? ' keeper' : '');
+      tile.dataset.path = path;
+      tile.dataset.size = size;
+      const src = tauri && tauri.core ? tauri.core.convertFileSrc(path) : '';
+      const name = path.split(/[\\/]/).pop();
+      tile.innerHTML = `
+        <img class="thumb" loading="lazy" src="${src}" alt="" onerror="this.style.opacity=.2" />
+        ${keeper ? '<span class="badge keep">KEEP</span>' : '<div class="check"></div>'}
+        <button class="info" title="Metadata">i</button>
+        <div class="meta">
+          <div class="pathline" title="${path}">${name}</div>
+          <div class="sizeline">${humanBytes(size)}${sub ? ' · ' + sub : ''}</div>
+        </div>`;
+      tile.querySelector('.info').addEventListener('click', (e) => { e.stopPropagation(); openMeta(path); });
+      if (!keeper) tile.addEventListener('click', () => { toggle(tile); updateSummary(); });
+      return tile;
+    }
+
+    function openMeta(path) {
+      const im = infoOf(path);
+      const m = im.meta || {};
+      const dims = (m.width && m.height) ? `${m.width} × ${m.height}` : '—';
+      const gps = m.gps ? `${m.gps.lat.toFixed(5)}, ${m.gps.lon.toFixed(5)}` : '—';
+      $('modal').innerHTML = `
+        <h3>${path.split(/[\\/]/).pop()}</h3>
+        <dl>
+          <dt>Path</dt><dd>${path}</dd>
+          <dt>Size</dt><dd>${humanBytes(im.size_bytes || 0)}</dd>
+          <dt>Dimensions</dt><dd>${dims}</dd>
+          <dt>Taken</dt><dd>${m.taken || '—'}</dd>
+          <dt>Camera</dt><dd>${m.camera || '—'}</dd>
+          <dt>GPS</dt><dd>${gps}</dd>
+          <dt>EXIF</dt><dd>${m.has_exif ? 'present' : 'none (stripped / screenshot)'}</dd>
+        </dl>
+        <button class="close" onclick="document.getElementById('modalBg').classList.remove('show')">Close</button>`;
+      $('modalBg').classList.add('show');
+    }
+
+    function toggle(tile, force) {
+      const on = force == null ? !tile.classList.contains('checked') : force;
+      tile.classList.toggle('checked', on);
+      tile.querySelector('.check').textContent = on ? '✓' : '';
+    }
+    function selectAll(on) {
+      document.querySelectorAll('.tile:not(.keeper)').forEach((t) => toggle(t, on));
+    }
+    function updateSummary() {
+      const checked = document.querySelectorAll('.tile.checked');
+      let bytes = 0; checked.forEach((t) => bytes += Number(t.dataset.size));
+      $('selSummary').innerHTML = `<b>${checked.length}</b> selected · <b>${humanBytes(bytes)}</b>`;
+      $('del').disabled = checked.length === 0;
+    }
+
+    async function deleteSelected() {
+      const tiles = [...document.querySelectorAll('.tile.checked')];
+      if (!tiles.length) return;
+      const paths = tiles.map((t) => t.dataset.path);
+      if (!confirm(`Send ${paths.length} file(s) to the Recycle Bin?\nKeepers are untouched. You can restore from the Recycle Bin if needed.`)) return;
+      $('del').disabled = true;
+      statusEl.textContent = `Deleting ${paths.length}…`;
+      try {
+        const res = await tauri.core.invoke('delete_to_trash', { paths });
+        tiles.forEach((t) => { if (!isFailed(t.dataset.path, res.failed)) removeTile(t); });
+        toast(`${res.deleted} sent to Recycle Bin` + (res.failed.length ? ` · ${res.failed.length} failed` : ''));
+        statusEl.textContent = res.failed.length ? ('Some failed: ' + res.failed.join(' | ')) : 'Done.';
+      } catch (e) {
+        statusEl.textContent = 'Delete failed: ' + e;
+      } finally {
+        updateSummary();
+      }
+    }
+    function isFailed(path, failed) { return (failed || []).some((f) => f.startsWith(path + ':')); }
+    function removeTile(tile) {
+      const card = tile.closest('.group');
+      tile.remove();
+      if (card && card.querySelectorAll('.tile:not(.keeper)').length === 0) card.remove();
+      if (!document.querySelectorAll('.group').length) {
+        $('toolbar').style.display = 'none';
+        $('empty').textContent = 'All selected handled. Re-scan to verify.';
+        $('empty').style.display = '';
+      }
+    }
+
+    async function browse() {
+      try {
+        const dir = await tauri.core.invoke('plugin:dialog|open', {
+          options: { directory: true, multiple: false, title: 'Choose a folder to scan' },
+        });
+        if (dir) { $('path').value = dir; scan(); }
+      } catch (e) { statusEl.textContent = 'Folder picker failed: ' + e; }
+    }
+
+    if (tauri && tauri.event) {
+      tauri.event.listen('tauri://drag-over', () => document.body.classList.add('dragging'));
+      tauri.event.listen('tauri://drag-leave', () => document.body.classList.remove('dragging'));
+      tauri.event.listen('tauri://drag-drop', (e) => {
+        document.body.classList.remove('dragging');
+        const paths = e.payload && e.payload.paths;
+        if (paths && paths.length) { $('path').value = paths[0]; scan(); }
+      });
+    }
+
+    $('scan').addEventListener('click', scan);
+    $('browse').addEventListener('click', browse);
+    $('path').addEventListener('keydown', (e) => { if (e.key === 'Enter') scan(); });
+    $('selAll').addEventListener('click', () => { selectAll(true); updateSummary(); });
+    $('selNone').addEventListener('click', () => { selectAll(false); updateSummary(); });
+    $('selInvert').addEventListener('click', () => {
+      document.querySelectorAll('.tile:not(.keeper)').forEach((t) => toggle(t)); updateSummary();
+    });
+    $('del').addEventListener('click', deleteSelected);
+    document.addEventListener('click', (e) => {
+      const g = e.target.closest('.gAll, .gNone'); if (!g) return;
+      const card = g.closest('.group');
+      card.querySelectorAll('.tile:not(.keeper)').forEach((t) => toggle(t, g.classList.contains('gAll')));
+      updateSummary();
+    });
+    document.querySelectorAll('.seg').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.seg').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      mode = b.dataset.mode;
+      renderMode();
+    }));
+    $('modalBg').addEventListener('click', (e) => { if (e.target === $('modalBg')) $('modalBg').classList.remove('show'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modalBg').classList.remove('show'); });
+  </script>
+</body>
+</html>

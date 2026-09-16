@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shell.containedevolution.local/contracts/v1/health-event.schema.json",
+  "title": "SHELL health event v1",
+  "description": "A local, evidence-bearing observation, warning, or action receipt from the SHELL security and system-health service.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "id",
+    "recordedAt",
+    "kind",
+    "domain",
+    "severity",
+    "summary",
+    "source",
+    "evidence"
+  ],
+  "properties": {
+    "contract": {
+      "const": "com.containedevolution.shell.health-event/1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "recordedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "kind": {
+      "enum": ["observation", "warning", "state-change", "action-receipt"]
+    },
+    "domain": {
+      "enum": [
+        "cpu",
+        "gpu",
+        "memory",
+        "storage",
+        "network",
+        "vpn",
+        "firewall",
+        "process",
+        "service",
+        "application",
+        "update",
+        "firmware",
+        "device",
+        "integrity",
+        "recovery"
+      ]
+    },
+    "severity": {
+      "enum": ["info", "attention", "warning", "critical"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["system", "process", "service", "application", "device", "connection", "package", "file"] },
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 }
+      },
+      "required": ["type", "id"]
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "type": "string", "minLength": 1 },
+        "expectedLow": { "type": "number" },
+        "expectedHigh": { "type": "number" },
+        "baselineStatus": { "enum": ["unavailable", "learning", "within-range", "unusual"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "authority"],
+      "properties": {
+        "adapter": { "type": "string", "minLength": 1 },
+        "authority": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "value"],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "value": { "type": ["string", "number", "boolean", "null"] }
+        }
+      }
+    },
+    "proposedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "requiresApproval", "reversible"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "requiresApproval": { "type": "boolean" },
+        "reversible": { "type": "boolean" }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class"],
+      "properties": {
+        "class": { "enum": ["sample", "event", "receipt"] },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

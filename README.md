@@ -1,0 +1,3 @@
+# CEE OS
+
+Contained Evolution's free, local-first operating environment: owns its desktop, adaptive Status Bar, native browser-engine and filesystem capabilities, devices, settings, windows, automation, and integration permissions. Works without Tenari, an assistant, or an account. **CEE OS—Contained Evolution Ecosystem, pronounced “see”—is the single public product name.** `Shell` remains the repository name and internal compatibility namespace for paths, environment variables, and versioned contracts.

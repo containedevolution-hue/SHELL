@@ -1,0 +1,85 @@
+[package]
+name = "localhub"
+version = "0.1.1"
+description = "SHELL local-first desktop and capability host"
+authors = ["Contained Evolution"]
+edition = "2021"
+rust-version = "1.77"
+
+[features]
+default = ["consumer"]
+# Consumer desktop build (DA1): excludes Chris's Media-Lab asset-forge tooling.
+# `cargo`/`tauri build --features consumer` forwards CE_CONSUMER=1 to the sidecar
+# so it neither mounts nor requires /asset-forge.
+consumer = []
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# protocol-asset: lets the local dedup window load on-disk photo thumbnails via
+# the asset protocol (convertFileSrc); scoped in tauri.conf.json security.assetProtocol.
+tauri = { version = "2", features = ["protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+getrandom = "0.2"
+sha2 = "0.10"
+
+# CE-owned perceptual image-dedup engine (MIT-only deps; no third-party product).
+# Exposed to the webview via the `scan_duplicates` command in main.rs.
+ce-dedup-engine = { path = "../dedup-engine" }
+
+# Recycle-Bin deletion for the photo-dedup tool's mass-delete (MIT/Apache lib,
+# not a third-party product/login/fee). Sends files to the OS trash = recoverable.
+trash = "5"
+
+# Cyclone C2.1a — custom-protocol deep-link plumbing for the Google-OAuth-via-
+# system-browser flow (C2.1b). deep-link registers the `localhub://` scheme
+# and surfaces incoming URLs to Rust; single-instance keeps OAuth callbacks
+# from spawning a second Tauri process (without it, `start localhub://...`
+# would launch a fresh instance instead of completing the in-flight login).
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+
+# Cyclone C2.1b — opens the Google OAuth authorize URL in the user's system
+# browser (WebView2 is blocked by Google for OAuth). The webview calls
+# window.__TAURI__.opener.openUrl(...) to launch the user's default browser.
+tauri-plugin-opener = "2"
+
+# DA1 — bundled-Node sidecar. Ships a pinned node.exe as an externalBin and
+# launches it via app.shell().sidecar("node") so the desktop app runs on a clean
+# machine with no system Node. Replaces the dev-only Command::new("node").
+tauri-plugin-shell = "2"
+
+# Native folder picker for the photo-dedup window's "Browse…" button. Official
+# Tauri plugin (same ecosystem as deep-link/opener above), not a third-party product.
+tauri-plugin-dialog = "2"
+
+# Flow (Wispr-clone) desktop agent — system-wide dictation:
+#   global-shortcut: OS-level push-to-talk + command-mode hotkeys that fire even
+#     when CE isn't focused (the whole point — dictate into any app).
+#   enigo: synthetic keyboard — sends Ctrl+V to paste the cleaned text into the
+#     focused app, and Ctrl+C to grab the selection for Command Mode.
+#   arboard: clipboard get/set in Rust — inject_text sets the clipboard, pastes,
+#     then restores the user's prior clipboard (paste is faster + unicode-safe
+#     than typing char-by-char, the same approach Wispr uses).
+# All MIT/Apache, no third-party product/login/fee.
+tauri-plugin-global-shortcut = "2"
+enigo = "0.3"
+arboard = "3"
+
+[target.'cfg(windows)'.dependencies]
+# Private native-desk driver. It is compiled into Shell but is not registered as
+# a Tauri command; page content never receives package, process, or HWND control.
+windows = { version = "0.61.3", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_Security",
+  "Win32_Storage_Packaging_Appx",
+  "Win32_System_Com",
+  "Win32_System_Threading",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging"
+] }
+hmac = "0.12"

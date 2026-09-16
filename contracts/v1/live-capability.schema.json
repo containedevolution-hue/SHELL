@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:contained-evolution:shell:live-capability:v1",
+  "title": "SHELL live capability observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "contractVersion", "observationId", "capability", "owner", "target", "state", "checks", "evidence", "repairIntent"],
+  "properties": {
+    "contract": { "const": "com.containedevolution.shell.live-capability/1" },
+    "contractVersion": { "const": 1 },
+    "observationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "capability": { "$ref": "#/$defs/capability" },
+    "owner": { "const": "shell" },
+    "target": { "$ref": "#/$defs/target" },
+    "state": { "enum": ["available", "unavailable", "degraded", "auth-required", "unknown", "stale"] },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["installed", "authenticated", "reachable", "granted", "usable"],
+      "properties": {
+        "installed": { "$ref": "#/$defs/check" },
+        "authenticated": { "$ref": "#/$defs/check" },
+        "reachable": { "$ref": "#/$defs/check" },
+        "granted": { "$ref": "#/$defs/check" },
+        "usable": { "$ref": "#/$defs/check" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "observedAt", "expiresAt"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "repairIntent": { "type": ["string", "null"], "maxLength": 120 }
+  },
+  "$defs": {
+    "check": { "enum": ["yes", "no", "unknown", "not-applicable"] },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "inputSchemaHash"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "inputSchemaHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "sessionId"],
+      "properties": {
+        "kind": { "const": "remote-host" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    }
+  }
+}

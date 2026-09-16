@@ -1,0 +1,124 @@
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const invoke = window.__TAURI__?.core?.invoke;
+  const native = typeof invoke === 'function';
+  const places = [
+    {id:'files',name:'Files',icon:'folder',summary:'Folders and personal files',copy:'Browse the files connected to this computer.',sections:['Browse','Locations','Details']},
+    {id:'security',name:'Security',icon:'shield',summary:'Protection, firewall and VPN',copy:'Protection, network policy, updates and recovery.',sections:['Protection','VPN','Updates','Recovery']},
+    {id:'powerhouses',name:'Powerhouses',icon:'powerhouse',summary:'Specialized container environments',copy:'Build, open and recover contained environments.',sections:['Build','Inventory','Running','Recovery']},
+    {id:'storage',name:'Storage',icon:'storage',summary:'Devices, space and retained data',copy:'System, application and personal data locations.',sections:['This device','Removable','Synchronized']},
+    {id:'connections',name:'Connections',icon:'link',summary:'Network, devices and integrations',copy:'Every connection and its approved access.',sections:['Network','Devices','Integrations']},
+    {id:'activity',name:'Activity',icon:'activity',summary:'Resources and running work',copy:'Speedometers surround the status and controls you select.',sections:['Status','Warnings','Workflows','Permissions','Limits','Priorities']}
+  ];
+  let currentPlace=null;
+  const icon=name=>`<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
+  const bytes=value=>{if(value==null)return'—';const units=['B','KB','MB','GB','TB'];let n=value,i=0;while(n>=1024&&i<units.length-1){n/=1024;i++;}return `${n.toFixed(i>0&&n<10?1:0)} ${units[i]}`;};
+  const container=markup=>{const node=document.createElement('div');node.innerHTML=markup;return node;};
+  let flyoutTrigger=null;
+  function closeFlyout(restore=false){$('flyout').hidden=true;for(const id of ['notifications','active-apps','checkpoint'])$(id).setAttribute('aria-expanded','false');if(restore&&flyoutTrigger)flyoutTrigger.focus();flyoutTrigger=null;}
+  function showFlyout(trigger,title,content,left=false){if(!$('flyout').hidden&&flyoutTrigger===trigger){closeFlyout(true);return;}closeFlyout();flyoutTrigger=trigger;$('flyout-title').textContent=title;$('flyout-context').textContent='CEE OS';$('flyout-content').innerHTML=content;$('flyout').classList.toggle('left',left);$('flyout').hidden=false;trigger.setAttribute('aria-expanded','true');$('close-flyout').focus();}
+  function openNotifications(){showFlyout($('notifications'),'Notifications','<p>System notifications remain available from every surface.</p><p>No live notification feed is connected in this preview.</p>');}
+  const timingOptions=['2 minutes','5 minutes','15 minutes','30 minutes','1 hour','Never'];
+  const timingSelect=name=>`<label class="timing-label">Rest after<select name="${name}">${timingOptions.map(value=>`<option${value==='2 minutes'?' selected':''}>${value}</option>`).join('')}</select></label>`;
+  function openActiveApps(){showFlyout($('active-apps'),'Active apps',`<p>Visible does not mean running. Choose when each app sleeps and resumes.</p><button type="button" class="never-all">Never sleep any app</button><div class="sleep-actions" aria-label="App lifecycle actions"><button type="button"><strong>Rest</strong><small>Pause · fastest reload</small></button><button type="button"><strong>Deep sleep</strong><small>Save state · free memory</small></button><button type="button"><strong>Close session</strong><small>Save endpoint · end session</small></button></div><section class="active-app"><div><strong>Scribble</strong><small>Visible · resting after autosave</small></div>${timingSelect('scribble-rest')}<label><input type="checkbox" checked> Rest when minimized</label><label><input type="checkbox" checked> Deep sleep later</label></section><section class="active-app"><div><strong>Automations</strong><small>Background permission required</small></div>${timingSelect('automation-rest')}<label><input type="radio" name="automation-policy" checked> While its Powerhouse is active</label><label><input type="radio" name="automation-policy"> While this computer is on</label></section><p class="preview-note">Preview only — no process policy is changed.</p>`,true);}
+  function openCheckpoint(){showFlyout($('checkpoint'),'Save checkpoint','<p>Save the current container state into the older of two alternating automatic savepoints.</p><button type="button" class="file-action">Save checkpoint now</button>');}
+  function openCoreBackup(){showFlyout($('backup-core'),'Back up Core','<p>Copy the protected Core, app stubs, manifests and user data to an approved external drive.</p><button type="button" class="file-action">Choose external drive</button>',true);}
+  function announce(message){$('announcement').textContent=message;}
+  async function loadCoreStatus(){
+    const note=$('core-note'),setup=$('core-setup'),message=$('core-setup-message');
+    if(!native){note.textContent='Choose a Core system to open its controls.';setup.hidden=true;return;}
+    try{
+      const status=await invoke('desktop_core_status');
+      if(status.connected){setup.hidden=true;note.textContent=`Core is set up at ${status.path}.`;}
+      else{setup.hidden=false;message.textContent=status.problem||'';note.textContent=status.path?'A Core location is remembered but its manifest could not be verified.':'Choose a Core system to open its controls.';}
+    }catch{note.textContent='Choose a Core system to open its controls.';setup.hidden=true;}
+  }
+  async function setupCore(command){
+    const message=$('core-setup-message');message.textContent='Setting up…';
+    try{const status=await invoke(command);if(status.connected){message.textContent=`Core is set up at ${status.path}.`;await loadCoreStatus();}else{message.textContent=status.problem||'Choose a folder to finish setup.';}}
+    catch(error){message.textContent=typeof error==='string'?error:'Core setup could not complete.';}
+  }
+  function go(next,place=null,focus=true){
+    window.ShellFiles.hide();closeFlyout();currentPlace=place;
+    $('checkpoint').hidden=!(next==='place'&&place?.id==='powerhouses');
+    for(const id of ['desktop','core','scribble','place'])$(id).hidden=id!==next;
+    if(next==='place'){$('place-title').textContent=place.name;$('place-crumb').textContent=place.name;$('place-copy').textContent=place.copy;$('place-icon').setAttribute('href',`#i-${place.icon}`);renderSpheres(place);renderSection(place,place.sections[0]);}
+    if(next==='core')loadCoreStatus();
+    window.scrollTo(0,0);announce(next==='desktop'?'Desktop':next==='core'?'Core':place.name);
+    if(focus)(next==='desktop'?$('open-core'):next==='core'?$('core-title'):$('place-title')).focus({preventScroll:true});
+  }
+  function renderSpheres(place){
+    $('place-spheres').setAttribute('aria-label',`${place.name} sections`);
+    $('place-spheres').replaceChildren(...place.sections.map((section,index)=>{const button=document.createElement('button');button.type='button';button.className='section-sphere';button.dataset.section=section;button.setAttribute('aria-pressed',String(index===0));button.innerHTML=`<span>${section}</span>`;button.onclick=()=>renderSection(place,section);return button;}));
+  }
+  function selectSphere(section){$('place-spheres').querySelectorAll('.section-sphere').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.section===section)));}
+  function sectionPanel(place,section,copy){return container(`<div class="center-panel"><p class="eyebrow">${place.name}</p><h2>${section}</h2><p>${copy}</p><span class="preview-pill">Surface preview</span></div>`);}
+  function renderSection(place,section){
+    selectSphere(section);window.ShellFiles.hide();$('native-files').hidden=true;$('place').classList.remove('files-page');
+    const empty=document.querySelector('.empty-place');empty.hidden=false;empty.replaceChildren();
+    if(place.id==='files'&&section==='Browse'){
+      if(native){empty.hidden=true;$('place').classList.add('files-page');window.ShellFiles.show();}
+      else empty.replaceChildren(sectionPanel(place,section,'Native folders and files appear here in the installed CEE OS desktop.'));
+    }else if(place.id==='security')empty.replaceChildren(securitySurface(section));
+    else if(place.id==='powerhouses')empty.replaceChildren(powerhouseSurface(section));
+    else if(place.id==='activity')empty.replaceChildren(activitySurface(section));
+    else if(place.id==='storage')empty.replaceChildren(storageSurface(section));
+    else empty.replaceChildren(sectionPanel(place,section,`${section} remains centered while the clear side borders preserve folder cycling space.`));
+    announce(`${place.name}, ${section}`);
+  }
+  async function loadSecurityEvidence(node){
+    if(!native)return;const pill=node.querySelector('[data-security-source]');pill.textContent='Reading system';
+    try{const status=await invoke('desktop_security_status');pill.textContent=status.platformSupported?'Live system':'Unavailable here';pill.classList.toggle('unavailable',!status.platformSupported);for(const [key,value] of Object.entries({network:status.network,vpn:status.vpn,firewall:status.firewall})){const state=node.querySelector(`[data-${key}-state]`),detail=node.querySelector(`[data-${key}-detail]`),card=node.querySelector(`[data-${key}]`);if(state)state.textContent=value.state;if(detail)detail.textContent=value.detail;if(card)card.classList.toggle('unavailable',!value.available);}}catch{pill.textContent='Evidence unavailable';pill.classList.add('unavailable');}
+  }
+  function evidenceCards(){return `<div class="security-cards"><section data-network><span>NetworkManager</span><strong data-network-state>${native?'Reading…':'Preview'}</strong><small data-network-detail>${native?'Reading the native network authority.':'Native evidence appears in CEE OS Linux.'}</small></section><section data-vpn><span>Active VPN</span><strong data-vpn-state>${native?'Reading…':'No preview tunnel'}</strong><small data-vpn-detail>${native?'Reading active private connections.':'No system state is invented in browser preview.'}</small></section><section data-firewall><span>Firewall</span><strong data-firewall-state>${native?'Reading…':'Local policy'}</strong><small data-firewall-detail>${native?'Reading the managed nftables service.':'Named inbound grants only.'}</small></section></div>`;}
+  function securitySurface(section){
+    let body='';
+    if(section==='VPN')body=`<section class="security-section"><div class="section-heading"><div><p class="eyebrow">Network route</p><h3>VPN policy</h3></div><p>Choose the route Core should enforce.</p></div><div class="policy-grid" role="radiogroup" aria-label="VPN policy">${[['Direct','No tunnel required'],['Prefer VPN','Balanced default'],['Require VPN','Fail closed'],['Recovery','Repair access']].map(([name,copy],index)=>`<button type="button" role="radio" aria-checked="${index===1}" data-policy="${name}"><strong>${name}</strong><small>${copy}</small></button>`).join('')}</div></section>${evidenceCards()}`;
+    else if(section==='Protection')body=evidenceCards();
+    else if(section==='Updates')body='<div class="center-panel inset"><h2>Complete system updates</h2><p>CEE OS prepares recovery before applying one complete signed Arch package transaction.</p><span class="preview-pill">No update scan connected</span></div>';
+    else body='<div class="center-panel inset"><h2>Recovery access</h2><p>Recovery temporarily restores a repair path without silently weakening the selected network policy.</p><span class="preview-pill">No active recovery session</span></div>';
+    const node=container(`<div class="security-overview"><section class="security-summary"><div><p class="eyebrow">Core security</p><h2>${section}</h2><p>Local evidence and explicit policy stay inside Core.</p></div><span class="preview-pill" data-security-source>${native?'Reading system':'Preview data'}</span></section>${body}</div>`);
+    node.querySelectorAll('[data-policy]').forEach(button=>button.onclick=()=>{node.querySelectorAll('[data-policy]').forEach(item=>item.setAttribute('aria-checked','false'));button.setAttribute('aria-checked','true');announce(`${button.dataset.policy} selected for configuration.`);});loadSecurityEvidence(node);return node;
+  }
+  async function loadPowerhouses(node){
+    if(!native)return;const source=node.querySelector('[data-powerhouse-source]');source.textContent='Reading engine';
+    try{const status=await invoke('desktop_powerhouse_status');source.textContent=status.platformSupported?'Live system':'Unavailable here';node.querySelector('[data-engine]').textContent=status.engine;node.querySelector('[data-rootless]').textContent=status.rootless===true?'Enabled':status.rootless===false?'Disabled':'Unavailable';node.querySelector('[data-count]').textContent=String(status.entries.length);const list=node.querySelector('[data-powerhouse-list]');list.replaceChildren();if(status.entries.length)for(const entry of status.entries){const item=document.createElement('article');item.className='powerhouse-row';item.innerHTML=`${icon('powerhouse')}<span><strong></strong><small></small></span><em></em>`;item.querySelector('strong').textContent=entry.name;item.querySelector('small').textContent=entry.image;item.querySelector('em').textContent=entry.state;list.append(item);}else{const p=document.createElement('p');p.className='powerhouse-empty';p.textContent=status.problem||'No Powerhouses are installed.';list.append(p);}}catch{source.textContent='Discovery unavailable';}
+  }
+  function powerhouseSurface(section){
+    if(section==='Build')return container(`<div class="container-builder"><div class="empty-stack" aria-label="Available empty containers"><span></span><span></span><span></span><strong>Empty containers</strong></div><div class="build-center"><p class="eyebrow">Assemble a Powerhouse</p><h2>Choose a container</h2><p>Add apps, permissions, resources and a recovery starting point, then close and name the finished environment.</p><button type="button" class="file-action">Start assembly</button></div><div class="container-conveyor" aria-label="Powerhouse inventory conveyor"><article><span>01</span><strong>Media Lab</strong><small>Ready</small></article><article><span>02</span><strong>Research</strong><small>Closed</small></article></div></div>`);
+    if(section==='Inventory'){const node=sectionPanel(currentPlace,section,'Finished Powerhouses move left to right through your container inventory.');if(native){const button=document.createElement('button');button.className='file-action';button.textContent='Open app collection';button.onclick=()=>invoke('desktop_open_apps');node.append(button);}return node;}
+    if(section==='Recovery')return sectionPanel(currentPlace,section,'Each Powerhouse keeps a clean recovery point plus a rolling session start and successful endpoint; user documents remain outside those disposable snapshots.');
+    const node=container(`<div class="powerhouse-overview"><section class="powerhouse-summary"><div><p class="eyebrow">Core orchestration</p><h2>${section}</h2><p>Specialized environments remain independently contained.</p></div><span class="preview-pill" data-powerhouse-source>${native?'Reading engine':'Preview data'}</span></section><div class="powerhouse-metrics"><section><span>Engine</span><strong data-engine>${native?'Reading…':'Podman'}</strong></section><section><span>Rootless</span><strong data-rootless>${native?'Reading…':'Required'}</strong></section><section><span>Installed</span><strong data-count>0</strong></section></div><section class="powerhouse-list"><div data-powerhouse-list><p class="powerhouse-empty">${native?'Reading local Powerhouses…':'Native discovery appears in CEE OS Linux.'}</p></div></section></div>`);loadPowerhouses(node);return node;
+  }
+  async function loadStorage(node){
+    if(!native)return;const pill=node.querySelector('[data-storage-source]');pill.textContent='Reading disks';
+    try{const status=await invoke('desktop_storage_status');pill.textContent=status.platformSupported?'Live system':'Unavailable here';pill.classList.toggle('unavailable',!status.platformSupported);
+      const device=node.querySelector('[data-device]');
+      if(device){const info=status.thisDevice;if(info){const pct=info.totalBytes?Math.round((info.usedBytes/info.totalBytes)*100):0;device.querySelector('[data-device-bar]').style.setProperty('--meter',`${pct}%`);device.querySelector('[data-device-used]').textContent=`${bytes(info.usedBytes)} used of ${bytes(info.totalBytes)}`;device.querySelector('[data-device-avail]').textContent=`${bytes(info.availableBytes)} available`;}else{device.classList.add('unavailable');device.querySelector('[data-device-used]').textContent=status.problem||'Disk usage is unavailable here.';}}
+      const list=node.querySelector('[data-removable-list]');
+      if(list){list.replaceChildren();if(status.removable&&status.removable.length){for(const volume of status.removable){const item=document.createElement('article');item.className='powerhouse-row';item.innerHTML=`${icon('storage')}<span><strong></strong><small></small></span>`;item.querySelector('strong').textContent=volume.name;item.querySelector('small').textContent=`${bytes(volume.sizeBytes)} · ${volume.mountPoint||'Not mounted'}`;list.append(item);}}else{const p=document.createElement('p');p.className='powerhouse-empty';p.textContent=status.platformSupported?'No removable media is connected.':(status.problem||'Native discovery appears in CEE OS Linux.');list.append(p);}}
+    }catch{pill.textContent='Evidence unavailable';pill.classList.add('unavailable');}
+  }
+  function storageSurface(section){
+    let body='';
+    if(section==='This device')body=`<div class="storage-device" data-device><div class="storage-bar" data-device-bar></div><strong data-device-used>${native?'Reading…':'Preview data'}</strong><small data-device-avail></small></div>`;
+    else if(section==='Removable')body=`<section class="powerhouse-list" data-removable-list><p class="powerhouse-empty">${native?'Reading removable media…':'Native discovery appears in CEE OS Linux.'}</p></section>`;
+    else body='<div class="center-panel inset"><h2>Synchronized storage</h2><p>Other paired devices and cloud-synchronized data appear here once a device or Seed connection is paired with Core. Unreadable or unpaired data never renders as invented content — only its size, once known.</p><span class="preview-pill">No devices paired</span></div>';
+    const node=container(`<div class="powerhouse-overview"><section class="powerhouse-summary"><div><p class="eyebrow">Core storage</p><h2>${section}</h2><p>System, application and personal data locations stay visible without exposing their contents.</p></div><span class="preview-pill" data-storage-source>${native?'Reading system':'Preview data'}</span></section>${body}</div>`);
+    loadStorage(node);return node;
+  }
+  function activitySurface(section){
+    const center={Status:['System status','Core is protected. Preview measurements show how the surrounding gauges remain visible while the center changes.'],Warnings:['Diagnostic checkpoint','Storage pressure changed unusually. Preserve the current session state, inspect the responsible workload, and choose an action without promoting this checkpoint to Last Good State.'],Workflows:['Ordinary workflows','Running work is grouped by the outcome the user started, not exposed as unexplained process gibberish.'],Permissions:['Resource permissions','Core identity, data access and background operation are separate grants. Without Core access, an app starts with no knowledge of the user.'],Limits:['Resource limits','Warnings and hard limits remain separate; every limit states whether it will slow, queue, pause or stop work.'],Priorities:['Priority and background tasks','Protected Core services are listed separately from optional background work, with a plain explanation of why each must run.']}[section];
+    const gauges=[['CPU','34%',34],['Memory','51%',51],['Storage','12%',12],['Pressure','Low',18],['GPU','Idle',2],['Heat','Normal',38]];
+    const meter=item=>`<button type="button" class="dashboard-gauge" aria-label="${item[0]} ${item[1]}"><span style="--meter:${item[2]}%"></span><strong>${item[1]}</strong><small>${item[0]}</small></button>`;
+    const decision=section==='Warnings'?'<div class="diagnostic-actions"><button type="button">Inspect issue</button><button type="button">Restore checkpoint</button><button type="button">Keep watching</button></div><p class="system-opinion"><strong>CEE OS recommends:</strong> inspect first because Core remains stable and the pressure is unusual but not critical.</p>':'<span class="preview-pill">Preview data</span>';
+    return container(`<div class="instrument-board"><div class="gauge-rail" aria-label="Resource speedometers">${gauges.slice(0,3).map(meter).join('')}</div><section class="instrument-center"><p class="eyebrow">${section}</p><h2>${center[0]}</h2><p>${center[1]}</p>${decision}</section><div class="gauge-rail" aria-label="Health speedometers">${gauges.slice(3).map(meter).join('')}</div></div>`);
+  }
+  $('core-places').replaceChildren(...places.map(place=>{const node=document.createElement('button');node.className='place-button';node.type='button';node.dataset.place=place.id;node.innerHTML=`${icon(place.icon)}<span><strong>${place.name}</strong><small>${place.summary}</small></span>`;node.onclick=()=>go('place',place);return node;}));
+  $('home').onclick=()=>go('core');$('open-core').onclick=()=>go('core');$('backup-core').onclick=openCoreBackup;$('active-apps').onclick=openActiveApps;$('checkpoint').onclick=openCheckpoint;$('notifications').onclick=openNotifications;$('close-flyout').onclick=()=>closeFlyout(true);
+  $('core-choose-root').onclick=()=>setupCore('desktop_core_choose_root');$('core-use-default').onclick=()=>setupCore('desktop_core_use_default');
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('flyout').hidden){event.preventDefault();closeFlyout(true);}});document.addEventListener('pointerdown',event=>{if(!$('flyout').hidden&&!$('flyout').contains(event.target)&&!$('notifications').contains(event.target))closeFlyout();});
+  function drawBar(){const width=document.documentElement.clientWidth,mid=width/2;const contour=`M0 72H${mid-59}C${mid-43} 72 ${mid-45} 112 ${mid} 112C${mid+45} 112 ${mid+43} 72 ${mid+59} 72H${width}`;$('bar-fill').setAttribute('d',`${contour}V0H0Z`);$('bar-line').setAttribute('d',contour);}
+  new ResizeObserver(drawBar).observe(document.documentElement);drawBar();go('desktop',null,false);if(native)$('desktop-caption').textContent='CEE OS · Development';
+})();

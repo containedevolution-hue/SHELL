@@ -1,0 +1,13 @@
+[Unit]
+Description=SHELL graphical session
+After=graphical-session-pre.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/opt/shell/bin/shell-session
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

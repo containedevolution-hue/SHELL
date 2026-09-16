@@ -1,0 +1,24 @@
+{
+  "name": "shell",
+  "version": "0.1.1",
+  "private": false,
+  "description": "CEE OS — a free, local-first operating environment by Contained Evolution",
+  "scripts": {
+    "preview:desktop": "node scripts/preview-desktop.js",
+    "dev:desktop": "node scripts/start-native-desktop.js --dev",
+    "start:desktop": "node scripts/start-native-desktop.js",
+    "install:desktop": "node scripts/install-desktop-launcher.js",
+    "start:apps": "node scripts/start-app-host.js",
+    "test:app-store": "node scripts/test-app-store-browser.js",
+    "test:chat-acceptance": "node scripts/test-chat-acceptance-browser.js",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "test": "node --test \"tests/*.test.js\" \"node-sidecar/lib/*.test.js\" \"node-sidecar/mcp/*.test.js\"",
+    "check:rust": "cargo check --manifest-path dedup-engine/Cargo.toml && cargo check --manifest-path src-tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "playwright": "1.62.1"
+  }
+}
