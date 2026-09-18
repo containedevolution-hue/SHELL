@@ -1,3 +1,25 @@
 # CEE OS
 
 Contained Evolution's free, local-first operating environment: owns its desktop, adaptive Status Bar, native browser-engine and filesystem capabilities, devices, settings, windows, automation, and integration permissions. Works without Tenari, an assistant, or an account. **CEE OS—Contained Evolution Ecosystem, pronounced “see”—is the single public product name.** `Shell` remains the repository name and internal compatibility namespace for paths, environment variables, and versioned contracts.
+
+## To do
+
+- [ ] CEE OS freezes and versions its capability interface, removes hard-coded Tenari origins and required account pairing from the core path, and exposes optional integrations only through published adapters.
+- [ ] CEE OS replaces local-document stand-ins with its authoritative local data layer and provides independent optional cloud synchronization without requiring Tenari or an account for local operation.
+- [ ] FETCH Browser runs on the embedded engine, the window and session model supports Chat's reserved native slot, and CE Apps packages install, update, roll back, and remove through verified publisher boundaries.
+- [ ] The MSI development path completes the narrow privileged-action broker, native Security and Performance surfaces, an independent CEE OS login session, owned startup and lock experiences, and physical hardware qualification without risking the Windows daily-driver disk.
+- [ ] The Linux AppImage assembles with host-native dependencies, the WHPX launcher defect is resolved, and live USB and isolated-SSD acceptance cover networking, graphics, audio, camera, suspend, input, displays, Secure Boot, and recovery.
+- [ ] The HP physical development machine restores verified local console login and a tested recovery path without losing its Arch/KDE installation or user data.
+- [ ] Core connects live Security, Storage, Connections, and Activity data and controls; Powerhouses support permissioned creation and lifecycle controls; gauge placement and list/detail precision modes remain accessible and evidence-backed.
+- [ ] Every Core service, app, container, Powerhouse, workflow, local model, and VM has a stable workload identity and exposes requested, granted, and actual resource use through a versioned contract.
+- [ ] The System Dashboard reads verified live CPU, memory, storage I/O, process, and pressure measurements with source, units, freshness, sampling window, scope, and unavailable state instead of preview values.
+- [ ] Core reserve, Active, Background, Contained, Powerhouse, and Dedicated policies enforce tested cgroup-backed priority, borrowing, protection, and ceilings without allowing a runaway workload to starve Core.
+- [ ] Active Apps persists per-app lifecycle policy with 2-minute and longer timing choices, per-app Never, and master Never all; it proves Rest pauses work while preserving fast return, Deep sleep saves state and releases memory, and Close session validates an endpoint before ending the session.
+- [ ] Core data access, internet access, and background execution are separate grants; Core Offline fails closed without unnecessarily disconnecting internet-only apps, and Computer Offline disables all networking.
+- [ ] Core grants support None, Selected, Profile, App memory, and Session only; public profiles expose only a user-reviewed projection, and an app with no Core grant starts with no personal knowledge.
+- [ ] Resource warnings preserve a diagnostic checkpoint, show evidence and impact, offer safe actions, explain the recommended action, and never promote abnormal state to Last Good State automatically.
+- [ ] Btrfs proves the clean source, Last Good State, and quarantined Session Trail with exactly two alternating automatic savepoints plus an active-workload Status Bar checkpoint action, while keeping user documents and app-owned Core data outside Powerhouse rollback.
+- [ ] The center Status Bar ember opens Core, and Core can produce a verified one-action backup to an approved external drive without exposing or omitting user-owned data silently.
+- [ ] First app launch can create one scoped app-owned Core stub/drop-box folder with a machine-readable manifest and plain-language README; the app cannot read sibling Core data, user placement into the stub is an explicit grant, and app removal, sleep, reset, or reinstall does not delete that data.
+- [ ] Memory Box implements a CEE OS-local per-assistant slot store with stable identity, provenance, versioning, create/read/append/correct/export/delete grants, revocation, audit, and no unintended cloud synchronization.
+- [ ] Memory Box publishes conformance fixtures and proves owner inspection, export round-trip, correction, deletion, revocation, assistant isolation, prompt-injection resistance, Seed mounting and backup/restore, and bounded provenance-preserving Tenari Grove exchange.
